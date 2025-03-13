@@ -1,11 +1,9 @@
 package com.gittowork.domain.authentication.service;
 
-import ch.qos.logback.core.spi.ErrorCodes;
 import com.gittowork.domain.authentication.dto.response.SignInGithubResponse;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.GithubSignInException;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,14 +14,12 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
 @Service
-@AllArgsConstructor(onConstructor = @__(@Autowired))
 public class GithubAuthenticationService {
 
     @Value("${github.client.id}")
@@ -36,6 +32,11 @@ public class GithubAuthenticationService {
     private String redirectUri;
 
     private final UserRepository userRepository;
+
+    @Autowired
+    public GithubAuthenticationService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @Getter
     @Setter
@@ -50,7 +51,7 @@ public class GithubAuthenticationService {
     /**
      * https://github.com/login/oauth/access_token 주소로 github access_token 요청
      *
-     * @param code
+     * @param code 프론트엔드에서 넘어온 code
      * @return githubAccessToken
      */
     private String getAccessToken(String code) {
