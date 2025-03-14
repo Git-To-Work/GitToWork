@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class User {
+
     @Id
     @Column(name = "user_id", nullable = false)
     private Integer id;
@@ -26,15 +27,18 @@ public class User {
     @Column(name = "github_id", nullable = false)
     private Integer githubId;
 
-    @Size(max = 30)
+    @Size(max = 100)
     @NotNull
-    @Column(name = "name", nullable = false, length = 30)
+    @Column(name = "github_name", nullable = false, length = 100)
+    private String githubName;
+
+    @Size(max = 30)
+    @Column(name = "name", length = 30)
     private String name;
 
-    @Size(max = 255)
-    @NotNull
-    @Column(name = "email", nullable = false)
-    private String email;
+    @Size(max = 100)
+    @Column(name = "github_email", length = 100)
+    private String githubEmail;
 
     @Size(max = 13)
     @Column(name = "phone", length = 13)
@@ -62,8 +66,8 @@ public class User {
     private LocalDateTime privacyConsentDttm;
 
     @Size(max = 255)
-    @Column(name = "token")
-    private String token;
+    @Column(name = "github_access_token")
+    private String githubAccessToken;
 
     @Size(max = 255)
     @Column(name = "interest_fields")
@@ -71,5 +75,8 @@ public class User {
 
     @Column(name = "delete_dttm")
     private LocalDateTime deleteDttm;
+
+    @Column(name = "notification_agree_dttm")
+    private LocalDateTime notificationAgreeDttm;
 
 }

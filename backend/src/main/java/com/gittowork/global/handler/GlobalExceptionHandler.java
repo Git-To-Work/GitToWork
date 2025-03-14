@@ -1,5 +1,7 @@
 package com.gittowork.global.handler;
 
+import com.gittowork.global.exception.AccessTokenNotFoundException;
+import com.gittowork.global.exception.AutoLogInException;
 import com.gittowork.global.exception.GithubSignInException;
 import com.gittowork.global.exception.UserNotFoundException;
 import lombok.Builder;
@@ -63,6 +65,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(GithubSignInException.class)
     public ResponseEntity<?> exceptionHandler(GithubSignInException e) {
         log.warn("Github sign in: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.UNAUTHORIZED.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), message);
+    }
+
+    @ExceptionHandler(AutoLogInException.class)
+    public ResponseEntity<?> exceptionHandler(AutoLogInException e) {
+        log.warn("Auto log in: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.UNAUTHORIZED.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), message);
+    }
+
+    @ExceptionHandler(AccessTokenNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(AccessTokenNotFoundException e) {
+        log.warn("Access token not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.UNAUTHORIZED.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), message);
     }

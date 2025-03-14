@@ -7,9 +7,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SignInGithubResponse {
+public class AutoLogInGithubResponse {
     private String nickname;
     private boolean privacyPolicyAgreed;
     private String avatarUrl;
-    private String accessToken;
 }
