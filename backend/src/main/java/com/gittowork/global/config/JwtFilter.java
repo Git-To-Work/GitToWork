@@ -26,8 +26,10 @@ public class JwtFilter extends OncePerRequestFilter {
             "/swagger-ui/",
             "/v3/api-docs",
             "/swagger-resources",
-            "/webjars"
+            "/webjars",
 
+            //postman 관련 경로
+            "/api/**"
     );
 
     /**

@@ -16,7 +16,7 @@ public class JwtUtil {
 
     private final static Key JWT_SECRET = Keys.secretKeyFor(SignatureAlgorithm.HS256); //SECRET_KEY 환경변수에서 가져오는 걸로 바꿔야함.
 
-    private final static long ACCESS_EXPIRATION_TIME = 1000L * 60 * 60;// 1시간
+    private final static long ACCESS_EXPIRATION_TIME = 1000L * 60 * 60 * 24 * 366;// 366일
     private final static long REFRESH_EXPIRATION_TIME = 1000L * 60 * 60 * 24 * 366;// 366일
 
     public static String generateAccessToken(String username) {
