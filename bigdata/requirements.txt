@@ -1,0 +1,27 @@
+# FastAPI 프레임워크 및 ASGI 서버
+fastapi==0.115.11
+uvicorn[standard]==0.24.0
+
+# 환경 설정 (env 파일 관리 등)
+python-dotenv==1.0.0
+
+# Pydantic (데이터 검증 및 설정 관리)
+pydantic==1.0.1
+
+# MongoDB 비동기 드라이버 (Motor)
+motor==3.7.0
+
+# SQLAlchemy (MySQL 연결을 위한 ORM)
+SQLAlchemy==2.0.39
+
+# MySQL 커넥터 (SQLAlchemy와 함께 사용)
+mysql-connector-python==9.2.0
+
+# Redis 클라이언트 (캐싱 및 세션 관리)
+redis==5.2.1
+
+# 보안 관련 (비밀번호 해싱 등)
+passlib[HS256]==1.7.4
+
+# 기타 필요한 패키지들 (예: CORS 등)
+python-multipart==0.0.20
