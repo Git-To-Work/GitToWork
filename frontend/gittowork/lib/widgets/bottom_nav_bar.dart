@@ -29,6 +29,24 @@ class CustomBottomNavBar extends StatelessWidget {
                 child: const Text("2"),
               ),
             ),
+            Expanded(
+              child: TextButton(
+                onPressed: () => onItemTapped(2),
+                child: const Text("3"),
+              ),
+            ),
+            Expanded(
+              child: TextButton(
+                onPressed: () => onItemTapped(3),
+                child: const Text("4"),
+              ),
+            ),
+            Expanded(
+              child: TextButton(
+                onPressed: () => onItemTapped(4),
+                child: const Text("5"),
+              ),
+            ),
           ],
         ),
       ),
