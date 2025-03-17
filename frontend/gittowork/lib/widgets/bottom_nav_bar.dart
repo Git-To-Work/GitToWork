@@ -68,11 +68,11 @@ class CustomBottomNavBar extends StatelessWidget {
           padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8.0),
           child: Row(
             children: [
-              _buildNavButton(index: 0, assetPath: 'assets/images/home.png'),
+              _buildNavButton(index: 0, assetPath: 'assets/images/Home.png'),
               _buildNavButton(index: 1, assetPath: 'assets/images/Company.png'),
-              _buildNavButton(index: 2, assetPath: 'assets/images/Coverletter.png'),
-              _buildNavButton(index: 3, assetPath: 'assets/images/entertainment.png'),
-              _buildNavButton(index: 4, assetPath: 'assets/images/mypage.png'),
+              _buildNavButton(index: 2, assetPath: 'assets/images/CoverLetter.png'),
+              _buildNavButton(index: 3, assetPath: 'assets/images/Entertainment.png'),
+              _buildNavButton(index: 4, assetPath: 'assets/images/MyPage.png'),
             ],
           ),
         ),
