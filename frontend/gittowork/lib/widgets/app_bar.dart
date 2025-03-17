@@ -6,15 +6,17 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      centerTitle: true, // 제목을 좌우 중앙 정렬
+      backgroundColor: Colors.white,
+      centerTitle: true,
       title: Image.asset(
         'assets/images/Big_Logo_White.png',
-        height: 40, // 필요에 따라 높이 조절
+        height: 40,
         fit: BoxFit.contain,
       ),
     );
   }
 
+  // AppBar 높이를 고정 80으로 설정
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(60);
 }

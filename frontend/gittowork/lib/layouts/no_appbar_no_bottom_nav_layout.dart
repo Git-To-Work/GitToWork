@@ -6,6 +6,7 @@ class NoAppBarNoBottomNavLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF2c2c2c),
       body: Center(
         child: Image.asset(
           'assets/images/Big_Logo_Dark.png',
