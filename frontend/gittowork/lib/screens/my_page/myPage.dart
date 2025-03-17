@@ -7,7 +7,7 @@ class MyPageScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text(
-        '기업 화면',
+        '마이페이지 화면',
         style: TextStyle(fontSize: 30),
       ),
     );
