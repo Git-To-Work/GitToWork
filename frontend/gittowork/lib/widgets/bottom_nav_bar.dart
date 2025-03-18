@@ -59,13 +59,14 @@ class CustomBottomNavBar extends StatelessWidget {
       height: 100, // 하단바 전체 높이
       color: Colors.white, // 하단바 배경색 흰색
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 5.0),
+        // 좌우는 16, 상단은 2, 하단은 5의 간격으로 조정
+        padding: const EdgeInsets.only(top: 0, bottom: 8.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _buildNavButton(index: 0, assetPath: 'assets/images/Home.png'),
             const SizedBox(width: 6),
-            _buildNavButton(index:1, assetPath: 'assets/images/Company.png'),
+            _buildNavButton(index: 1, assetPath: 'assets/images/Company.png'),
             const SizedBox(width: 6),
             _buildNavButton(index: 2, assetPath: 'assets/images/Cover_Letter.png'),
             const SizedBox(width: 6),
