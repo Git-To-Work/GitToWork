@@ -17,8 +17,8 @@ class CustomBottomNavBar extends StatelessWidget {
   }) {
     final bool isSelected = (index == selectedIndex);
     return SizedBox(
-      width: 75,
-      height: 60,
+      width: 67,
+      height: 55,
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(8.0),
