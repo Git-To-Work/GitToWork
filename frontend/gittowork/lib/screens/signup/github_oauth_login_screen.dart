@@ -9,6 +9,7 @@ import 'signup_detail_screen.dart'; // 회원 상세 정보 입력 화면
 class GithubOAuthLoginScreen extends StatelessWidget {
   GithubOAuthLoginScreen({super.key});
 
+  // Github API 권한 계정 가져오기
   final GitHubSignIn githubSignIn = GitHubSignIn(
     clientId: dotenv.env['GITHUB_CLIENT_ID']!,
     clientSecret: dotenv.env['GITHUB_CLIENT_SECRET']!,
@@ -20,7 +21,7 @@ class GithubOAuthLoginScreen extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('GitHub OAuth Example')),
+      appBar: AppBar(title: const Text('GitHub OAuth')),
       body: Center(
         child: Builder(
           builder: (context) => ElevatedButton(

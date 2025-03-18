@@ -97,7 +97,7 @@ class _SignupDetailScreenState extends State<SignupDetailScreen> {
     final career = _careerController.text;
     final phone = _phoneController.text;
 
-    // 예시로만 출력
+    // 디버그 출력
     debugPrint('회원가입 정보: ');
     debugPrint('GitHub nickname: ${widget.nickname}');
     debugPrint('이름: $name');
@@ -129,8 +129,8 @@ class _SignupDetailScreenState extends State<SignupDetailScreen> {
             const SizedBox(height: 8),
             // GitHub ID 표시
             Text(
-              widget.nickname,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              widget.nickname                                                                                                                             ,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700 ),
             ),
             const SizedBox(height: 16),
 
