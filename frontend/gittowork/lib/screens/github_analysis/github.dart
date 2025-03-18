@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'stats.dart';
-import 'language.dart';
-import 'ai_analysis.dart';
+import 'package:provider/provider.dart';
+import 'result_container.dart'; // 새로 생성한 파일 import
+import 'package:gittowork/providers/github_analysis_provider.dart';
 
 class GitHubScreen extends StatelessWidget {
   const GitHubScreen({super.key});
@@ -60,7 +60,8 @@ class GitHubScreen extends StatelessWidget {
                     alignment: Alignment.topRight,
                     child: GestureDetector(
                       onTap: () {
-                        // TODO: 새로고침 등의 동작 구현
+                        // Reload 버튼을 누르면 리스트 데이터를 1씩 증가시킵니다.
+                        context.read<GitHubAnalysisProvider>().incrementTestData();
                       },
                       child: Image.asset(
                         'assets/images/Reload.png',
@@ -72,9 +73,8 @@ class GitHubScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const StatsScreen(),
-            const LanguageScreen(),
-            const AIAnalysisScreen(),
+            // 결과 영역을 result_container.dart로 관리
+            const ResultContainer(),
           ],
         ),
       ),
