@@ -21,7 +21,6 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: "${BACKEND_CRED}", variable: 'BACKEND_PROP_FILE')]) {
                         echo "Injecting backend credentials..."
-                        sh '''pwd'''
                         sh '''
                             chmod -R 777 backend/src/main/resources
                             cp "$BACKEND_PROP_FILE" backend/src/main/resources/application.properties
@@ -57,9 +56,8 @@ pipeline {
                 dir('../frontend/gittowork') {
                     echo 'Flutter 웹 애플리케이션 빌드 시작'
                 sh '''
-                    # Git 안전 디렉토리 등록
+                    export HOME=/var/jenkins_home
                     git config --global --add safe.directory /sdks/flutter
-                    sudo chmod -R u+w /sdks/flutter
                     flutter pub get
                     flutter build web
                 '''
