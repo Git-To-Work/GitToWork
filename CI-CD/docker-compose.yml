@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  backend:
+    container_name: backend
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_APPLICATION_NAME: gittowork
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQLDialect
+      SPRING_JPA_OPEN_IN_VIEW: "false"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gittowork
+      SPRING_DATASOURCE_USERNAME: c103
+      SPRING_DATASOURCE_PASSWORD: kOZmrcUmgnKl5FKBdBuj
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/gittowork
+      SPRING_DATA_MONGODB_DATABASE: gittowork
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_TIMEOUT: "60000"
+      SPRING_AI_OPENAI_API_KEY: your_openai_api_key
+      SPRING_AI_OPENAI_ORGANIZATION_ID: your_openai_org_id
+      GITHUB_CLIENT_ID: Ov23liDOq2w9SK7sP0sj
+      GITHUB_CLIENT_SECRET: b9385ce3c93339b14b0e947bac636d4ac698732f
+      GITHUB_REDIRECT_URI: http://3.35.138.40/callback
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      - app-network
+
+  fastapi:
+    container_name: fastapi
+    build:
+      context: ../bigdata
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: "gittowork"
+      DEBUG: "true"
+      MYSQL_URL: "mysql://c103:kOZmrcUmgnKl5FKBdBuj@mysql:3306/gittowork"
+      MONGODB_URI: "mongodb://mongodb:27017/gittowork"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../CI-Cd/gittowork.conf:/etc/nginx/conf.d:ro
+      - /etc/letsencrypt:/etc/nginx/ssl:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    depends_on:
+      - backend
+      - fastapi
+    networks:
+      - app-network
+
+
+networks:
+  app-network:
+    driver: bridge
+
