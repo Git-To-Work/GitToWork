@@ -50,7 +50,7 @@ pipeline {
         stage('Build Flutter Web') {
             agent {
                 docker {
-                    image 'cirrusci/flutter:3.29.2'
+                    image 'cirrusci/flutter:latest'
                 }
             }
             steps {
