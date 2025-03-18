@@ -14,24 +14,24 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'develop', credentialsId: '${GIT_CREDENTIAL}', url: 'https://lab.ssafy.com/s12-bigdata-recom-sub1/S12P21C103.git'
+                git branch: 'develop', credentialsId: "${GIT_CREDENTIAL}", url: 'https://lab.ssafy.com/s12-bigdata-recom-sub1/S12P21C103.git'
             }
         }
 
         stage('Inject Credentials') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: '${BACKEND_CRED}', variable: 'BACKEND_PROP_FILE')]) {
+                    withCredentials([file(credentialsId: "${BACKEND_CRED}", variable: 'BACKEND_PROP_FILE')]) {
                         echo "Injecting backend credentials..."
                         sh "cp ${BACKEND_PROP_FILE} ../backend/application.properties"
                     }
                     
-                    withCredentials([file(credentialsId: '${FASTAPI_CRED}', variable: 'FASTAPI_PROP_FILE')]) {
+                    withCredentials([file(credentialsId: "${FASTAPI_CRED}", variable: 'FASTAPI_PROP_FILE')]) {
                         echo "Injecting fastapi credentials..."
                         sh "cp ${FASTAPI_PROP_FILE} ../bigdata/.env"
                     }
                     
-                    withCredentials([file(credentialsId: '${FRONTEND_CRED}', variable: 'FRONTEND_PROP_FILE')]) {
+                    withCredentials([file(credentialsId: "${FRONTEND_CRED}", variable: 'FRONTEND_PROP_FILE')]) {
                         echo "Injecting frontend credentials..."
                         sh "cp ${FRONTEND_PROP_FILE} ../frontend/gittowork/.env"
                     }
