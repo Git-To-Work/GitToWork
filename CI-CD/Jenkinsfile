@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://lab.ssafy.com/s12-bigdata-recom-sub1/S12P21C103.git'
+                git branch: 'develop', url: 'https://lab.ssafy.com/s12-bigdata-recom-sub1/S12P21C103.git'
             }
         }
 
