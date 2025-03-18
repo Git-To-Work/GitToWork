@@ -3,18 +3,50 @@ pipeline {
 
     environment {
         COMPOSE_FILE = 'CI-CD/docker-compose.yml'
+        GIT_CREDENTIAL = 'c103'
+        // 각 프로젝트별 Credential ID (실제 Jenkins에 등록된 ID로 변경)
+        BACKEND_CRED  = 'backend-properties'
+        FASTAPI_CRED  = 'fastapi-env'
+        // 예시로 프론트엔드도 필요하다면 추가 가능
+        FRONTEND_CRED = 'frontend-env'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'develop', credentialsId: 'c103', url: 'https://lab.ssafy.com/s12-bigdata-recom-sub1/S12P21C103.git'
+                git branch: 'develop', credentialsId: '${GIT_CREDENTIAL}', url: 'https://lab.ssafy.com/s12-bigdata-recom-sub1/S12P21C103.git'
+            }
+        }
+
+        stage('Inject Credentials') {
+            steps {
+                script {
+                    withCredentials([file(credentialsId: '${BACKEND_CRED}', variable: 'BACKEND_PROP_FILE')]) {
+                        echo "Injecting backend credentials..."
+                        sh "cp ${BACKEND_PROP_FILE} ../backend/application.properties"
+                    }
+                    
+                    withCredentials([file(credentialsId: '${FASTAPI_CRED}', variable: 'FASTAPI_PROP_FILE')]) {
+                        echo "Injecting fastapi credentials..."
+                        sh "cp ${FASTAPI_PROP_FILE} ../bigdata/.env"
+                    }
+                    
+                    withCredentials([file(credentialsId: '${FRONTEND_CRED}', variable: 'FRONTEND_PROP_FILE')]) {
+                        echo "Injecting frontend credentials..."
+                        sh "cp ${FRONTEND_PROP_FILE} ../frontend/gittowork/.env"
+                    }
+                }
             }
         }
 
         stage('Build Flutter Web') {
+            agent {
+                docker {
+                    image 'cirrusci/flutter:3.29.2'
+                }
+            }
             steps {
-                dir('frontend') {
+                dir('../frontend/gittowork') {
                     echo 'Flutter 웹 애플리케이션 빌드 시작'
                     sh 'flutter pub get'
                     sh 'flutter build web'
