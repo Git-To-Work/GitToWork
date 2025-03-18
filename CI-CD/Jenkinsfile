@@ -23,21 +23,21 @@ pipeline {
                         echo "Injecting backend credentials..."
                         sh '''pwd'''
                         sh '''
-                            cp "$BACKEND_PROP_FILE" ../backend/src/main/resources/application.properties
+                            cp "$BACKEND_PROP_FILE" backend/src/main/resources/application.properties
                         '''
                     }
                     
                     withCredentials([file(credentialsId: "${FASTAPI_CRED}", variable: 'FASTAPI_PROP_FILE')]) {
                         echo "Injecting fastapi credentials..."
                         sh '''
-                            cp "$FASTAPI_PROP_FILE" ../bigdata/.env
+                            cp "$FASTAPI_PROP_FILE" bigdata/.env
                         '''
                     }
                     
                     withCredentials([file(credentialsId: "${FRONTEND_CRED}", variable: 'FRONTEND_PROP_FILE')]) {
                         echo "Injecting frontend credentials..."
                         sh '''
-                            cp "$FRONTEND_PROP_FILE" ../frontend/gittowork/.env
+                            cp "$FRONTEND_PROP_FILE" frontend/gittowork/.env
                         '''
                     }
                 }
