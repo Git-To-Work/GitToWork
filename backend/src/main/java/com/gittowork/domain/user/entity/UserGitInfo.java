@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 
@@ -27,8 +28,8 @@ public class UserGitInfo {
 
     @Size(max = 255)
     @NotNull
-    @Column(name = "avartar_url", nullable = false)
-    private String avartarUrl;
+    @Column(name = "avatar_url", nullable = false)
+    private String avatarUrl;
 
     @NotNull
     @Column(name = "public_repositories", nullable = false)
@@ -44,9 +45,9 @@ public class UserGitInfo {
 
     @NotNull
     @Column(name = "create_dttm", nullable = false)
-    private LocalDateTime createDttm;
+    private Instant createDttm;
 
     @Column(name = "update_dttm")
-    private LocalDateTime updateDttm;
+    private Instant updateDttm;
 
 }

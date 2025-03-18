@@ -227,7 +227,7 @@ public class GithubAuthenticationService {
         return AutoLogInGithubResponse.builder()
                 .nickname(username)
                 .privacyPolicyAgreed(user.getPrivacyConsentDttm() != null)
-                .avatarUrl(userGitInfo.getAvartarUrl())
+                .avatarUrl(userGitInfo.getAvatarUrl())
                 .build();
     }
 
