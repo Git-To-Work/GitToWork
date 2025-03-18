@@ -61,8 +61,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ../frontend/build/web:/usr/share/nginx/html:ro
-      - ../frontend/gittowork/gittowork.conf:/etc/nginx/conf.d:ro
+      - ../CI-Cd/gittowork.conf:/etc/nginx/conf.d:ro
       - /etc/letsencrypt:/etc/nginx/ssl:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
