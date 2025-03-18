@@ -15,14 +15,23 @@ pipeline {
                 git branch: 'develop', credentialsId: "${GIT_CREDENTIAL}", url: 'https://lab.ssafy.com/s12-bigdata-recom-sub1/S12P21C103.git'
             }
         }
-
+        
+        stage('Build Custom Flutter Image') {
+            steps {
+                dir('CI-CD') {
+                    echo 'Building custom Flutter image'
+                    sh 'docker build -t my-flutter:custom .'
+                }
+            }
+        }
+        
         stage('Inject Credentials') {
             steps {
                 script {
                     withCredentials([file(credentialsId: "${BACKEND_CRED}", variable: 'BACKEND_PROP_FILE')]) {
                         echo "Injecting backend credentials..."
                         sh '''
-                            chmod -R 777 backend/src/main/resources
+                            mkdir -p backend/src/main/resources
                             cp "$BACKEND_PROP_FILE" backend/src/main/resources/application.properties
                         '''
                     }
@@ -30,7 +39,7 @@ pipeline {
                     withCredentials([file(credentialsId: "${FASTAPI_CRED}", variable: 'FASTAPI_PROP_FILE')]) {
                         echo "Injecting fastapi credentials..."
                         sh '''
-                            chmod -R 777 bigdata/.env
+                            mkdir -p bigdata
                             cp "$FASTAPI_PROP_FILE" bigdata/.env
                         '''
                     }
@@ -38,29 +47,30 @@ pipeline {
                     withCredentials([file(credentialsId: "${FRONTEND_CRED}", variable: 'FRONTEND_PROP_FILE')]) {
                         echo "Injecting frontend credentials..."
                         sh '''
-                            chmod -R 777 frontend/gittowork/.env
+                            mkdir -p frontend/gittowork
                             cp "$FRONTEND_PROP_FILE" frontend/gittowork/.env
                         '''
                     }
                 }
             }
         }
-
+        
         stage('Build Flutter Web') {
             agent {
                 docker {
-                    image 'cirrusci/flutter:latest'
+                    image 'my-flutter:custom'
                 }
             }
             steps {
+                // Jenkinsfile이 CI-CD 폴더 내에 있으므로, Flutter 프로젝트 폴더는 상위 디렉토리로 이동
                 dir('../frontend/gittowork') {
                     echo 'Flutter 웹 애플리케이션 빌드 시작'
-                sh '''
-                    export HOME=/var/jenkins_home
-                    git config --global --add safe.directory /sdks/flutter
-                    flutter pub get
-                    flutter build web
-                '''
+                    sh '''
+                        export HOME=/var/jenkins_home
+                        git config --global --add safe.directory /sdks/flutter
+                        flutter pub get
+                        flutter build web
+                    '''
                 }
             }
         }
@@ -104,4 +114,3 @@ pipeline {
         }
     }
 }
-
