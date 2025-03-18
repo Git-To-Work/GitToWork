@@ -43,34 +43,6 @@ pipeline {
                             cp "$FASTAPI_PROP_FILE" bigdata/.env
                         '''
                     }
-                    
-                    withCredentials([file(credentialsId: "${FRONTEND_CRED}", variable: 'FRONTEND_PROP_FILE')]) {
-                        echo "Injecting frontend credentials..."
-                        sh '''
-                            mkdir -p frontend/gittowork
-                            cp "$FRONTEND_PROP_FILE" frontend/gittowork/.env
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Build Flutter Web') {
-            agent {
-                docker {
-                    image 'my-flutter:custom'
-                }
-            }
-            steps {
-                // Jenkinsfile이 CI-CD 폴더 내에 있으므로, Flutter 프로젝트 폴더는 상위 디렉토리로 이동
-                dir('frontend/gittowork') {
-                    echo 'Flutter 웹 애플리케이션 빌드 시작'
-                    sh '''
-                        export HOME=/var/jenkins_home
-                        git config --global --add safe.directory /sdks/flutter
-                        flutter pub get
-                        flutter build web
-                    '''
                 }
             }
         }
