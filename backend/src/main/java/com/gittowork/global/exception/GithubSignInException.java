@@ -5,8 +5,8 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class UserNotFoundException extends RuntimeException {
-    public UserNotFoundException(String message) {
+public class GithubSignInException extends RuntimeException {
+    public GithubSignInException(String message) {
         super(message);
     }
 }

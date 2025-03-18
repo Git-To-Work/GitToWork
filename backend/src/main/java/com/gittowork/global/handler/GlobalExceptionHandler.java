@@ -1,5 +1,8 @@
 package com.gittowork.global.handler;
 
+import com.gittowork.global.exception.AccessTokenNotFoundException;
+import com.gittowork.global.exception.AutoLogInException;
+import com.gittowork.global.exception.GithubSignInException;
 import com.gittowork.global.exception.UserNotFoundException;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,8 +20,9 @@ public class GlobalExceptionHandler {
     private final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @Getter
-    private enum ErrorCode {
-        USER_NOT_FOUND("NF","User not found");
+    public enum ErrorCode {
+        NOT_FOUND("NF","Not found"),
+        UNAUTHORIZED("UR", "Unauthorized.");
 
         private final String code;
         private final String message;
@@ -54,7 +58,28 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<?> exceptionHandler(UserNotFoundException e) {
         log.warn("User not found: {}", e.getMessage());
-        String message = e.getMessage() == null ? ErrorCode.USER_NOT_FOUND.getMessage() : e.getMessage();
-        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.USER_NOT_FOUND.getCode(), message);
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
+
+    @ExceptionHandler(GithubSignInException.class)
+    public ResponseEntity<?> exceptionHandler(GithubSignInException e) {
+        log.warn("Github sign in: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.UNAUTHORIZED.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), message);
+    }
+
+    @ExceptionHandler(AutoLogInException.class)
+    public ResponseEntity<?> exceptionHandler(AutoLogInException e) {
+        log.warn("Auto log in: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.UNAUTHORIZED.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), message);
+    }
+
+    @ExceptionHandler(AccessTokenNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(AccessTokenNotFoundException e) {
+        log.warn("Access token not found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.UNAUTHORIZED.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), message);
     }
 }
