@@ -18,11 +18,11 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = const [
-    GitHubScreen(),      // 메인 화면
-    CompanyScreen(),     // 기업 화면
-    CoverLetterScreen(), // 자소서 화면
-    EntertainmentScreen(), // 엔터테이먼트 화면
-    MyPageScreen(),      // 마이페이지 화면
+    GitHubScreen(),         // 메인 화면
+    CompanyScreen(),        // 기업 화면
+    CoverLetterScreen(),    // 자소서 화면
+    EntertainmentScreen(),  // 엔터테이먼트 화면
+    MyPageScreen(),         // 마이페이지 화면
   ];
 
   void _onItemTapped(int index) {
@@ -36,9 +36,11 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
     return Scaffold(
       appBar: const CustomAppBar(),
       body: _screens[_selectedIndex],
-      bottomNavigationBar: CustomBottomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped,
+      bottomNavigationBar: SafeArea(
+        child: CustomBottomNavBar(
+          selectedIndex: _selectedIndex,
+          onItemTapped: _onItemTapped,
+        ),
       ),
     );
   }
