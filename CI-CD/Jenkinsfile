@@ -6,7 +6,6 @@ pipeline {
         GIT_CREDENTIAL = 'c103'
         BACKEND_CRED  = 'backend-properties'
         FASTAPI_CRED  = 'fastapi-env'
-        FRONTEND_CRED = 'frontend-env'
     }
 
     stages {
