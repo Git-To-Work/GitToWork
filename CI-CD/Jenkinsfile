@@ -56,8 +56,13 @@ pipeline {
             steps {
                 dir('../frontend/gittowork') {
                     echo 'Flutter 웹 애플리케이션 빌드 시작'
-                    sh 'flutter pub get'
-                    sh 'flutter build web'
+                sh '''
+                    # Git 안전 디렉토리 등록
+                    git config --global --add safe.directory /sdks/flutter
+                    sudo chmod -R u+w /sdks/flutter
+                    flutter pub get
+                    flutter build web
+                '''
                 }
             }
         }
