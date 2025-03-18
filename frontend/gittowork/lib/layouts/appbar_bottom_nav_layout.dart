@@ -16,26 +16,53 @@ class AppBarBottomNavLayout extends StatefulWidget {
 
 class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   int _selectedIndex = 0;
+  late final PageController _pageController;
 
   final List<Widget> _screens = const [
     GitHubScreen(),         // 메인 화면
     CompanyScreen(),        // 기업 화면
     CoverLetterScreen(),    // 자소서 화면
-    EntertainmentScreen(),  // 엔터테이먼트 화면
+    EntertainmentScreen(),  // 엔터테인먼트 화면
     MyPageScreen(),         // 마이페이지 화면
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // 버튼 클릭 시 페이지 애니메이션 효과와 함께 전환
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const CustomAppBar(),
-      body: _screens[_selectedIndex],
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        children: _screens,
+      ),
       bottomNavigationBar: SafeArea(
         child: CustomBottomNavBar(
           selectedIndex: _selectedIndex,
