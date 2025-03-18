@@ -4,10 +4,8 @@ pipeline {
     environment {
         COMPOSE_FILE = 'CI-CD/docker-compose.yml'
         GIT_CREDENTIAL = 'c103'
-        // 각 프로젝트별 Credential ID (실제 Jenkins에 등록된 ID로 변경)
         BACKEND_CRED  = 'backend-properties'
         FASTAPI_CRED  = 'fastapi-env'
-        // 예시로 프론트엔드도 필요하다면 추가 가능
         FRONTEND_CRED = 'frontend-env'
     }
 
@@ -23,17 +21,23 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: "${BACKEND_CRED}", variable: 'BACKEND_PROP_FILE')]) {
                         echo "Injecting backend credentials..."
-                        sh "cp ${BACKEND_PROP_FILE} ../backend/application.properties"
+                        sh '''
+                            cp "$BACKEND_PROP_FILE" ../backend/src/main/resources/application.properties
+                        '''
                     }
                     
                     withCredentials([file(credentialsId: "${FASTAPI_CRED}", variable: 'FASTAPI_PROP_FILE')]) {
                         echo "Injecting fastapi credentials..."
-                        sh "cp ${FASTAPI_PROP_FILE} ../bigdata/.env"
+                        sh '''
+                            cp "$FASTAPI_PROP_FILE" ../bigdata/.env
+                        '''
                     }
                     
                     withCredentials([file(credentialsId: "${FRONTEND_CRED}", variable: 'FRONTEND_PROP_FILE')]) {
                         echo "Injecting frontend credentials..."
-                        sh "cp ${FRONTEND_PROP_FILE} ../frontend/gittowork/.env"
+                        sh ```
+                            cp "$FRONTEND_PROP_FILE" ../frontend/gittowork/.env
+                        ```
                     }
                 }
             }
