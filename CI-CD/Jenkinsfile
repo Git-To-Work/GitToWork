@@ -21,6 +21,7 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: "${BACKEND_CRED}", variable: 'BACKEND_PROP_FILE')]) {
                         echo "Injecting backend credentials..."
+                        sh '''pwd'''
                         sh '''
                             cp "$BACKEND_PROP_FILE" ../backend/src/main/resources/application.properties
                         '''
