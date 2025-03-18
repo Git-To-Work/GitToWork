@@ -242,7 +242,7 @@ public class GithubAuthenticationService {
      * 4. return: 없음
      */
     public LogOutGithubResponse logout() {
-        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        HttpServletRequest request = ((ServletRequestAttributes) Objects.requireNonNull(RequestContextHolder.getRequestAttributes())).getRequest();
         String bearerToken = request.getHeader("Authorization");
         if (bearerToken == null || !bearerToken.startsWith("Bearer ")) {
             throw new AccessTokenNotFoundException("Access token not found.");
