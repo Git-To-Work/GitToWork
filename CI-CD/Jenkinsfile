@@ -14,16 +14,7 @@ pipeline {
                 git branch: 'develop', credentialsId: "${GIT_CREDENTIAL}", url: 'https://lab.ssafy.com/s12-bigdata-recom-sub1/S12P21C103.git'
             }
         }
-        
-        stage('Build Custom Flutter Image') {
-            steps {
-                dir('CI-CD') {
-                    echo 'Building custom Flutter image'
-                    sh 'docker build -t my-flutter:custom .'
-                }
-            }
-        }
-        
+
         stage('Inject Credentials') {
             steps {
                 script {
