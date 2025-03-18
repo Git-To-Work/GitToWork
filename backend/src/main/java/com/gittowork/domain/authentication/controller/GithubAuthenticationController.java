@@ -19,32 +19,20 @@ public class GithubAuthenticationController {
 
     @PostMapping("/create/signin")
     public ResponseEntity<?> signInGithub(@NotNull String code) {
-        ApiResponse<Object> response = ApiResponse.builder()
-                .status(HttpStatus.OK.value())
-                .message(HttpStatus.OK.getReasonPhrase())
-                .results(githubAuthenticationService.signInGithub(code))
-                .build();
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(HttpStatus.OK, githubAuthenticationService.signInGithub(code)));
     }
 
     @PostMapping("/create/login")
     public ResponseEntity<?> autoLogInGithub() {
-        ApiResponse<Object> response = ApiResponse.builder()
-                .status(HttpStatus.OK.value())
-                .message(HttpStatus.OK.getReasonPhrase())
-                .results(githubAuthenticationService.autoLogInGithub())
-                .build();
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(HttpStatus.OK, githubAuthenticationService.autoLogInGithub()));
     }
 
     @PostMapping("/create/logout")
     public ResponseEntity<?> logOutGithub() {
-        ApiResponse<Object> response = ApiResponse.builder()
-                .status(HttpStatus.OK.value())
-                .message(HttpStatus.OK.getReasonPhrase())
-                .results(githubAuthenticationService.logout())
-                .build();
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(HttpStatus.OK, githubAuthenticationService.logout()));
     }
 
 }

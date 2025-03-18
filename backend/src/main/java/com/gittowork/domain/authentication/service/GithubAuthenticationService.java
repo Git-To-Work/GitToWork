@@ -12,13 +12,16 @@ import com.gittowork.global.exception.AutoLogInException;
 import com.gittowork.global.exception.GithubSignInException;
 import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.service.RedisService;
+import com.gittowork.global.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -36,7 +39,6 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class GithubAuthenticationService {
 
-
     @Value("${github.client.id}")
     private String clientId;
 
@@ -49,14 +51,17 @@ public class GithubAuthenticationService {
     private final UserRepository userRepository;
     private final UserGitInfoRepository userGitInfoRepository;
     private final RedisService redisService;
+    private final JwtUtil jwtUtil;
 
     @Autowired
     public GithubAuthenticationService(UserRepository userRepository,
                                        RedisService redisService,
-                                       UserGitInfoRepository userGitInfoRepository) {
+                                       UserGitInfoRepository userGitInfoRepository,
+                                       JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.userGitInfoRepository = userGitInfoRepository;
         this.redisService = redisService;
+        this.jwtUtil = jwtUtil;
     }
 
     /**
@@ -124,7 +129,11 @@ public class GithubAuthenticationService {
                 new ParameterizedTypeReference<Map<String, Object>>() {}
         );
 
-        return response.getBody();
+        Map<String, Object> userInfo = response.getBody();
+        if (userInfo == null || !userInfo.containsKey("login")) {
+            throw new GithubSignInException("Failed to fetch GitHub user info.");
+        }
+        return userInfo;
     }
 
     /**
@@ -141,31 +150,52 @@ public class GithubAuthenticationService {
         String githubAccessToken = getAccessToken(code);
         Map<String, Object> githubUserInfo = getUserInfo(githubAccessToken);
 
+        // GitHub 로그인명 (username)
+        final String username = (String) githubUserInfo.get("login");
+
+        // GitHub 추가 정보 구성
         Map<String, Object> userGitInfo = new HashMap<>();
         userGitInfo.put("githubAvatarUrl", githubUserInfo.get("avatar_url"));
         userGitInfo.put("publicRepositories", githubUserInfo.get("public_repos"));
         userGitInfo.put("followers", githubUserInfo.get("followers"));
         userGitInfo.put("following", githubUserInfo.get("following"));
 
+        // 사용자 기본 정보 구성
         Map<String, Object> user = new HashMap<>();
         user.put("githubId", githubUserInfo.get("id"));
-        user.put("githubName", githubUserInfo.get("login"));
-        user.put("githubEmail", githubUserInfo.get("email") == null ? null : githubUserInfo.get("email"));
+        user.put("githubName", username);
+        user.put("githubEmail", githubUserInfo.get("email"));
 
+        // Redis에 저장할 키 생성
         String userKey = "user:" + githubUserInfo.get("id");
         String userGitInfoKey = "userGitInfo:" + githubUserInfo.get("id");
+
+        // Redis에 사용자 정보 저장 및 만료 시간 설정
         redisService.saveUser(userKey, user);
         redisService.saveUserGitInfo(userGitInfoKey, userGitInfo);
-
         redisService.setExpire(userKey, 1, TimeUnit.HOURS);
         redisService.setExpire(userGitInfoKey, 1, TimeUnit.HOURS);
 
+        // Spring Security의 Authentication 객체 생성 후 SecurityContext에 등록 (OAuth 방식이므로 password는 null)
+        UsernamePasswordAuthenticationToken authenticationToken =
+                new UsernamePasswordAuthenticationToken(
+                        username,
+                        null,
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                );
+        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+
+        // JWT 토큰 발급 및 refresh token 저장
+        String accessToken = jwtUtil.generateAccessToken(username);
+        String refreshToken = jwtUtil.generateRefreshToken(username);
+        String refreshTokenKey = username + "_refresh_token";
+        redisService.saveRefreshToken(refreshTokenKey, refreshToken, 366, TimeUnit.DAYS);
+
         return SignInGithubResponse.builder()
-                .nickname(githubUserInfo.get("login").toString())
+                .nickname(username)
                 .privacyPolicyAgreed(false)
-                .avatarUrl(githubUserInfo.get("avatar_url").toString())
-                // TODO: Spring Security 구현 후 JWT accessToken 설정
-                .accessToken(null)
+                .avatarUrl((String) githubUserInfo.get("avatar_url"))
+                .accessToken(accessToken)
                 .build();
     }
 
@@ -187,16 +217,15 @@ public class GithubAuthenticationService {
             throw new AutoLogInException("Unauthorized User.");
         }
 
-        String nickname = authentication.getName();
+        String username = authentication.getName();
 
-        User user = userRepository.findByGithubName(nickname)
+        User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new AutoLogInException("User not found."));
-
         UserGitInfo userGitInfo = userGitInfoRepository.findById(user.getId())
                 .orElseThrow(() -> new UserNotFoundException("User not found."));
 
         return AutoLogInGithubResponse.builder()
-                .nickname(nickname)
+                .nickname(username)
                 .privacyPolicyAgreed(user.getPrivacyConsentDttm() != null)
                 .avatarUrl(userGitInfo.getAvartarUrl())
                 .build();
@@ -220,9 +249,8 @@ public class GithubAuthenticationService {
         }
         String accessToken = bearerToken.substring(7);
 
-        // TODO: JwtUtil을 사용하여 access token의 남은 유효 시간 계산 및 블랙리스트 등록
-        // long remainingTimeMillis = jwtUtil.getRemainExpiredTime(accessToken);
-        // redisService.addTokenToBlacklist(accessToken, remainingTimeMillis, TimeUnit.MILLISECONDS);
+        long remainingTimeMillis = jwtUtil.getRemainExpiredTime(accessToken);
+        redisService.addTokenToBlacklist(accessToken, remainingTimeMillis, TimeUnit.MILLISECONDS);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();

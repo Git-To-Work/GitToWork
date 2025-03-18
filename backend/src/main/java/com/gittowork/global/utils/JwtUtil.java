@@ -19,7 +19,7 @@ public class JwtUtil {
     private final static long ACCESS_EXPIRATION_TIME = 1000L * 60 * 60 * 24 * 366;// 366일
     private final static long REFRESH_EXPIRATION_TIME = 1000L * 60 * 60 * 24 * 366;// 366일
 
-    public static String generateAccessToken(String username) {
+    public String generateAccessToken(String username) {
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())

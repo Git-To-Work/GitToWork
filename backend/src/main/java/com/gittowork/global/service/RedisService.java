@@ -36,6 +36,16 @@ public class RedisService {
     }
 
     /**
+     * refreshToken 저장
+     *
+     * @param key   Redis에 저장할 키
+     * @param refreshToken  저장할 refresh token
+     */
+    public void saveRefreshToken(String key, String refreshToken, long timeout, TimeUnit unit) {
+        redisTemplate.opsForValue().set(key, refreshToken, timeout, unit);
+    }
+
+    /**
      * Redis 키의 만료 시간을 설정한다.
      *
      * @param key      만료 시간을 설정할 Redis 키
@@ -65,11 +75,11 @@ public class RedisService {
     /**
      * 1. 메서드 설명: Redis에서 지정된 키를 삭제한다.
      * 2. 로직:
-     *    - RedisTemplate의 delete 메서드를 호출하여 key를 삭제한다.
+     * - RedisTemplate의 delete 메서드를 호출하여 key를 삭제한다.
      * 3. param: key - 삭제할 Redis 키
      * 4. return: 삭제 여부(boolean)
      */
-    public boolean deleteKey(String key) {
-        return Boolean.TRUE.equals(redisTemplate.delete(key));
+    public void deleteKey(String key) {
+        redisTemplate.delete(key);
     }
 }
