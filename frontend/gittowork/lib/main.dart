@@ -17,6 +17,27 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      theme: ThemeData(
+        fontFamily: 'Pretendard', // 글로벌 폰트 지정
+        // Material 3에서 사용하는 새로운 TextTheme 네이밍 사용
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(fontWeight: FontWeight.w500),
+          displayMedium: TextStyle(fontWeight: FontWeight.w500),
+          displaySmall: TextStyle(fontWeight: FontWeight.w500),
+          headlineLarge: TextStyle(fontWeight: FontWeight.w500),
+          headlineMedium: TextStyle(fontWeight: FontWeight.w500),
+          headlineSmall: TextStyle(fontWeight: FontWeight.w500),
+          titleLarge: TextStyle(fontWeight: FontWeight.w500),
+          titleMedium: TextStyle(fontWeight: FontWeight.w500),
+          titleSmall: TextStyle(fontWeight: FontWeight.w500),
+          bodyLarge: TextStyle(fontWeight: FontWeight.w500),
+          bodyMedium: TextStyle(fontWeight: FontWeight.w500),
+          bodySmall: TextStyle(fontWeight: FontWeight.w500),
+          labelLarge: TextStyle(fontWeight: FontWeight.w500),
+          labelMedium: TextStyle(fontWeight: FontWeight.w500),
+          labelSmall: TextStyle(fontWeight: FontWeight.w500),
+        ),
+      ),
       home: const SplashScreen(),
     );
   }
