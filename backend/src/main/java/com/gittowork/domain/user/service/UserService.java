@@ -3,6 +3,7 @@ package com.gittowork.domain.user.service;
 import com.gittowork.domain.fields.entity.Fields;
 import com.gittowork.domain.fields.repository.FieldsRepository;
 import com.gittowork.domain.user.dto.request.InsertProfileRequest;
+import com.gittowork.domain.user.dto.request.SelectInterestsFieldRequest;
 import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
 import com.gittowork.domain.user.dto.response.GetInterestFieldsResponse;
 import com.gittowork.domain.user.dto.response.GetMyProfileResponse;
@@ -184,6 +185,32 @@ public class UserService {
 
         return GetInterestFieldsResponse.builder()
                 .fields(interestFields)
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자의 관심 비즈니스 분야 정보를 업데이트하는 API.
+     * 2. 로직:
+     *    - 현재 인증 정보에서 username을 조회하고, 해당 사용자를 DB에서 조회한다. (없으면 예외 발생)
+     *    - 전달받은 SelectInterestsFieldRequest의 interestsFields 배열을 문자열로 변환한 후, 공백을 제거하여 User 엔티티의 관심 분야 정보에 설정한다.
+     *    - 변경된 User 엔티티를 저장하고, 성공 메시지를 포함한 MessageOnlyResponse를 반환한다.
+     * 3. param: selectInterestsFieldRequest - 관심 분야 정보를 담은 DTO.
+     * 4. return: 성공 메시지를 포함한 MessageOnlyResponse 객체.
+     */
+    public MessageOnlyResponse selectInterestFields(SelectInterestsFieldRequest selectInterestsFieldRequest) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+
+        User user = userRepository.findByGithubName(username)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        String interestFields = Arrays.toString(selectInterestsFieldRequest.getInterestsFields()).replaceAll(" ", "");
+        user.setInterestFields(interestFields);
+
+        userRepository.save(user);
+
+        return MessageOnlyResponse.builder()
+                .message("관심 비즈니스 분야 입력 처리 성공")
                 .build();
     }
 

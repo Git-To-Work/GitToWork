@@ -47,7 +47,8 @@ public class UserController {
 
     @PostMapping("/create/interest-field")
     public ResponseEntity<?> selectInterestFields(@NotNull @Valid SelectInterestsFieldRequest selectInterestsFieldRequest) {
-        return null;
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(HttpStatus.OK, userService.selectInterestFields(selectInterestsFieldRequest)));
     }
 
     @PutMapping("/update/interest-field")
