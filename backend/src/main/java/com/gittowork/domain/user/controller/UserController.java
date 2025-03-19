@@ -35,7 +35,8 @@ public class UserController {
 
     @PutMapping("/update/profile")
     public ResponseEntity<?> updateProfile(@NotNull @Valid UpdateProfileRequest updateProfileRequest) {
-        return null;
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(HttpStatus.OK, userService.updateProfile(updateProfileRequest)));
     }
 
     @GetMapping("/select/interest-field-list")

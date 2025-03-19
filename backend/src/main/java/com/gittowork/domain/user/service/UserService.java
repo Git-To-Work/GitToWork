@@ -3,6 +3,7 @@ package com.gittowork.domain.user.service;
 import com.gittowork.domain.fields.entity.Fields;
 import com.gittowork.domain.fields.repository.FieldsRepository;
 import com.gittowork.domain.user.dto.request.InsertProfileRequest;
+import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
 import com.gittowork.domain.user.dto.response.GetMyProfileResponse;
 import com.gittowork.domain.user.dto.response.MessageOnlyResponse;
 import com.gittowork.domain.user.entity.User;
@@ -140,4 +141,32 @@ public class UserService {
                 .build();
     }
 
+    /**
+     * 1. 메서드 설명: 프로필 추가 정보를 수정하는 API.
+     * 2. 로직:
+     *    - 전달받은 updateProfileRequest에서 사용자 id를 사용해 DB에서 User 엔티티를 조회한다. (없으면 예외 발생)
+     *    - 조회한 User 엔티티의 이름, 생년월일, 경력, 전화번호, 관심 분야 정보를 updateProfileRequest의 값으로 업데이트한다.
+     *    - 업데이트된 User 엔티티를 저장하고, 성공 메시지를 포함한 MessageOnlyResponse를 반환한다.
+     * 3. param: updateProfileRequest - 프로필 수정 정보를 담은 DTO.
+     * 4. return: 성공 시 "추가 정보 수정 요청 처리 완료" 메시지를 포함한 MessageOnlyResponse 객체.
+     */
+    @Transactional
+    public MessageOnlyResponse updateProfile(UpdateProfileRequest updateProfileRequest) {
+        User user = userRepository.findById(updateProfileRequest.getUserId())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        user.setName(updateProfileRequest.getName());
+        user.setBirthDt(LocalDate.parse(updateProfileRequest.getBirthDt()));
+        user.setExperience(updateProfileRequest.getExperience());
+        user.setPhone(updateProfileRequest.getPhone());
+        user.setInterestFields(
+                Arrays.toString(updateProfileRequest.getInterestsFields()).replaceAll(" ", "")
+        );
+
+        userRepository.save(user);
+
+        return MessageOnlyResponse.builder()
+                .message("추가 정보 수정 요청 처리 완료")
+                .build();
+    }
 }
