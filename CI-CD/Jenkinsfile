@@ -47,6 +47,7 @@ pipeline {
         stage('Deploy Services') {
             steps {
                 echo '서비스 배포: docker-compose up -d'
+                sh "pwd"
                 sh '''
                     docker-compose -f CI-CD/docker-compose.yml down
                     docker-compose -f CI-CD/docker-compose.yml up -d
