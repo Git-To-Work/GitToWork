@@ -48,8 +48,8 @@ pipeline {
             steps {
                 echo '서비스 배포: docker-compose up -d'
                 sh '''
-                    docker-compose -f ${COMPOSE_FILE} down -v
-                    docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans
+                    docker-compose -f CI-CD/docker-compose.yml down
+                    docker-compose -f CI-CD/docker-compose.yml up -d
                     sleep 10
                 '''
                 sh ""
