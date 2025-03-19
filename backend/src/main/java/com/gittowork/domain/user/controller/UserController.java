@@ -52,7 +52,8 @@ public class UserController {
 
     @GetMapping("/select/my-interest-field")
     public ResponseEntity<?> getMyInterestField() {
-        return null;
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(HttpStatus.OK, userService.getMyInterestFields()));
     }
 
     @DeleteMapping("/delete/account")

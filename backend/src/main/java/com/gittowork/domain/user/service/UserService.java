@@ -6,6 +6,7 @@ import com.gittowork.domain.user.dto.request.InsertProfileRequest;
 import com.gittowork.domain.user.dto.request.UpdateInterestsFieldsRequest;
 import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
 import com.gittowork.domain.user.dto.response.GetInterestFieldsResponse;
+import com.gittowork.domain.user.dto.response.GetMyInterestFieldResponse;
 import com.gittowork.domain.user.dto.response.GetMyProfileResponse;
 import com.gittowork.domain.user.dto.response.MessageOnlyResponse;
 import com.gittowork.domain.user.entity.User;
@@ -210,6 +211,44 @@ public class UserService {
 
         return MessageOnlyResponse.builder()
                 .message("관심 비즈니스 분야 수정 처리 성공")
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자의 관심 비즈니스 분야 정보를 조회하여 응답 객체로 반환하는 API.
+     * 2. 로직:
+     *    - 현재 인증 정보를 사용해 username을 조회하고, DB에서 해당 User 엔티티를 찾는다. (없으면 예외 발생)
+     *    - User의 interestFields 문자열에서 대괄호를 제거하고, 쉼표(,) 기준으로 분리하여 관심 분야 ID 리스트를 생성한다.
+     *    - 생성된 ID 리스트로 fieldsRepository.findAllById()를 호출해 해당하는 Fields 엔티티들을 조회한다.
+     *    - 조회된 Fields 엔티티들에서 fieldName만 추출해 String 배열로 변환한다.
+     *    - GetMyInterestFieldResponse 빌더를 사용해 응답 객체를 생성 후 반환한다.
+     * 3. param: 없음.
+     * 4. return: 관심 비즈니스 분야 이름을 포함하는 GetMyInterestFieldResponse 객체.
+     */
+    @Transactional
+    public GetMyInterestFieldResponse getMyInterestFields() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+
+        User user = userRepository.findByGithubName(username)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        List<Integer> interestFieldsNumbers = Arrays.stream(
+                        user.getInterestFields()
+                                .replaceAll("[\\[\\]]", "")
+                                .split(","))
+                .map(String::trim)
+                .map(Integer::parseInt)
+                .collect(Collectors.toList());
+
+        List<Fields> interestFields = fieldsRepository.findAllById(interestFieldsNumbers);
+
+        String[] fieldsNames = interestFields.stream()
+                .map(Fields::getFieldName)
+                .toArray(String[]::new);
+
+        return GetMyInterestFieldResponse.builder()
+                .interestsFields(fieldsNames)
                 .build();
     }
 
