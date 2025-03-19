@@ -6,6 +6,9 @@ pipeline {
         GIT_CREDENTIAL = 'c103'
         BACKEND_CRED  = 'backend-properties'
         FASTAPI_CRED  = 'fastapi-env'
+
+        MATTERMOST_ENDPOINT = 'https://your-mattermost-server/hooks/yourWebhookURL'
+        MATTERMOST_CHANNEL = 'jenkins-build-c103'
     }
 
     stages {
@@ -73,6 +76,39 @@ pipeline {
                 sh "docker builder prune -f"
             }
         }
+
+    stage('Notification') {
+        steps{
+            echo 'jenkins notification!'
+        }
+        post {
+            success {
+                script {
+                    def Author_ID = sh(script: "git show -s --pretty=%an", returnStdout: true).trim()
+                    def Author_Name = sh(script: "git show -s --pretty=%ae", returnStdout: true).trim()
+                    mattermostSend(
+                        color: 'good',
+                        message: "빌드 성공: ${env.JOB_NAME} #${env.BUILD_NUMBER} by ${Author_ID}(${Author_Name})\n(<${env.BUILD_URL}|Details>)",
+                        endpoint: "${env.MATTERMOST_ENDPOINT}",
+                        channel: "${env.MATTERMOST_CHANNEL}"
+
+                    )
+                }
+            }
+            failure {
+                script {
+                    def Author_ID = sh(script: "git show -s --pretty=%an", returnStdout: true).trim()
+                    def Author_Name = sh(script: "git show -s --pretty=%ae", returnStdout: true).trim()
+                    mattermostSend(
+                        color: 'danger',
+                        message: "빌드 실패: ${env.JOB_NAME} #${env.BUILD_NUMBER} by ${Author_ID}(${Author_Name})\n(<${env.BUILD_URL}|Details>)",
+                        endpoint: "${env.MATTERMOST_ENDPOINT}",
+                        channel: "${env.MATTERMOST_CHANNEL}"
+                    )
+                }
+            }
+        }
+    }
     }
     
     post {
