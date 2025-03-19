@@ -10,7 +10,7 @@ import javax.validation.constraints.Size;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SelectInterestsFieldRequest {
+public class UpdateInterestsFieldsRequest {
 
     @NotNull
     @Size(max = 5)

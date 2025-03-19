@@ -1,8 +1,7 @@
 package com.gittowork.domain.user.controller;
 
 import com.gittowork.domain.user.dto.request.InsertProfileRequest;
-import com.gittowork.domain.user.dto.request.SelectInterestsFieldRequest;
-import com.gittowork.domain.user.dto.request.UpdateInterestsFieldRequest;
+import com.gittowork.domain.user.dto.request.UpdateInterestsFieldsRequest;
 import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
 import com.gittowork.domain.user.service.UserService;
 import com.gittowork.global.response.ApiResponse;
@@ -45,15 +44,10 @@ public class UserController {
                 .body(ApiResponse.success(HttpStatus.OK, userService.getInterestFields()));
     }
 
-    @PostMapping("/create/interest-field")
-    public ResponseEntity<?> selectInterestFields(@NotNull @Valid SelectInterestsFieldRequest selectInterestsFieldRequest) {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, userService.selectInterestFields(selectInterestsFieldRequest)));
-    }
-
     @PutMapping("/update/interest-field")
-    public ResponseEntity<?> updateInterestField(@NotNull @Valid UpdateInterestsFieldRequest updateInterestsFieldRequest) {
-        return null;
+    public ResponseEntity<?> updateInterestField(@NotNull @Valid UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(HttpStatus.OK, userService.updateInterestFields(updateInterestsFieldsRequest)));
     }
 
     @GetMapping("/select/my-interest-field")

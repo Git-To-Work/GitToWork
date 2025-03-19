@@ -3,7 +3,7 @@ package com.gittowork.domain.user.service;
 import com.gittowork.domain.fields.entity.Fields;
 import com.gittowork.domain.fields.repository.FieldsRepository;
 import com.gittowork.domain.user.dto.request.InsertProfileRequest;
-import com.gittowork.domain.user.dto.request.SelectInterestsFieldRequest;
+import com.gittowork.domain.user.dto.request.UpdateInterestsFieldsRequest;
 import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
 import com.gittowork.domain.user.dto.response.GetInterestFieldsResponse;
 import com.gittowork.domain.user.dto.response.GetMyProfileResponse;
@@ -110,7 +110,6 @@ public class UserService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
 
-
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
@@ -197,20 +196,20 @@ public class UserService {
      * 3. param: selectInterestsFieldRequest - 관심 분야 정보를 담은 DTO.
      * 4. return: 성공 메시지를 포함한 MessageOnlyResponse 객체.
      */
-    public MessageOnlyResponse selectInterestFields(SelectInterestsFieldRequest selectInterestsFieldRequest) {
+    public MessageOnlyResponse updateInterestFields(UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
 
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        String interestFields = Arrays.toString(selectInterestsFieldRequest.getInterestsFields()).replaceAll(" ", "");
+        String interestFields = Arrays.toString(updateInterestsFieldsRequest.getInterestsFields()).replaceAll(" ", "");
         user.setInterestFields(interestFields);
 
         userRepository.save(user);
 
         return MessageOnlyResponse.builder()
-                .message("관심 비즈니스 분야 입력 처리 성공")
+                .message("관심 비즈니스 분야 수정 처리 성공")
                 .build();
     }
 
