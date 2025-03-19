@@ -49,7 +49,9 @@ pipeline {
                 echo '서비스 배포: docker-compose up -d'
                 sh "pwd"
                 sh '''
-                    docker-compose -f CI-CD/docker-compose.yml down --remove-orphans
+                    docker rm -f nginx
+                    docker rm -f backend
+                    docker rm -f fastapi
                     docker-compose -f CI-CD/docker-compose.yml up -d
                     sleep 10
                 '''
