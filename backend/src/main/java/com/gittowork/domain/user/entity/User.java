@@ -65,10 +65,6 @@ public class User {
     private LocalDateTime privacyConsentDttm;
 
     @Size(max = 255)
-    @Column(name = "token")
-    private String token;
-
-    @Size(max = 255)
     @Column(name = "interest_fields")
     private String interestFields;
 
