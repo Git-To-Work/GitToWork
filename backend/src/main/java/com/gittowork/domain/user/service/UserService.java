@@ -50,8 +50,7 @@ public class UserService {
      */
     @Transactional
     public MessageOnlyResponse insertProfile(InsertProfileRequest insertProfileRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
+        String username = getUserName();
 
         Map<String, Object> userCaching = redisService.getUser("user:" + username);
         Integer githubId = (Integer) userCaching.get("githubId");
@@ -97,37 +96,21 @@ public class UserService {
     /**
      * 1. 메서드 설명: 내 프로필 정보를 조회하는 API.
      * 2. 로직:
-     *    - 현재 인증 정보에서 username을 조회한다.
-     *    - username으로 DB에서 User 엔티티를 찾는다. (없으면 예외 발생)
-     *    - user.getInterestFields()에서 대괄호를 제거하고 ','로 split하여 interestFieldsNumbers(List<Integer>)로 변환한다.
-     *    - fieldsRepository.findAllById(interestFieldsNumbers)를 통해 해당하는 Fields 목록을 조회한다.
-     *    - 조회된 필드 목록에서 fieldName만 추출하여 String[]로 만든다.
+     *    - 현재 인증 정보에서 username을 조회하고, username으로 DB에서 User 엔티티를 찾는다. (없으면 예외 발생)
+     *    - User의 interestFields 문자열에서 대괄호를 제거하고, 쉼표 기준으로 분리하여 관심 분야 ID 리스트를 생성한다.
+     *    - 생성된 ID 리스트로 Fields 엔티티들을 조회하고, fieldName만 추출하여 String 배열로 변환한다.
      *    - User 정보와 GitHub 프로필 정보를 바탕으로 GetMyProfileResponse를 생성해 반환한다.
-     * 3. param: 없음
+     * 3. param: 없음.
      * 4. return: 내 프로필 정보를 담은 GetMyProfileResponse 객체.
      */
     @Transactional
     public GetMyProfileResponse getMyProfile() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
+        String username = getUserName();
 
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        List<Integer> interestFieldsNumbers = Arrays.stream(
-                        user.getInterestFields()
-                                .replaceAll("[\\[\\]]", "")
-                                .split(","))
-                .map(String::trim)
-                .map(Integer::parseInt)
-                .collect(Collectors.toList());
-
-        List<Fields> interestFields = fieldsRepository.findAllById(interestFieldsNumbers);
-
-        String[] fieldsNames = interestFields.stream()
-                .map(Fields::getFieldName)
-                .toArray(String[]::new);
-
+        String[] fieldsNames = resolveInterestFieldNames(username);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         return GetMyProfileResponse.builder()
@@ -146,7 +129,7 @@ public class UserService {
     /**
      * 1. 메서드 설명: 프로필 추가 정보를 수정하는 API.
      * 2. 로직:
-     *    - 전달받은 updateProfileRequest에서 사용자 id를 사용해 DB에서 User 엔티티를 조회한다. (없으면 예외 발생)
+     *    - 전달받은 updateProfileRequest의 사용자 id를 사용해 DB에서 User 엔티티를 조회한다. (없으면 예외 발생)
      *    - 조회한 User 엔티티의 이름, 생년월일, 경력, 전화번호, 관심 분야 정보를 updateProfileRequest의 값으로 업데이트한다.
      *    - 업데이트된 User 엔티티를 저장하고, 성공 메시지를 포함한 MessageOnlyResponse를 반환한다.
      * 3. param: updateProfileRequest - 프로필 수정 정보를 담은 DTO.
@@ -175,7 +158,7 @@ public class UserService {
     /**
      * 1. 메서드 설명: 모든 관심 분야(Fields) 목록을 조회하여 GetInterestFieldsResponse 객체로 반환하는 API.
      * 2. 로직:
-     *    - fieldsRepository.findAll()을 통해 DB에서 모든 Fields 엔티티를 조회한다.
+     *    - FieldsRepository의 findAll()을 통해 DB에서 모든 Fields 엔티티를 조회한다.
      *    - 조회한 결과를 GetInterestFieldsResponse 빌더를 사용해 Response 객체로 변환하여 반환한다.
      * 3. param: 없음.
      * 4. return: 모든 관심 분야 목록을 포함하는 GetInterestFieldsResponse 객체.
@@ -192,14 +175,13 @@ public class UserService {
      * 1. 메서드 설명: 현재 인증된 사용자의 관심 비즈니스 분야 정보를 업데이트하는 API.
      * 2. 로직:
      *    - 현재 인증 정보에서 username을 조회하고, 해당 사용자를 DB에서 조회한다. (없으면 예외 발생)
-     *    - 전달받은 SelectInterestsFieldRequest의 interestsFields 배열을 문자열로 변환한 후, 공백을 제거하여 User 엔티티의 관심 분야 정보에 설정한다.
+     *    - 전달받은 UpdateInterestsFieldsRequest의 interestsFields 배열을 문자열로 변환 후 공백을 제거하여 User 엔티티의 관심 분야 정보에 설정한다.
      *    - 변경된 User 엔티티를 저장하고, 성공 메시지를 포함한 MessageOnlyResponse를 반환한다.
-     * 3. param: selectInterestsFieldRequest - 관심 분야 정보를 담은 DTO.
+     * 3. param: updateInterestsFieldsRequest - 관심 분야 정보를 담은 DTO.
      * 4. return: 성공 메시지를 포함한 MessageOnlyResponse 객체.
      */
     public MessageOnlyResponse updateInterestFields(UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
+        String username = getUserName();
 
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
@@ -217,39 +199,96 @@ public class UserService {
     /**
      * 1. 메서드 설명: 현재 인증된 사용자의 관심 비즈니스 분야 정보를 조회하여 응답 객체로 반환하는 API.
      * 2. 로직:
-     *    - 현재 인증 정보를 사용해 username을 조회하고, DB에서 해당 User 엔티티를 찾는다. (없으면 예외 발생)
-     *    - User의 interestFields 문자열에서 대괄호를 제거하고, 쉼표(,) 기준으로 분리하여 관심 분야 ID 리스트를 생성한다.
-     *    - 생성된 ID 리스트로 fieldsRepository.findAllById()를 호출해 해당하는 Fields 엔티티들을 조회한다.
-     *    - 조회된 Fields 엔티티들에서 fieldName만 추출해 String 배열로 변환한다.
+     *    - 현재 인증 정보에서 username을 조회하고, username으로 DB에서 User 엔티티를 찾는다. (없으면 예외 발생)
+     *    - User의 interestFields 문자열에서 대괄호를 제거하고 쉼표를 기준으로 분리하여 관심 분야 ID 리스트를 생성한다.
+     *    - 생성된 ID 리스트로 Fields 엔티티들을 조회하고, 각 엔티티의 fieldName만 추출하여 String 배열로 변환한다.
      *    - GetMyInterestFieldResponse 빌더를 사용해 응답 객체를 생성 후 반환한다.
      * 3. param: 없음.
      * 4. return: 관심 비즈니스 분야 이름을 포함하는 GetMyInterestFieldResponse 객체.
      */
     @Transactional
-    public GetMyInterestFieldResponse getMyInterestFields() {
+    public GetMyInterestFieldResponse myInterestFields() {
+        String username = getUserName();
+        String[] fieldsNames = resolveInterestFieldNames(username);
+        return GetMyInterestFieldResponse.builder()
+                .interestsFields(fieldsNames)
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자의 회원 탈퇴를 처리하는 API.
+     * 2. 로직:
+     *    - Spring Security의 SecurityContextHolder에서 현재 인증된 사용자(username)를 조회한다.
+     *    - username을 이용해 DB에서 해당 User 엔티티를 조회한다. (없으면 예외 발생)
+     *    - User 엔티티의 deleteDttm 필드에 현재 시간을 기록하여 논리적 삭제를 수행하고 저장한다.
+     *    - Redis에서 username+"_refresh_token" 키를 삭제하여 refresh token을 제거한다.
+     *    - Authentication 객체의 credentials에서 access token 값을 추출하고, "Bearer " 접두어가 포함된 경우 제거한 후 해당 access token을 블랙리스트에 등록한다.
+     * 3. param: 없음.
+     * 4. return: 회원 탈퇴 처리 결과 메시지를 포함하는 MessageOnlyResponse 객체.
+     */
+    @Transactional
+    public MessageOnlyResponse deleteAccount() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
 
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
+        user.setDeleteDttm(LocalDateTime.now());
+        userRepository.save(user);
+
+        redisService.deleteKey(username + "_refresh_token");
+
+        String accessToken = null;
+        if (authentication.getCredentials() instanceof String) {
+            accessToken = (String) authentication.getCredentials();
+            if (accessToken != null && accessToken.startsWith("Bearer ")) {
+                accessToken = accessToken.substring(7);
+            }
+        }
+        if (accessToken != null && !accessToken.isEmpty()) {
+            redisService.addAccessTokenToBlacklist(accessToken);
+        }
+
+        return MessageOnlyResponse.builder()
+                .message("회원 탈퇴 처리 완료")
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 현재 SecurityContextHolder에서 username을 추출하는 헬퍼 메서드.
+     * 2. 로직:
+     *    - SecurityContextHolder에서 현재 인증 정보를 조회하여 username을 반환한다.
+     * 3. param: 없음.
+     * 4. return: 현재 인증된 사용자의 username 문자열.
+     */
+    private String getUserName() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
+    /**
+     * 1. 메서드 설명: 주어진 username에 해당하는 User 엔티티의 interestFields 값을 기반으로 관심 분야 이름들을 조회하여 String 배열로 반환하는 헬퍼 메서드.
+     * 2. 로직:
+     *    - username을 이용해 DB에서 User 엔티티를 조회한다. (없으면 예외 발생)
+     *    - User의 interestFields 문자열에서 대괄호를 제거하고 쉼표를 기준으로 분리하여 관심 분야 ID 리스트를 생성한다.
+     *    - 생성된 ID 리스트로 Fields 엔티티들을 조회하고, 각 엔티티의 fieldName만 추출하여 String 배열로 변환한다.
+     * 3. param: username - 관심 분야 정보를 조회할 대상 사용자의 username.
+     * 4. return: 해당 사용자의 관심 분야 이름들을 담은 String 배열.
+     */
+    private String[] resolveInterestFieldNames(String username) {
+        User user = userRepository.findByGithubName(username)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
         List<Integer> interestFieldsNumbers = Arrays.stream(
-                        user.getInterestFields()
-                                .replaceAll("[\\[\\]]", "")
-                                .split(","))
+                        user.getInterestFields().replaceAll("[\\[\\]]", "").split(","))
                 .map(String::trim)
                 .map(Integer::parseInt)
                 .collect(Collectors.toList());
 
         List<Fields> interestFields = fieldsRepository.findAllById(interestFieldsNumbers);
 
-        String[] fieldsNames = interestFields.stream()
+        return interestFields.stream()
                 .map(Fields::getFieldName)
                 .toArray(String[]::new);
-
-        return GetMyInterestFieldResponse.builder()
-                .interestsFields(fieldsNames)
-                .build();
     }
-
 }

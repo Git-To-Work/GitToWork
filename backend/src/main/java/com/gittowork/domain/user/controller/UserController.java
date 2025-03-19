@@ -53,12 +53,13 @@ public class UserController {
     @GetMapping("/select/my-interest-field")
     public ResponseEntity<?> getMyInterestField() {
         return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, userService.getMyInterestFields()));
+                .body(ApiResponse.success(HttpStatus.OK, userService.myInterestFields()));
     }
 
     @DeleteMapping("/delete/account")
     public ResponseEntity<?> deleteAccount() {
-        return null;
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(HttpStatus.OK, userService.deleteAccount()));
     }
 
 }

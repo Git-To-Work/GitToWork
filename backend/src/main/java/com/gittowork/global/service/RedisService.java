@@ -120,4 +120,18 @@ public class RedisService {
         return null;
     }
 
+    /**
+     * 1. 메서드 설명: 주어진 username의 access token을 저장한 Redis 키(username + "_access_token")에 "blackList" 값을 등록하는 메서드.
+     * 2. 로직:
+     *    - username에 "_access_token"을 추가하여 Redis에서 사용할 키를 생성한다.
+     *    - RedisTemplate의 opsForValue().set() 메서드를 사용하여 해당 키에 "blackList" 값을 등록한다.
+     *    - (필요 시 TTL 설정을 추가할 수 있다.)
+     * 3. param: username - blacklist 처리를 할 대상 사용자의 username.
+     * 4. return: 없음.
+     */
+    public void addAccessTokenToBlacklist(String username) {
+        String key = username + "_access_token";
+        redisTemplate.opsForValue().set(key, "blackList");
+    }
+
 }
