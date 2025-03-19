@@ -29,7 +29,8 @@ public class UserController {
 
     @GetMapping("/select/profile")
     public ResponseEntity<?> getMyProfile() {
-        return null;
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(HttpStatus.OK, userService.getMyProfile()));
     }
 
     @PutMapping("/update/profile")
