@@ -2,8 +2,6 @@ package com.gittowork.domain.api.dto.response;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 @Getter
 @Setter
 @NoArgsConstructor
