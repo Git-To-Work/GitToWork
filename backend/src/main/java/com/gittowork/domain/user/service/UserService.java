@@ -4,6 +4,7 @@ import com.gittowork.domain.fields.entity.Fields;
 import com.gittowork.domain.fields.repository.FieldsRepository;
 import com.gittowork.domain.user.dto.request.InsertProfileRequest;
 import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
+import com.gittowork.domain.user.dto.response.GetInterestFieldsResponse;
 import com.gittowork.domain.user.dto.response.GetMyProfileResponse;
 import com.gittowork.domain.user.dto.response.MessageOnlyResponse;
 import com.gittowork.domain.user.entity.User;
@@ -169,4 +170,21 @@ public class UserService {
                 .message("추가 정보 수정 요청 처리 완료")
                 .build();
     }
+
+    /**
+     * 1. 메서드 설명: 모든 관심 분야(Fields) 목록을 조회하여 GetInterestFieldsResponse 객체로 반환하는 API.
+     * 2. 로직:
+     *    - fieldsRepository.findAll()을 통해 DB에서 모든 Fields 엔티티를 조회한다.
+     *    - 조회한 결과를 GetInterestFieldsResponse 빌더를 사용해 Response 객체로 변환하여 반환한다.
+     * 3. param: 없음.
+     * 4. return: 모든 관심 분야 목록을 포함하는 GetInterestFieldsResponse 객체.
+     */
+    public GetInterestFieldsResponse getInterestFields() {
+        List<Fields> interestFields = fieldsRepository.findAll();
+
+        return GetInterestFieldsResponse.builder()
+                .fields(interestFields)
+                .build();
+    }
+
 }

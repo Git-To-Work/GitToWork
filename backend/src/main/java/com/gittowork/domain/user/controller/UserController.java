@@ -40,12 +40,13 @@ public class UserController {
     }
 
     @GetMapping("/select/interest-field-list")
-    public ResponseEntity<?> getInterestField() {
-        return null;
+    public ResponseEntity<?> getInterestFields() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(HttpStatus.OK, userService.getInterestFields()));
     }
 
     @PostMapping("/create/interest-field")
-    public ResponseEntity<?> selectInterestField(@NotNull @Valid SelectInterestsFieldRequest selectInterestsFieldRequest) {
+    public ResponseEntity<?> selectInterestFields(@NotNull @Valid SelectInterestsFieldRequest selectInterestsFieldRequest) {
         return null;
     }
 
