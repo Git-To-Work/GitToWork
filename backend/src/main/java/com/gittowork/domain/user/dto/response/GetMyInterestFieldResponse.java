@@ -1,6 +1,5 @@
 package com.gittowork.domain.user.dto.response;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Getter

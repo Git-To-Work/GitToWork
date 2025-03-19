@@ -1,6 +1,5 @@
 package com.gittowork.global.service;
 
-import jakarta.validation.Valid;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;

@@ -6,7 +6,6 @@ import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.entity.UserGitInfo;
 import com.gittowork.domain.user.repository.UserGitInfoRepository;
 import com.gittowork.domain.user.repository.UserRepository;
-import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.service.RedisService;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 
 @Service
