@@ -88,6 +88,9 @@ public class UserService {
 
         userGitInfoRepository.save(userGitInfo);
 
+        redisService.deleteKey("user:" + username);
+        redisService.deleteKey("userGitInfo:" + username);
+
         return MessageOnlyResponse.builder()
                 .message("추가 정보가 성공적으로 업데이트되었습니다.")
                 .build();
