@@ -1,6 +1,8 @@
 package com.gittowork.global.service;
 
+import jakarta.validation.Valid;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -82,4 +84,41 @@ public class RedisService {
     public void deleteKey(String key) {
         redisTemplate.delete(key);
     }
+
+    /**
+     * 1. 메서드 설명: Redis에서 지정된 키를 사용하여 사용자 기본 정보를 조회한다.
+     * 2. 로직:
+     *    - RedisTemplate의 ValueOperations를 사용하여 주어진 key에 해당하는 값을 가져온다.
+     *    - 조회된 값이 Map 인스턴스인 경우, Map<String, Object>로 캐스팅하여 반환한다.
+     *    - 그렇지 않으면 null을 반환한다.
+     * 3. param: key - 조회할 Redis 키 (예: "user:username")
+     * 4. return: 조회된 사용자 정보(Map<String, Object>) 또는 값이 없으면 null.
+     */
+    public Map<String, Object> getUser(String key) {
+        ValueOperations<String, Object> operations = redisTemplate.opsForValue();
+        Object value = operations.get(key);
+        if (value instanceof Map) {
+            return (Map<String, Object>) value;
+        }
+        return null;
+    }
+
+    /**
+     * 1. 메서드 설명: Redis에서 지정된 키를 사용하여 GitHub 관련 사용자 정보를 조회한다.
+     * 2. 로직:
+     *    - RedisTemplate의 ValueOperations를 사용하여 주어진 key에 해당하는 값을 가져온다.
+     *    - 조회된 값이 Map 인스턴스인 경우, Map<String, Object>로 캐스팅하여 반환한다.
+     *    - 그렇지 않으면 null을 반환한다.
+     * 3. param: key - 조회할 Redis 키 (예: "userGitInfo:username")
+     * 4. return: 조회된 GitHub 사용자 정보(Map<String, Object>) 또는 값이 없으면 null.
+     */
+    public Map<String, Object> getUserGitInfo(String key) {
+        ValueOperations<String, Object> operations = redisTemplate.opsForValue();
+        Object value = operations.get(key);
+        if (value instanceof Map) {
+            return (Map<String, Object>) value;
+        }
+        return null;
+    }
+
 }
