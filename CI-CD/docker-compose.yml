@@ -15,11 +15,11 @@ services:
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQLDialect
       SPRING_JPA_OPEN_IN_VIEW: "false"
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gittowork
+      SPRING_DATASOURCE_URL: jdbc:mysql://j12c103.p.ssafy.io:3306/gittowork
       SPRING_DATASOURCE_USERNAME: c103
       SPRING_DATASOURCE_PASSWORD: kOZmrcUmgnKl5FKBdBuj
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/gittowork
+      SPRING_DATA_MONGODB_URI: mongodb://j12c103.p.ssafy.io:27017/gittowork
       SPRING_DATA_MONGODB_DATABASE: gittowork
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: "6379"
@@ -29,6 +29,7 @@ services:
       GITHUB_CLIENT_ID: Ov23liDOq2w9SK7sP0sj
       GITHUB_CLIENT_SECRET: b9385ce3c93339b14b0e947bac636d4ac698732f
       GITHUB_REDIRECT_URI: http://3.35.138.40/callback
+
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
