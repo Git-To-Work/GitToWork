@@ -53,6 +53,8 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Scaffold 배경색 흰색
+      backgroundColor: Colors.white,
       appBar: const CustomAppBar(),
       body: PageView(
         controller: _pageController,
