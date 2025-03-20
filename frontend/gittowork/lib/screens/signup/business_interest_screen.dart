@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../widgets/app_bar.dart';
 
 // 실제 DB에서 받아올 때, id/name/imageUrl 형태의 모델
@@ -18,7 +17,8 @@ class BusinessField {
 }
 
 class BusinessInterestScreen extends StatefulWidget {
-  const BusinessInterestScreen({super.key});
+  final Map signupParams;
+  const BusinessInterestScreen({super.key, required this.signupParams});
 
   @override
   State<BusinessInterestScreen> createState() => _BusinessInterestScreenState();
@@ -32,6 +32,9 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
   void initState() {
     super.initState();
     _fetchBusinessFields();
+
+    // 전달받은 회원가입 파라미터 확인 (디버그용)
+    debugPrint("이전 회원가입 파라미터: ${widget.signupParams}");
   }
 
   // 백엔드에서 비즈니스 분야 리스트를 가져오는 로직 (가짜 예시)
@@ -82,9 +85,15 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
     // 선택된 항목들만 추려내기
     final selectedFields = businessFields.where((field) => field.isSelected).toList();
 
-    // TODO: 이곳에서 선택된 항목을 서버로 전송하거나, 다음 화면으로 이동하세요.
-    // 예: Navigator.push(context, MaterialPageRoute(builder: (_) => SomeNextScreen(selectedFields)));
-    debugPrint("선택 완료: ${selectedFields.map((f) => f.fieldName).toList()}");
+    // signupParams에 interestsFields 추가 (최대 5개)
+    widget.signupParams['interestsFields'] = selectedFields;
+
+    debugPrint("최종 회원가입 정보: ${widget.signupParams}");
+
+    // TODO: 백엔드로 회원가입 정보 전송
+    // 예: ApiService.sendSignupData(widget.signupParams);
+
+    // 전송 후 다음 화면으로 이동하거나 완료 처리를 진행
   }
 
   @override

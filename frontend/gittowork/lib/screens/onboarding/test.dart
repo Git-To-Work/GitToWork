@@ -26,9 +26,13 @@ class OnboardingScreen extends StatelessWidget {
                 // 다음 버튼 클릭 시 appbar_bottom_nav_layout.dart 화면으로 이동
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                     builder: (context) => SignupDetailScreen(nickname: 'hansnam1105', avatarUrl: 'https://avatars.githubusercontent.com/u/34000255?v=4',),
+                    // Github 로그인 호출 화면
+                    //builder: (context) => GithubOAuthLoginScreen(),
+                    // 회원 가입 상세 화면
+                    builder: (context) => SignupDetailScreen(nickname: 'hansnam1105', avatarUrl: 'https://avatars.githubusercontent.com/u/34000255?v=4',),
+                    // 비즈니스 분야 호출 화면
                     //builder: (context) => BusinessInterestScreen(),
-                    //builder: (context) => const AppBarBottomNavLayout(),
+                   //builder: (context) => const AppBarBottomNavLayout(),
                   ),
                 );
               },

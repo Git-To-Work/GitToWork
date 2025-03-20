@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:bottom_picker/bottom_picker.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/build_ios_like_row.dart';
+import 'business_interest_screen.dart';
 
 class SignupDetailScreen extends StatefulWidget {
   final String nickname;
@@ -121,6 +122,17 @@ class _SignupDetailScreenState extends State<SignupDetailScreen> {
     final career = _careerController.text;
     final phone = _phoneController.text;
 
+    // 백엔드 전송 파라미터 생성 (백엔드 미구현 상태이므로 실제 전송 코드는 주석 처리)
+    final signupParams = {
+      'name': name,
+      'birthDt': birth, // 0000-00-00 형식
+      'phone': phone,   // 010-0000-0000 형식
+      'experience': career,
+      // 'interestsFields': null, // business_interest_screen.dart에서 최대 5개 선택 처리 예정
+      'privacyPolicyAgreed': _agreeTerm1 && _agreeTerm2, // required: 개인정보 수집 및 이용에 동의 여부
+      'notificationAgreed': _agreeTerm3,                 // 선택: 추천 기업 알림 동의 여부
+    };
+
     // 디버그 출력
     debugPrint('회원가입 정보: ');
     debugPrint('GitHub nickname: ${widget.nickname}');
@@ -131,6 +143,19 @@ class _SignupDetailScreenState extends State<SignupDetailScreen> {
     debugPrint('약관1(필수): $_agreeTerm1');
     debugPrint('약관2(필수): $_agreeTerm2');
     debugPrint('약관3(선택): $_agreeTerm3');
+
+    // TODO: 백엔드 API 호출 - 입력받은 회원 정보와 개인정보 동의 정보를 전송 (미구현 상태)
+    // 예: ApiService.sendSignupData(signupParams);
+
+    // business_interest_screen.dart 로 이동
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BusinessInterestScreen(
+          signupParams: signupParams,
+        ),
+      ),
+    );
   }
 
   @override
