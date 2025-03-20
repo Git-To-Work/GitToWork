@@ -4,6 +4,7 @@ import 'package:gittowork/screens/signup/business_interest_screen.dart';
 // 두 단계 상위(../..)로 올라가 layouts 폴더에 접근
 import '../../../layouts/appbar_bottom_nav_layout.dart';
 import '../signup/github_oauth_login_screen.dart';
+import '../signup/signup_detail_screen.dart';
 
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
@@ -25,7 +26,8 @@ class OnboardingScreen extends StatelessWidget {
                 // 다음 버튼 클릭 시 appbar_bottom_nav_layout.dart 화면으로 이동
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (context) => BusinessInterestScreen(),
+                     builder: (context) => SignupDetailScreen(nickname: 'hansnam1105', avatarUrl: 'https://avatars.githubusercontent.com/u/34000255?v=4',),
+                    //builder: (context) => BusinessInterestScreen(),
                     //builder: (context) => const AppBarBottomNavLayout(),
                   ),
                 );
