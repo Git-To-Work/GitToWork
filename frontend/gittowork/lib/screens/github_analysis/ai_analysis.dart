@@ -23,7 +23,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         borderRadius: BorderRadius.circular(10.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.25),
             blurRadius: 4,
             offset: const Offset(0, 4),
           ),

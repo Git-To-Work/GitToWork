@@ -20,7 +20,7 @@ class LanguageScreen extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.25), // 좀 더 진한 그림자
-                  blurRadius: 6,
+                  blurRadius: 4,
                   offset: const Offset(0, 4),
                 ),
               ],
