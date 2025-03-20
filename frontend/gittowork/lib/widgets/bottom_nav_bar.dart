@@ -57,9 +57,16 @@ class CustomBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 100, // 하단바 전체 높이
-      color: Colors.white, // 하단바 배경색 흰색
+      decoration: BoxDecoration(
+        color: Colors.white, // 하단바 배경색 흰색
+        border: const Border(
+          top: BorderSide(
+            color: Color(0xFFD6D6D6), // 상단 외곽선 색상
+            width: 1.0, // 외곽선 두께
+          ),
+        ),
+      ),
       child: Padding(
-        // 좌우는 16, 상단은 2, 하단은 5의 간격으로 조정
         padding: const EdgeInsets.only(top: 0, bottom: 8.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
