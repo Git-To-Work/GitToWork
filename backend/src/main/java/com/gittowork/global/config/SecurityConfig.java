@@ -43,6 +43,8 @@ public class SecurityConfig {
         }));
 
         http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
+
                 .requestMatchers("/auth/create/signin").permitAll()
                 .requestMatchers("/auth/create/login").permitAll()
                 .anyRequest().authenticated()
