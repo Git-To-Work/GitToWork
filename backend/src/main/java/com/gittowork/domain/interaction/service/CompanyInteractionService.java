@@ -41,246 +41,292 @@ public class CompanyInteractionService {
     private final UserScrapsRepository userScrapsRepository;
     private final UserBlacklistRepository userBlacklistRepository;
 
-    @Transactional
-    public ApiResponse<?> getScrapCompanies(InteractionGetRequest interactionGetRequest) {
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자의 정보를 조회한다.
+     * 2. 로직:
+     *    - SecurityContext에서 인증 정보를 가져와 사용자를 식별한다.
+     *    - 사용자 Repository를 통해 사용자를 조회한다.
+     * 3. param: 없음
+     * 4. return: User 객체
+     */
+    private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String githubName = authentication.getName();
-
-        int userId = userRepository.findByGithubName(githubName)
-                .orElseThrow(() -> new UserNotFoundException(githubName))
-                .getId();
-
-        Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
-
-        Page<UserScraps> userScraps = userScrapsRepository.findByUserId(userId, pageable);
-
-        List<Company> companies = userScraps.stream()
-                .map(UserScraps::getCompany)
-                .collect(Collectors.toList());
-
-        CompanyInteractionResponse companyInteractionResponse = CompanyInteractionResponse
-                .builder()
-                .companies(companies)
-                .pagination(new Pagination(userScraps.getNumber(), userScraps.getSize(), userScraps.getTotalPages(), userScraps.getTotalElements()))
-                .build();
-
-        ApiResponse<?> apiResponse = ApiResponse
-                .builder()
-                .status(200)
-                .code("SU")
-                .results(companyInteractionResponse)
-                .message("OK")
-                .build();
-
-        return apiResponse;
+        return userRepository.findByGithubName(githubName)
+                .orElseThrow(() -> new UserNotFoundException(githubName));
     }
 
+    /**
+     * 1. 메서드 설명: 주어진 회사 ID에 해당하는 회사 정보를 조회한다.
+     * 2. 로직:
+     *    - 회사 Repository를 통해 회사 정보를 조회한다.
+     * 3. param: companyId - 조회할 회사의 ID
+     * 4. return: Company 객체
+     */
+    private Company getCompanyById(Integer companyId) {
+        return companyRepository.findById(companyId)
+                .orElseThrow(() -> new CompanyNotFoundException("Company not found"));
+    }
+
+    /**
+     * 1. 메서드 설명: 상호작용 페이지 데이터를 기반으로 CompanyInteractionResponse 객체를 생성한다.
+     * 2. 로직:
+     *    - Page 내의 각 상호작용 엔티티에서 회사 정보를 추출한다.
+     *    - Pagination 정보를 생성한다.
+     *    - CompanyInteractionResponse 빌더를 통해 응답 객체를 생성한다.
+     * 3. param: interactionPage - 상호작용 데이터를 포함한 Page 객체
+     * 4. return: CompanyInteractionResponse 객체
+     */
+    private CompanyInteractionResponse buildCompanyInteractionResponse(Page<?> interactionPage) {
+        List<Company> companies = interactionPage.stream()
+                .map(interaction -> {
+                    if (interaction instanceof UserScraps) {
+                        return ((UserScraps) interaction).getCompany();
+                    } else if (interaction instanceof UserLikes) {
+                        return ((UserLikes) interaction).getCompany();
+                    } else if (interaction instanceof UserBlacklist) {
+                        return ((UserBlacklist) interaction).getCompany();
+                    } else {
+                        throw new IllegalArgumentException("Unsupported interaction type");
+                    }
+                })
+                .collect(Collectors.toList());
+
+        Pagination pagination = new Pagination(
+                interactionPage.getNumber(),
+                interactionPage.getSize(),
+                interactionPage.getTotalPages(),
+                interactionPage.getTotalElements()
+        );
+
+        return CompanyInteractionResponse.builder()
+                .companies(companies)
+                .pagination(pagination)
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자가 스크랩한 회사 목록을 조회하고, 페이징된 응답 객체를 생성한다.
+     * 2. 로직:
+     *    - 현재 인증된 사용자를 조회한다.
+     *    - 사용자의 스크랩 데이터를 페이징 처리하여 조회한다.
+     *    - 조회한 데이터를 CompanyInteractionResponse로 변환한다.
+     * 3. param: interactionGetRequest - 페이지 및 사이즈 정보를 포함한 요청 객체
+     * 4. return: ApiResponse 객체 (상태, 코드, 결과 및 메시지 포함)
+     */
+    @Transactional
+    public ApiResponse<?> getScrapCompanies(InteractionGetRequest interactionGetRequest) {
+        int userId = getCurrentUser().getId();
+        Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
+        Page<UserScraps> userScraps = userScrapsRepository.findByUserId(userId, pageable);
+        CompanyInteractionResponse response = buildCompanyInteractionResponse(userScraps);
+
+        return ApiResponse.builder()
+                .status(200)
+                .code("SU")
+                .results(response)
+                .message("OK")
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자가 스크랩한 회사 정보를 추가하고, 응답 객체를 생성한다.
+     * 2. 로직:
+     *    - 현재 인증된 사용자와 회사 정보를 조회한다.
+     *    - 중복 체크 후 스크랩 엔티티를 생성한다.
+     *    - 스크랩 엔티티를 저장하고 성공 응답을 반환한다.
+     * 3. param: interactionAddRequest - 회사 ID를 포함한 요청 객체
+     * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
+     */
     @Transactional
     public ApiResponse<?> addScrapCompanies(InteractionAddRequest interactionAddRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String githubName = authentication.getName();
-
-        User user = userRepository.findByGithubName(githubName).orElseThrow(() -> new UserNotFoundException(githubName));
-
-        Company company = companyRepository.findById(interactionAddRequest.getCompanyId()).orElseThrow(() -> new CompanyNotFoundException("Company not found"));
-
+        User user = getCurrentUser();
+        Company company = getCompanyById(interactionAddRequest.getCompanyId());
         UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
 
         if (userScrapsRepository.existsById(userScrapsId)) {
             throw new InteractionDuplicateException("Already Exists");
         }
 
-        UserScraps userScraps = UserScraps
-                .builder()
+        UserScraps userScraps = UserScraps.builder()
                 .id(userScrapsId)
                 .user(user)
                 .company(company)
                 .build();
 
         userScrapsRepository.save(userScraps);
-
         return ApiResponse.success(HttpStatus.OK);
     }
 
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자의 스크랩 목록에서 지정된 회사 정보를 삭제하고, 응답 객체를 생성한다.
+     * 2. 로직:
+     *    - 현재 인증된 사용자와 회사 정보를 조회한다.
+     *    - 해당 스크랩 엔티티가 존재하는지 확인한다.
+     *    - 스크랩 엔티티를 삭제하고 성공 응답을 반환한다.
+     * 3. param: interactionDeleteRequest - 삭제할 회사 ID를 포함한 요청 객체
+     * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
+     */
     @Transactional
-    public ApiResponse<?> deleteScrapCompanies(InteractionDeleteRequest interactionDeleteRequest){
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String githubName = authentication.getName();
-
-        User user = userRepository.findByGithubName(githubName).orElseThrow(() -> new UserNotFoundException(githubName));
-
-        Company company = companyRepository.findById(interactionDeleteRequest.getCompanyId()).orElseThrow(() -> new CompanyNotFoundException("Company not found"));
-
-        UserScrapsId userScrapsId = new UserScrapsId();
-        userScrapsId.setUserId(user.getId());
-        userScrapsId.setCompanyId(company.getId());
+    public ApiResponse<?> deleteScrapCompanies(InteractionDeleteRequest interactionDeleteRequest) {
+        User user = getCurrentUser();
+        Company company = getCompanyById(interactionDeleteRequest.getCompanyId());
+        UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
 
         UserScraps userScraps = userScrapsRepository.findById(userScrapsId)
                 .orElseThrow(() -> new UserInteractionNotFoundException("UserScraps Not Found"));
 
         userScrapsRepository.delete(userScraps);
-
         return ApiResponse.success(HttpStatus.OK);
     }
 
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자가 좋아요한 회사 목록을 조회하고, 페이징된 응답 객체를 생성한다.
+     * 2. 로직:
+     *    - 현재 인증된 사용자를 조회한다.
+     *    - 사용자의 좋아요 데이터를 페이징 처리하여 조회한다.
+     *    - 조회한 데이터를 CompanyInteractionResponse로 변환한다.
+     * 3. param: interactionGetRequest - 페이지 및 사이즈 정보를 포함한 요청 객체
+     * 4. return: ApiResponse 객체 (상태, 코드, 결과 및 메시지 포함)
+     */
     @Transactional
     public ApiResponse<?> getMyLikeCompanies(InteractionGetRequest interactionGetRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String githubName = authentication.getName();
-
-        int userId = userRepository.findByGithubName(githubName)
-                .orElseThrow(() -> new UserNotFoundException(githubName))
-                .getId();
-
+        int userId = getCurrentUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
-
         Page<UserLikes> userLikes = userLikesRepository.findByUserId(userId, pageable);
+        CompanyInteractionResponse response = buildCompanyInteractionResponse(userLikes);
 
-
-        List<Company> companies = userLikes.stream()
-                .map(UserLikes::getCompany)
-                .collect(Collectors.toList());
-
-        CompanyInteractionResponse companyInteractionResponse = CompanyInteractionResponse
-                .builder()
-                .companies(companies)
-                .pagination(new Pagination(userLikes.getNumber(), userLikes.getSize(), userLikes.getTotalPages(), userLikes.getTotalElements()))
-                .build();
-
-        ApiResponse<?> apiResponse = ApiResponse
-                .builder()
+        return ApiResponse.builder()
                 .status(200)
                 .code("SU")
-                .results(companyInteractionResponse)
+                .results(response)
                 .message("OK")
                 .build();
-
-        return apiResponse;
     }
 
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자가 좋아요한 회사 정보를 추가하고, 응답 객체를 생성한다.
+     * 2. 로직:
+     *    - 현재 인증된 사용자와 회사 정보를 조회한다.
+     *    - 중복 체크 후 좋아요 엔티티를 생성한다.
+     *    - 좋아요 엔티티를 저장하고 성공 응답을 반환한다.
+     * 3. param: interactionAddRequest - 회사 ID를 포함한 요청 객체
+     * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
+     */
     @Transactional
     public ApiResponse<?> addLikeCompanies(InteractionAddRequest interactionAddRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String githubName = authentication.getName();
-
-        User user = userRepository.findByGithubName(githubName).orElseThrow(() -> new UserNotFoundException(githubName));
-
-        Company company = companyRepository.findById(interactionAddRequest.getCompanyId()).orElseThrow(() -> new CompanyNotFoundException("Company not found"));
-
+        User user = getCurrentUser();
+        Company company = getCompanyById(interactionAddRequest.getCompanyId());
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
 
         if (userLikesRepository.existsById(userLikesId)) {
             throw new InteractionDuplicateException("Already Exists");
         }
 
-        UserLikes userLikes = UserLikes
-                .builder()
+        UserLikes userLikes = UserLikes.builder()
                 .id(userLikesId)
                 .user(user)
                 .company(company)
                 .build();
 
         userLikesRepository.save(userLikes);
-
         return ApiResponse.success(HttpStatus.OK);
     }
 
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자의 좋아요 목록에서 지정된 회사 정보를 삭제하고, 응답 객체를 생성한다.
+     * 2. 로직:
+     *    - 현재 인증된 사용자와 회사 정보를 조회한다.
+     *    - 해당 좋아요 엔티티가 존재하는지 확인한다.
+     *    - 좋아요 엔티티를 삭제하고 성공 응답을 반환한다.
+     * 3. param: interactionDeleteRequest - 삭제할 회사 ID를 포함한 요청 객체
+     * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
+     */
     @Transactional
     public ApiResponse<?> deleteLikeCompanies(InteractionDeleteRequest interactionDeleteRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String githubName = authentication.getName();
-
-        User user = userRepository.findByGithubName(githubName).orElseThrow(() -> new UserNotFoundException(githubName));
-
-        Company company = companyRepository.findById(interactionDeleteRequest.getCompanyId()).orElseThrow(() -> new CompanyNotFoundException("Company not found"));
-
+        User user = getCurrentUser();
+        Company company = getCompanyById(interactionDeleteRequest.getCompanyId());
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
 
         UserLikes userLikes = userLikesRepository.findById(userLikesId)
                 .orElseThrow(() -> new UserInteractionNotFoundException("UserLikes Not Found"));
 
         userLikesRepository.delete(userLikes);
-
         return ApiResponse.success(HttpStatus.OK);
     }
 
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자가 블랙리스트에 등록한 회사 목록을 조회하고, 페이징된 응답 객체를 생성한다.
+     * 2. 로직:
+     *    - 현재 인증된 사용자를 조회한다.
+     *    - 사용자의 블랙리스트 데이터를 페이징 처리하여 조회한다.
+     *    - 조회한 데이터를 CompanyInteractionResponse로 변환한다.
+     * 3. param: interactionGetRequest - 페이지 및 사이즈 정보를 포함한 요청 객체
+     * 4. return: ApiResponse 객체 (상태, 코드, 결과 및 메시지 포함)
+     */
     @Transactional
     public ApiResponse<?> getMyBlackList(InteractionGetRequest interactionGetRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String githubName = authentication.getName();
-
-        int userId = userRepository.findByGithubName(githubName)
-                .orElseThrow(() -> new UserNotFoundException(githubName))
-                .getId();
-
+        int userId = getCurrentUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
-
         Page<UserBlacklist> userBlacklist = userBlacklistRepository.findByUserId(userId, pageable);
+        CompanyInteractionResponse response = buildCompanyInteractionResponse(userBlacklist);
 
-        List<Company> companies = userBlacklist.stream()
-                .map(UserBlacklist::getCompany)
-                .collect(Collectors.toList());
-
-        CompanyInteractionResponse companyInteractionResponse = CompanyInteractionResponse
-                .builder()
-                .companies(companies)
-                .pagination(new Pagination(userBlacklist.getNumber(), userBlacklist.getSize(), userBlacklist.getTotalPages(), userBlacklist.getTotalElements()))
-                .build();
-
-        ApiResponse<?> apiResponse = ApiResponse
-                .builder()
+        return ApiResponse.builder()
                 .status(200)
                 .code("SU")
-                .results(companyInteractionResponse)
+                .results(response)
                 .message("OK")
                 .build();
-
-        return apiResponse;
     }
 
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자가 블랙리스트에 등록한 회사 정보를 추가하고, 응답 객체를 생성한다.
+     * 2. 로직:
+     *    - 현재 인증된 사용자와 회사 정보를 조회한다.
+     *    - 중복 체크 후 블랙리스트 엔티티를 생성한다.
+     *    - 블랙리스트 엔티티를 저장하고 성공 응답을 반환한다.
+     * 3. param: interactionAddRequest - 회사 ID를 포함한 요청 객체
+     * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
+     */
     @Transactional
     public ApiResponse<?> addMyBlackList(InteractionAddRequest interactionAddRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String githubName = authentication.getName();
-
-        User user = userRepository.findByGithubName(githubName).orElseThrow(() -> new UserNotFoundException(githubName));
-
-        Company company = companyRepository.findById(interactionAddRequest.getCompanyId()).orElseThrow(() -> new CompanyNotFoundException("Company not found"));
-
+        User user = getCurrentUser();
+        Company company = getCompanyById(interactionAddRequest.getCompanyId());
         UserBlacklistId userBlacklistId = new UserBlacklistId(user.getId(), company.getId());
 
-        if(userBlacklistRepository.existsById(userBlacklistId)) {
+        if (userBlacklistRepository.existsById(userBlacklistId)) {
             throw new InteractionDuplicateException("Already Exists");
-
         }
 
-        UserBlacklist userBlacklist = UserBlacklist
-                .builder()
+        UserBlacklist userBlacklist = UserBlacklist.builder()
                 .id(userBlacklistId)
                 .user(user)
                 .company(company)
                 .build();
 
         userBlacklistRepository.save(userBlacklist);
-
         return ApiResponse.success(HttpStatus.OK);
     }
 
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자의 블랙리스트 목록에서 지정된 회사 정보를 삭제하고, 응답 객체를 생성한다.
+     * 2. 로직:
+     *    - 현재 인증된 사용자와 회사 정보를 조회한다.
+     *    - 해당 블랙리스트 엔티티가 존재하는지 확인한다.
+     *    - 블랙리스트 엔티티를 삭제하고 성공 응답을 반환한다.
+     * 3. param: interactionDeleteRequest - 삭제할 회사 ID를 포함한 요청 객체
+     * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
+     */
     @Transactional
     public ApiResponse<?> deleteMyBlackList(InteractionDeleteRequest interactionDeleteRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String githubName = authentication.getName();
-
-        User user = userRepository.findByGithubName(githubName).orElseThrow(() -> new UserNotFoundException(githubName));
-
-        Company company = companyRepository.findById(interactionDeleteRequest.getCompanyId()).orElseThrow(() -> new CompanyNotFoundException("Company not found"));
-
+        User user = getCurrentUser();
+        Company company = getCompanyById(interactionDeleteRequest.getCompanyId());
         UserBlacklistId userBlacklistId = new UserBlacklistId(user.getId(), company.getId());
 
-        UserBlacklist userBlacklist = userBlacklistRepository.findById(userBlacklistId).orElseThrow(() -> new UserInteractionNotFoundException("UserBlacklist Not Found"));
+        UserBlacklist userBlacklist = userBlacklistRepository.findById(userBlacklistId)
+                .orElseThrow(() -> new UserInteractionNotFoundException("UserBlacklist Not Found"));
 
         userBlacklistRepository.delete(userBlacklist);
-
         return ApiResponse.success(HttpStatus.OK);
     }
 }
