@@ -19,7 +19,8 @@ public class GlobalExceptionHandler {
     @Getter
     public enum ErrorCode {
         NOT_FOUND("NF","Not found"),
-        UNAUTHORIZED("UR", "Unauthorized.");
+        UNAUTHORIZED("UR", "Unauthorized."),
+        DUPLICATE("DP", "Duplicate entry");
 
         private final String code;
         private final String message;
@@ -86,4 +87,26 @@ public class GlobalExceptionHandler {
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
+
+    @ExceptionHandler(CompanyNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(CompanyNotFoundException e) {
+        log.warn("Company Not Found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
+
+    @ExceptionHandler(UserInteractionNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(UserInteractionNotFoundException e) {
+        log.warn("User Interaction Not Found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
+
+    @ExceptionHandler(InteractionDuplicateException.class)
+    public ResponseEntity<?> exceptionHandler(InteractionDuplicateException e) {
+        log.warn("Interaction Duplicate Exception: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.DUPLICATE.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.CONFLICT, ErrorCode.DUPLICATE.getCode(), message);
+    }
+
 }
