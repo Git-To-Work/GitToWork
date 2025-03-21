@@ -7,6 +7,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.white,
+      scrolledUnderElevation : 0.0,
       automaticallyImplyLeading: false, // 필요에 따라 뒤로가기 버튼 제거
       flexibleSpace: Stack(
         children: [
@@ -27,6 +28,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  // AppBar 높이를 고정 80으로 설정
   @override
-  Size get preferredSize => const Size.fromHeight(130);
+  Size get preferredSize => const Size.fromHeight(60);
 }

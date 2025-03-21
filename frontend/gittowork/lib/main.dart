@@ -1,34 +1,51 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Provider 사용을 위해 추가
-import 'dart:async'; // Timer 사용을 위해 추가
-
-// Provider
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:gittowork/providers/auth_provider.dart';
 import 'package:gittowork/providers/github_analysis_provider.dart';
+import 'package:provider/provider.dart';
+import 'dart:async';
 
 // 레이아웃 파일 (스플래시로 쓸 화면)
 import 'layouts/no_appbar_no_bottom_nav_layout.dart';
 // 온보딩 화면 (3초 후 이동)
 import 'screens/onboarding/test.dart';
+// 홈 화면 (자동 로그인 후 이동할 화면)
+import 'layouts/appbar_bottom_nav_layout.dart';
 
-void main() {
+// 비동기 async를 하려면 Future
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  final storage = FlutterSecureStorage();
+  final token = await storage.read(key: 'jwt_token'); // 저장된 JWT 토큰 읽어오기
+
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
       ],
-      child: const MyApp(),
+      child: MyApp(initialToken: token),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String? initialToken;
+  const MyApp({super.key, this.initialToken});
 
   @override
   Widget build(BuildContext context) {
+    // 저장된 토큰이 있으면 AuthProvider에 설정
+    if (initialToken != null) {
+      Provider.of<AuthProvider>(context, listen: false).setAccessToken(initialToken!);
+    }
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Git To Work',
       theme: ThemeData(
+        primaryColor: Colors.white,
+        scaffoldBackgroundColor: Colors.white,
         fontFamily: 'Pretendard', // 글로벌 폰트 지정
         // Material 3에서 사용하는 새로운 TextTheme 네이밍 사용
         textTheme: const TextTheme(
@@ -65,19 +82,26 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // 3초 후 온보딩 화면으로 전환
+    // 3초 후에 자동 로그인 여부에 따라 화면 전환
     Timer(const Duration(seconds: 3), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const OnboardingScreen(),
-        ),
-      );
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.accessToken != null) {
+        // 토큰이 있으면 홈 화면으로 전환 (자동 로그인)
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
+        );
+      } else {
+        // 토큰이 없으면 온보딩 화면으로 전환
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // 처음에 보여줄 스플래시 레이아웃
+    // 스플래시 화면에 표시할 레이아웃
     return const NoAppBarNoBottomNavLayout();
   }
 }
