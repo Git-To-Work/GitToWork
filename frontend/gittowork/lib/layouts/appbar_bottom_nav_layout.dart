@@ -53,9 +53,9 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Scaffold 배경색 흰색
+      // 엔터테인먼트 화면(인덱스 3)일 경우 상단바 없음
+      appBar: _selectedIndex == 3 ? null : const CustomAppBar(),
       backgroundColor: Colors.white,
-      appBar: const CustomAppBar(),
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) {

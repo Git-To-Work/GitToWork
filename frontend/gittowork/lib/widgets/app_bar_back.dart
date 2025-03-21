@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 
-class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const CustomAppBar({super.key});
+class CustomBackAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const CustomBackAppBar({super.key});
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.white,
-      automaticallyImplyLeading: false, // 필요에 따라 뒤로가기 버튼 제거
+      automaticallyImplyLeading: false, // 기본 뒤로가기 버튼 제거
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        onPressed: () {
+          Navigator.pop(context);
+        },
+      ),
       flexibleSpace: Stack(
         children: [
           Positioned(
