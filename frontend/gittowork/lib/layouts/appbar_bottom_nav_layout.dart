@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gittowork/widgets/app_bar.dart';
 import 'package:gittowork/widgets/bottom_nav_bar.dart';
 import 'package:gittowork/screens/github_analysis/github.dart';
 import 'package:gittowork/screens/company_recommendation/company.dart';
@@ -53,8 +52,7 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 엔터테인먼트 화면(인덱스 3)일 경우 상단바 없음
-      appBar: _selectedIndex == 3 ? null : const CustomAppBar(),
+      appBar: null, // 항상 AppBar 없음
       backgroundColor: Colors.white,
       body: PageView(
         controller: _pageController,
