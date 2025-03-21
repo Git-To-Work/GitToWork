@@ -2,7 +2,6 @@ package com.gittowork.domain.interaction.repository;
 
 import com.gittowork.domain.interaction.entity.UserScraps;
 import com.gittowork.domain.interaction.entity.UserScrapsId;
-import lombok.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,5 +11,4 @@ public interface UserScrapsRepository extends JpaRepository<UserScraps, UserScra
 
     Page<UserScraps> findByUserId(@Param("userId") int userId, Pageable pageable);
 
-    boolean existsById(@NonNull UserScrapsId userScrapsId);
 }

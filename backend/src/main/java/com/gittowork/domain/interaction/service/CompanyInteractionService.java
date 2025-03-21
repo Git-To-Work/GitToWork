@@ -2,8 +2,6 @@ package com.gittowork.domain.interaction.service;
 
 import com.gittowork.domain.company.entity.Company;
 import com.gittowork.domain.company.repository.CompanyRepository;
-import com.gittowork.domain.interaction.dto.request.InteractionAddRequest;
-import com.gittowork.domain.interaction.dto.request.InteractionDeleteRequest;
 import com.gittowork.domain.interaction.dto.request.InteractionGetRequest;
 import com.gittowork.domain.interaction.dto.response.CompanyInteractionResponse;
 import com.gittowork.domain.interaction.dto.response.Pagination;
@@ -17,13 +15,12 @@ import com.gittowork.global.exception.CompanyNotFoundException;
 import com.gittowork.global.exception.InteractionDuplicateException;
 import com.gittowork.global.exception.UserInteractionNotFoundException;
 import com.gittowork.global.exception.UserNotFoundException;
-import com.gittowork.global.response.ApiResponse;
+import com.gittowork.global.response.MessageOnlyResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -115,18 +112,12 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태, 코드, 결과 및 메시지 포함)
      */
     @Transactional
-    public ApiResponse<?> getScrapCompanies(InteractionGetRequest interactionGetRequest) {
+    public CompanyInteractionResponse getScrapCompanies(InteractionGetRequest interactionGetRequest) {
         int userId = getCurrentUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserScraps> userScraps = userScrapsRepository.findByUserId(userId, pageable);
-        CompanyInteractionResponse response = buildCompanyInteractionResponse(userScraps);
 
-        return ApiResponse.builder()
-                .status(200)
-                .code("SU")
-                .results(response)
-                .message("OK")
-                .build();
+        return buildCompanyInteractionResponse(userScraps);
     }
 
     /**
@@ -139,12 +130,12 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
      */
     @Transactional
-    public ApiResponse<?> addScrapCompanies(InteractionAddRequest interactionAddRequest) {
+    public MessageOnlyResponse addScrapCompanies(int companyId) {
         User user = getCurrentUser();
-        Company company = getCompanyById(interactionAddRequest.getCompanyId());
+        Company company = getCompanyById(companyId);
         UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
 
-        if (userScrapsRepository.existsById(userScrapsId)) {
+        if(userScrapsRepository.findById(userScrapsId).isPresent()){
             throw new InteractionDuplicateException("Already Exists");
         }
 
@@ -155,7 +146,7 @@ public class CompanyInteractionService {
                 .build();
 
         userScrapsRepository.save(userScraps);
-        return ApiResponse.success(HttpStatus.OK);
+        return MessageOnlyResponse.builder().message("스크랩 추가 완료").build();
     }
 
     /**
@@ -168,16 +159,16 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
      */
     @Transactional
-    public ApiResponse<?> deleteScrapCompanies(InteractionDeleteRequest interactionDeleteRequest) {
+    public MessageOnlyResponse deleteScrapCompanies(int companyId) {
         User user = getCurrentUser();
-        Company company = getCompanyById(interactionDeleteRequest.getCompanyId());
+        Company company = getCompanyById(companyId);
         UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
 
         UserScraps userScraps = userScrapsRepository.findById(userScrapsId)
                 .orElseThrow(() -> new UserInteractionNotFoundException("UserScraps Not Found"));
 
         userScrapsRepository.delete(userScraps);
-        return ApiResponse.success(HttpStatus.OK);
+        return MessageOnlyResponse.builder().message("스크랩 삭제 요청 처리 완료").build();
     }
 
     /**
@@ -190,18 +181,12 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태, 코드, 결과 및 메시지 포함)
      */
     @Transactional
-    public ApiResponse<?> getMyLikeCompanies(InteractionGetRequest interactionGetRequest) {
+    public CompanyInteractionResponse getMyLikeCompanies(InteractionGetRequest interactionGetRequest) {
         int userId = getCurrentUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserLikes> userLikes = userLikesRepository.findByUserId(userId, pageable);
-        CompanyInteractionResponse response = buildCompanyInteractionResponse(userLikes);
 
-        return ApiResponse.builder()
-                .status(200)
-                .code("SU")
-                .results(response)
-                .message("OK")
-                .build();
+        return buildCompanyInteractionResponse(userLikes);
     }
 
     /**
@@ -214,12 +199,12 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
      */
     @Transactional
-    public ApiResponse<?> addLikeCompanies(InteractionAddRequest interactionAddRequest) {
+    public MessageOnlyResponse addLikeCompanies(int companyId) {
         User user = getCurrentUser();
-        Company company = getCompanyById(interactionAddRequest.getCompanyId());
+        Company company = getCompanyById(companyId);
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
 
-        if (userLikesRepository.existsById(userLikesId)) {
+        if (userLikesRepository.findById(userLikesId).isPresent()) {
             throw new InteractionDuplicateException("Already Exists");
         }
 
@@ -230,7 +215,7 @@ public class CompanyInteractionService {
                 .build();
 
         userLikesRepository.save(userLikes);
-        return ApiResponse.success(HttpStatus.OK);
+        return MessageOnlyResponse.builder().message("좋아요 요청 처리 완료").build();
     }
 
     /**
@@ -243,16 +228,16 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
      */
     @Transactional
-    public ApiResponse<?> deleteLikeCompanies(InteractionDeleteRequest interactionDeleteRequest) {
+    public MessageOnlyResponse deleteLikeCompanies(int companyId) {
         User user = getCurrentUser();
-        Company company = getCompanyById(interactionDeleteRequest.getCompanyId());
+        Company company = getCompanyById(companyId);
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
 
         UserLikes userLikes = userLikesRepository.findById(userLikesId)
                 .orElseThrow(() -> new UserInteractionNotFoundException("UserLikes Not Found"));
 
         userLikesRepository.delete(userLikes);
-        return ApiResponse.success(HttpStatus.OK);
+        return MessageOnlyResponse.builder().message("좋아요 삭제 요청 처리 완료").build();
     }
 
     /**
@@ -265,18 +250,12 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태, 코드, 결과 및 메시지 포함)
      */
     @Transactional
-    public ApiResponse<?> getMyBlackList(InteractionGetRequest interactionGetRequest) {
+    public CompanyInteractionResponse getMyBlackList(InteractionGetRequest interactionGetRequest) {
         int userId = getCurrentUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserBlacklist> userBlacklist = userBlacklistRepository.findByUserId(userId, pageable);
-        CompanyInteractionResponse response = buildCompanyInteractionResponse(userBlacklist);
 
-        return ApiResponse.builder()
-                .status(200)
-                .code("SU")
-                .results(response)
-                .message("OK")
-                .build();
+        return buildCompanyInteractionResponse(userBlacklist);
     }
 
     /**
@@ -289,12 +268,12 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
      */
     @Transactional
-    public ApiResponse<?> addMyBlackList(InteractionAddRequest interactionAddRequest) {
+    public MessageOnlyResponse addMyBlackList(int companyId) {
         User user = getCurrentUser();
-        Company company = getCompanyById(interactionAddRequest.getCompanyId());
+        Company company = getCompanyById(companyId);
         UserBlacklistId userBlacklistId = new UserBlacklistId(user.getId(), company.getId());
 
-        if (userBlacklistRepository.existsById(userBlacklistId)) {
+        if (userBlacklistRepository.findById(userBlacklistId).isPresent()) {
             throw new InteractionDuplicateException("Already Exists");
         }
 
@@ -305,7 +284,7 @@ public class CompanyInteractionService {
                 .build();
 
         userBlacklistRepository.save(userBlacklist);
-        return ApiResponse.success(HttpStatus.OK);
+        return MessageOnlyResponse.builder().message("차단 기업 추가 완료").build();
     }
 
     /**
@@ -318,15 +297,15 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
      */
     @Transactional
-    public ApiResponse<?> deleteMyBlackList(InteractionDeleteRequest interactionDeleteRequest) {
+    public MessageOnlyResponse deleteMyBlackList(int companyId) {
         User user = getCurrentUser();
-        Company company = getCompanyById(interactionDeleteRequest.getCompanyId());
+        Company company = getCompanyById(companyId);
         UserBlacklistId userBlacklistId = new UserBlacklistId(user.getId(), company.getId());
 
         UserBlacklist userBlacklist = userBlacklistRepository.findById(userBlacklistId)
                 .orElseThrow(() -> new UserInteractionNotFoundException("UserBlacklist Not Found"));
 
         userBlacklistRepository.delete(userBlacklist);
-        return ApiResponse.success(HttpStatus.OK);
+        return MessageOnlyResponse.builder().message("차단 기업 삭제 요청 처리 완료").build();
     }
 }

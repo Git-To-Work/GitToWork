@@ -1,7 +1,5 @@
 package com.gittowork.domain.interaction.controller;
 
-import com.gittowork.domain.interaction.dto.request.InteractionAddRequest;
-import com.gittowork.domain.interaction.dto.request.InteractionDeleteRequest;
 import com.gittowork.domain.interaction.dto.request.InteractionGetRequest;
 import com.gittowork.domain.interaction.service.CompanyInteractionService;
 import com.gittowork.global.response.ApiResponse;
@@ -18,47 +16,47 @@ public class CompanyInteractionController {
 
     @GetMapping("/select/scrap")
     public ApiResponse<?> getScrapCompanies(InteractionGetRequest interactionGetRequest) {
-        return companyInteractionService.getScrapCompanies(interactionGetRequest);
+        return ApiResponse.success(companyInteractionService.getScrapCompanies(interactionGetRequest));
     }
 
     @PostMapping("/create/scrap")
-    public ApiResponse<?> addScrapCompanies(InteractionAddRequest interactionAddRequest) {
-        return companyInteractionService.addScrapCompanies(interactionAddRequest);
+    public ApiResponse<?> addScrapCompanies(@RequestParam int companyId) {
+        return ApiResponse.success(companyInteractionService.addScrapCompanies(companyId));
     }
 
     @DeleteMapping("/delete/scrap")
-    public ApiResponse<?> deleteScrapCompanies(InteractionDeleteRequest interactionDeleteRequest) {
-        return companyInteractionService.deleteScrapCompanies(interactionDeleteRequest);
+    public ApiResponse<?> deleteScrapCompanies(@RequestParam int companyId) {
+        return ApiResponse.success(companyInteractionService.deleteScrapCompanies(companyId));
     }
 
     @GetMapping("/select/like")
     public ApiResponse<?> getMyLikeCompanies(InteractionGetRequest interactionGetRequest) {
-        return companyInteractionService.getMyLikeCompanies(interactionGetRequest);
+        return ApiResponse.success(companyInteractionService.getMyLikeCompanies(interactionGetRequest));
     }
 
     @PostMapping("/create/like")
-    public ApiResponse<?> addLikeCompanies(InteractionAddRequest interactionAddRequest) {
-        return companyInteractionService.addLikeCompanies(interactionAddRequest);
+    public ApiResponse<?> addLikeCompanies(@RequestParam int companyId) {
+        return ApiResponse.success(companyInteractionService.addLikeCompanies(companyId));
     }
 
     @DeleteMapping("/delete/like")
-    public ApiResponse<?> deleteLikeCompanies(InteractionDeleteRequest interactionDeleteRequest) {
-        return companyInteractionService.deleteLikeCompanies(interactionDeleteRequest);
+    public ApiResponse<?> deleteLikeCompanies(@RequestParam int companyId) {
+        return ApiResponse.success(companyInteractionService.deleteLikeCompanies(companyId));
     }
 
     @GetMapping("/select/blacklist")
     public ApiResponse<?> getMyBlackList(InteractionGetRequest interactionGetRequest) {
-        return companyInteractionService.getMyBlackList(interactionGetRequest);
+        return ApiResponse.success(companyInteractionService.getMyBlackList(interactionGetRequest));
     }
 
     @PostMapping("/create/blacklist")
-    public ApiResponse<?> addMyBlackList(InteractionAddRequest interactionAddRequest) {
-        return companyInteractionService.addMyBlackList(interactionAddRequest);
+    public ApiResponse<?> addMyBlackList(@RequestParam int companyId) {
+        return ApiResponse.success(companyInteractionService.addMyBlackList(companyId));
 
     }
 
     @DeleteMapping("/delete/blacklist")
-    public ApiResponse<?> deleteMyBlackList(InteractionDeleteRequest interactionDeleteRequest) {
-        return companyInteractionService.deleteMyBlackList(interactionDeleteRequest);
+    public ApiResponse<?> deleteMyBlackList(@RequestParam int companyId) {
+        return ApiResponse.success(companyInteractionService.deleteMyBlackList(companyId));
     }
 }
