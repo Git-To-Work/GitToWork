@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -19,6 +20,7 @@ import java.util.List;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final RedisTemplate<Object, Object> redisTemplate;
 
     //필터 제외 목록
     private static final List<String> EXCLUDED_PATHS = List.of(
@@ -70,11 +72,11 @@ public class JwtFilter extends OncePerRequestFilter {
         if (username != null) {
             String refreshTokenKey = username + "_refresh_token";
 
-//            if (!Boolean.TRUE.equals(redisTemplate.hasKey(refreshTokenKey))) {
-//                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-//                response.getWriter().write("Refresh token not found. Please log in again.");
-//                return;
-//            }
+            if (!Boolean.TRUE.equals(redisTemplate.hasKey(refreshTokenKey))) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Refresh token not found. Please log in again.");
+                return;
+            }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
