@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:gittowork/providers/auth_provider.dart';
-import 'package:gittowork/providers/github_analysis_provider.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+
+// Provider
+import 'package:gittowork/providers/github_analysis_provider.dart';
 
 // 레이아웃 파일 (스플래시로 쓸 화면)
 import 'layouts/no_appbar_no_bottom_nav_layout.dart';
@@ -25,6 +27,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
+
       ],
       child: MyApp(initialToken: token),
     ),
@@ -101,7 +104,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 스플래시 화면에 표시할 레이아웃
+    // 처음에 보여줄 스플래시 레이아웃
     return const NoAppBarNoBottomNavLayout();
   }
 }
