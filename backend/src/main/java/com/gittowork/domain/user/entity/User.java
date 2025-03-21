@@ -1,8 +1,6 @@
 package com.gittowork.domain.user.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -17,6 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "user")
 public class User {
 
     @Id
@@ -66,10 +65,6 @@ public class User {
     private LocalDateTime privacyConsentDttm;
 
     @Size(max = 255)
-    @Column(name = "github_access_token")
-    private String githubAccessToken;
-
-    @Size(max = 255)
     @Column(name = "interest_fields")
     private String interestFields;
 
@@ -78,5 +73,23 @@ public class User {
 
     @Column(name = "notification_agree_dttm")
     private LocalDateTime notificationAgreeDttm;
+
+    @Size(max = 255)
+    @Column(name = "github_access_token")
+    private String githubAccessToken;
+
+    @OneToOne(mappedBy = "user")
+    private UserGitInfo userGitInfo;
+
+    public void setUserGitInfo(UserGitInfo userGitInfo) {
+        if (userGitInfo == null) {
+            if (this.userGitInfo != null) {
+                this.userGitInfo.setUser(null);
+            }
+        } else {
+            userGitInfo.setUser(this);
+        }
+        this.userGitInfo = userGitInfo;
+    }
 
 }

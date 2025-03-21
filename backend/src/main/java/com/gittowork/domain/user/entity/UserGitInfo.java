@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 
 
@@ -15,7 +14,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "user_git_info")
 public class UserGitInfo {
+
 
     @Id
     @Column(name = "user_id", nullable = false)
@@ -45,9 +46,9 @@ public class UserGitInfo {
 
     @NotNull
     @Column(name = "create_dttm", nullable = false)
-    private Instant createDttm;
+    private LocalDateTime createDttm;
 
     @Column(name = "update_dttm")
-    private Instant updateDttm;
+    private LocalDateTime updateDttm;
 
 }
