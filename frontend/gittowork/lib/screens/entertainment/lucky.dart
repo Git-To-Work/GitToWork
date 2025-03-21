@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gittowork/widgets/app_bar_back.dart';
 
 class LuckyScreen extends StatelessWidget {
   const LuckyScreen({super.key});
@@ -6,7 +7,7 @@ class LuckyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('운세')),
+      appBar: const CustomBackAppBar(),
       body: const Center(child: Text('운세 화면')),
     );
   }
