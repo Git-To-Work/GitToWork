@@ -1,6 +1,6 @@
 package com.gittowork.domain.user.dto.response;
 
-import com.gittowork.domain.fields.entity.Fields;
+import com.gittowork.domain.field.entity.Field;
 import lombok.*;
 
 import java.util.List;
@@ -12,6 +12,6 @@ import java.util.List;
 @Builder
 public class GetInterestFieldsResponse {
 
-    private List<Fields> fields;
+    private List<Field> fields;
 
 }
