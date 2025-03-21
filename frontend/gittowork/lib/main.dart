@@ -12,6 +12,7 @@ import 'screens/onboarding/test.dart';
 // 홈 화면 (자동 로그인 후 이동할 화면)
 import 'layouts/appbar_bottom_nav_layout.dart';
 
+// 비동기 async를 하려면 Future
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -39,8 +40,10 @@ class MyApp extends StatelessWidget {
       Provider.of<AuthProvider>(context, listen: false).setAccessToken(initialToken!);
     }
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Git To Work',
       theme: ThemeData(
+        primaryColor: Colors.white,
+        scaffoldBackgroundColor: Colors.white,
         fontFamily: 'Pretendard', // 글로벌 폰트 지정
         // Material 3에서 사용하는 새로운 TextTheme 네이밍 사용
         textTheme: const TextTheme(

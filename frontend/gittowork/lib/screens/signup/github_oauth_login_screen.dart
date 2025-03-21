@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../../widgets/app_bar.dart';
 import 'signup_detail_screen.dart'; // 회원 상세 정보 입력 화면
 
 class GithubOAuthLoginScreen extends StatelessWidget {
@@ -21,7 +22,7 @@ class GithubOAuthLoginScreen extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('GitHub OAuth')),
+      appBar: const CustomAppBar(),
       body: Center(
         child: Builder(
           builder: (context) => ElevatedButton(

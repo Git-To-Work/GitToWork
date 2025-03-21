@@ -7,6 +7,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.white,
+      scrolledUnderElevation : 0.0,
       centerTitle: true,
       title: Image.asset(
         'assets/images/Big_Logo_White.png',
