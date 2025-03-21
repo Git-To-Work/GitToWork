@@ -21,45 +21,38 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/create/profile")
-    public ResponseEntity<?> insertProfile(@NotNull @Valid InsertProfileRequest insertProfileRequest) {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, userService.insertProfile(insertProfileRequest)));
+    public ApiResponse<?> insertProfile(@NotNull @Valid InsertProfileRequest insertProfileRequest) {
+        return ApiResponse.success(HttpStatus.OK, userService.insertProfile(insertProfileRequest));
     }
 
     @GetMapping("/select/profile")
-    public ResponseEntity<?> getMyProfile() {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, userService.getMyProfile()));
+    public ApiResponse<?> getMyProfile() {
+        return ApiResponse.success(HttpStatus.OK, userService.getMyProfile());
     }
 
     @PutMapping("/update/profile")
-    public ResponseEntity<?> updateProfile(@NotNull @Valid UpdateProfileRequest updateProfileRequest) {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, userService.updateProfile(updateProfileRequest)));
+    public ApiResponse<?> updateProfile(@NotNull @Valid UpdateProfileRequest updateProfileRequest) {
+        return ApiResponse.success(HttpStatus.OK, userService.updateProfile(updateProfileRequest));
     }
 
     @GetMapping("/select/interest-field-list")
-    public ResponseEntity<?> getInterestFields() {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, userService.getInterestFields()));
+    public ApiResponse<?> getInterestFields() {
+        return ApiResponse.success(HttpStatus.OK, userService.getInterestFields());
     }
 
     @PutMapping("/update/interest-field")
-    public ResponseEntity<?> updateInterestField(@NotNull @Valid UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, userService.updateInterestFields(updateInterestsFieldsRequest)));
+    public ApiResponse<?> updateInterestField(@NotNull @Valid UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
+        return ApiResponse.success(HttpStatus.OK, userService.updateInterestFields(updateInterestsFieldsRequest));
     }
 
     @GetMapping("/select/my-interest-field")
-    public ResponseEntity<?> getMyInterestField() {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, userService.myInterestFields()));
+    public ApiResponse<?> getMyInterestField() {
+        return ApiResponse.success(HttpStatus.OK, userService.myInterestFields());
     }
 
     @DeleteMapping("/delete/account")
-    public ResponseEntity<?> deleteAccount() {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, userService.deleteAccount()));
+    public ApiResponse<?> deleteAccount() {
+        return ApiResponse.success(HttpStatus.OK, userService.deleteAccount());
     }
 
 }

@@ -13,14 +13,15 @@ import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.entity.UserGitInfo;
 import com.gittowork.domain.user.repository.UserGitInfoRepository;
 import com.gittowork.domain.user.repository.UserRepository;
+import com.gittowork.global.exception.DataNotFoundException;
 import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.service.RedisService;
-import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -53,6 +54,11 @@ public class UserService {
         String username = getUserName();
 
         Map<String, Object> userCaching = redisService.getUser("user:" + username);
+
+        if (userCaching == null || userCaching.isEmpty()) {
+            throw new DataNotFoundException("캐싱된 사용자 기본 정보가 없습니다.");
+        }
+
         Integer githubId = (Integer) userCaching.get("githubId");
 
         User user = User.builder()
@@ -73,6 +79,10 @@ public class UserService {
         user = userRepository.save(user);
 
         Map<String, Object> userGitInfoCaching = redisService.getUserGitInfo("userGitInfo:" + username);
+
+        if (userGitInfoCaching == null || userGitInfoCaching.isEmpty()) {
+            throw new DataNotFoundException("캐싱된 깃허브 사용자 기본 정보가 없습니다.");
+        }
 
         UserGitInfo userGitInfo = UserGitInfo.builder()
                 .avatarUrl(userGitInfoCaching.get("githubAvatarUrl").toString())
@@ -106,7 +116,7 @@ public class UserService {
      * 3. param: 없음.
      * 4. return: 내 프로필 정보를 담은 GetMyProfileResponse 객체.
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public GetMyProfileResponse getMyProfile() {
         String username = getUserName();
 
@@ -114,7 +124,7 @@ public class UserService {
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         String[] fieldsNames = resolveInterestFieldNames(username);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
         return GetMyProfileResponse.builder()
                 .userId(user.getId())
@@ -209,7 +219,7 @@ public class UserService {
      * 3. param: 없음.
      * 4. return: 관심 비즈니스 분야 이름을 포함하는 GetMyInterestFieldResponse 객체.
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public GetMyInterestFieldResponse myInterestFields() {
         String username = getUserName();
         String[] fieldsNames = resolveInterestFieldNames(username);
