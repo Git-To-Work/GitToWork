@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Provider 사용을 위해 추가
 import 'dart:async'; // Timer 사용을 위해 추가
+
+// Provider
+import 'package:gittowork/providers/github_analysis_provider.dart';
 
 // 레이아웃 파일 (스플래시로 쓸 화면)
 import 'layouts/no_appbar_no_bottom_nav_layout.dart';
@@ -7,7 +11,14 @@ import 'layouts/no_appbar_no_bottom_nav_layout.dart';
 import 'screens/onboarding/test.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

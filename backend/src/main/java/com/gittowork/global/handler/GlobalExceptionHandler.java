@@ -81,6 +81,13 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), message);
     }
 
+    @ExceptionHandler(DataNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(DataNotFoundException e) {
+        log.warn("Data not found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
+
     @ExceptionHandler(CompanyNotFoundException.class)
     public ResponseEntity<?> exceptionHandler(CompanyNotFoundException e) {
         log.warn("Company Not Found: {}", e.getMessage());

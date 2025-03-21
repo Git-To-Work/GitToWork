@@ -1,0 +1,36 @@
+package com.gittowork.domain.user.dto.request;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+import javax.validation.constraints.Size;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class InsertProfileRequest {
+
+    @NotNull
+    private int experience;
+
+    @NotNull
+    @Size(max = 5)
+    private int[] interestsFields;
+
+    @NotNull
+    private String name;
+
+    @NotNull
+    private String birthDt;
+
+    @NotNull
+    private String phone;
+
+    @NotNull
+    private boolean privacyPolicyAgreed;
+
+    @NotNull
+    private boolean notificationAgreed;
+}
