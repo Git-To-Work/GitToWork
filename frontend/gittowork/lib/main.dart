@@ -5,9 +5,12 @@ import 'package:gittowork/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 
-// 스플래시로 사용할 레이아웃
+// Provider
+import 'package:gittowork/providers/github_analysis_provider.dart';
+
+// 레이아웃 파일 (스플래시로 쓸 화면)
 import 'layouts/no_appbar_no_bottom_nav_layout.dart';
-// 온보딩 화면
+// 온보딩 화면 (3초 후 이동)
 import 'screens/onboarding/test.dart';
 // 홈 화면 (자동 로그인 후 이동할 화면)
 import 'layouts/appbar_bottom_nav_layout.dart';
@@ -23,6 +26,8 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
+
       ],
       child: MyApp(initialToken: token),
     ),
@@ -99,7 +104,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 스플래시 화면에 표시할 레이아웃
+    // 처음에 보여줄 스플래시 레이아웃
     return const NoAppBarNoBottomNavLayout();
   }
 }
