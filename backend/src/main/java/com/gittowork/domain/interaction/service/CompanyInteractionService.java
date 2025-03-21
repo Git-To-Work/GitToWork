@@ -16,7 +16,6 @@ import com.gittowork.global.exception.InteractionDuplicateException;
 import com.gittowork.global.exception.UserInteractionNotFoundException;
 import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.response.MessageOnlyResponse;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -111,8 +111,8 @@ public class CompanyInteractionService {
      * 3. param: interactionGetRequest - 페이지 및 사이즈 정보를 포함한 요청 객체
      * 4. return: ApiResponse 객체 (상태, 코드, 결과 및 메시지 포함)
      */
-    @Transactional
-    public CompanyInteractionResponse getScrapCompanies(InteractionGetRequest interactionGetRequest) {
+    @Transactional(readOnly = true)
+    public CompanyInteractionResponse getScrapCompany(InteractionGetRequest interactionGetRequest) {
         int userId = getCurrentUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserScraps> userScraps = userScrapsRepository.findByUserId(userId, pageable);
@@ -130,7 +130,7 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
      */
     @Transactional
-    public MessageOnlyResponse addScrapCompanies(int companyId) {
+    public MessageOnlyResponse addScrapCompany(int companyId) {
         User user = getCurrentUser();
         Company company = getCompanyById(companyId);
         UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
@@ -159,7 +159,7 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
      */
     @Transactional
-    public MessageOnlyResponse deleteScrapCompanies(int companyId) {
+    public MessageOnlyResponse deleteScrapCompany(int companyId) {
         User user = getCurrentUser();
         Company company = getCompanyById(companyId);
         UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
@@ -180,8 +180,8 @@ public class CompanyInteractionService {
      * 3. param: interactionGetRequest - 페이지 및 사이즈 정보를 포함한 요청 객체
      * 4. return: ApiResponse 객체 (상태, 코드, 결과 및 메시지 포함)
      */
-    @Transactional
-    public CompanyInteractionResponse getMyLikeCompanies(InteractionGetRequest interactionGetRequest) {
+    @Transactional(readOnly = true)
+    public CompanyInteractionResponse getMyLikeCompany(InteractionGetRequest interactionGetRequest) {
         int userId = getCurrentUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserLikes> userLikes = userLikesRepository.findByUserId(userId, pageable);
@@ -199,7 +199,7 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
      */
     @Transactional
-    public MessageOnlyResponse addLikeCompanies(int companyId) {
+    public MessageOnlyResponse addLikeCompany(int companyId) {
         User user = getCurrentUser();
         Company company = getCompanyById(companyId);
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
@@ -228,7 +228,7 @@ public class CompanyInteractionService {
      * 4. return: ApiResponse 객체 (상태 및 성공 메시지 포함)
      */
     @Transactional
-    public MessageOnlyResponse deleteLikeCompanies(int companyId) {
+    public MessageOnlyResponse deleteLikeCompany(int companyId) {
         User user = getCurrentUser();
         Company company = getCompanyById(companyId);
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
@@ -249,7 +249,7 @@ public class CompanyInteractionService {
      * 3. param: interactionGetRequest - 페이지 및 사이즈 정보를 포함한 요청 객체
      * 4. return: ApiResponse 객체 (상태, 코드, 결과 및 메시지 포함)
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public CompanyInteractionResponse getMyBlackList(InteractionGetRequest interactionGetRequest) {
         int userId = getCurrentUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
