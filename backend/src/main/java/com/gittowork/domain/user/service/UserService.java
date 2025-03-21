@@ -1,7 +1,7 @@
 package com.gittowork.domain.user.service;
 
-import com.gittowork.domain.fields.entity.Fields;
-import com.gittowork.domain.fields.repository.FieldsRepository;
+import com.gittowork.domain.field.entity.Field;
+import com.gittowork.domain.field.repository.FieldRepository;
 import com.gittowork.domain.user.dto.request.InsertProfileRequest;
 import com.gittowork.domain.user.dto.request.UpdateInterestsFieldsRequest;
 import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
@@ -38,7 +38,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserGitInfoRepository userGitInfoRepository;
     private final RedisService redisService;
-    private final FieldsRepository fieldsRepository;
+    private final FieldRepository fieldRepository;
 
     /**
      * 1. 메서드 설명: 프로필 추가 정보를 저장하는 API.
@@ -177,7 +177,7 @@ public class UserService {
      * 4. return: 모든 관심 분야 목록을 포함하는 GetInterestFieldsResponse 객체.
      */
     public GetInterestFieldsResponse getInterestFields() {
-        List<Fields> interestFields = fieldsRepository.findAll();
+        List<Field> interestFields = fieldRepository.findAll();
 
         return GetInterestFieldsResponse.builder()
                 .fields(interestFields)
@@ -298,10 +298,10 @@ public class UserService {
                 .map(Integer::parseInt)
                 .collect(Collectors.toList());
 
-        List<Fields> interestFields = fieldsRepository.findAllById(interestFieldsNumbers);
+        List<Field> interestFields = fieldRepository.findAllById(interestFieldsNumbers);
 
         return interestFields.stream()
-                .map(Fields::getFieldName)
+                .map(Field::getFieldName)
                 .toArray(String[]::new);
     }
 }

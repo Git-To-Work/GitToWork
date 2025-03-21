@@ -1,4 +1,4 @@
-package com.gittowork.domain.fields.entity;
+package com.gittowork.domain.field.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,8 +14,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "fields")
-public class Fields {
+@Table(name = "field")
+public class Field {
     @Id
     @Column(name = "field_id", nullable = false)
     private Integer id;

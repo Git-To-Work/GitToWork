@@ -1,7 +1,6 @@
 package com.gittowork.domain.company.entity;
 
-import com.gittowork.domain.field.entity;
-
+import com.gittowork.domain.field.entity.Field;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
