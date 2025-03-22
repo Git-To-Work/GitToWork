@@ -1,0 +1,39 @@
+package com.gittowork.domain.github.controller;
+
+import com.gittowork.domain.github.service.GithubService;
+import com.gittowork.global.response.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.validation.Valid;
+
+@RestController
+@RequestMapping("/github")
+@AllArgsConstructor(onConstructor = @__(@Autowired))
+@Tag(name="Github Analysis")
+public class GithubAnalysisController {
+
+    private final GithubService githubService;
+
+    @PostMapping("/create/save-selected-repository")
+    public ApiResponse<?> saveSelectedRepositories(@NotNull @Valid int[] repositories) {
+        return ApiResponse.success(HttpStatus.OK, githubService.saveSelectedGithubRepository(repositories));
+    }
+
+    @GetMapping("/select/my-repository")
+    public ApiResponse<?> myRepository() {
+        return ApiResponse.success(HttpStatus.OK, githubService.getMyRepository());
+    }
+
+    @GetMapping("/select/my-repository-combination")
+    public ApiResponse<?> myRepositoryCombination() {
+        return ApiResponse.success(HttpStatus.OK, githubService.getMyRepositoryCombination());
+    }
+}
