@@ -1,11 +1,15 @@
 package com.gittowork.domain.github.entity;
 
-import lombok.Data;
+import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Repository {
     @Field("repo_id")
     private int repoId;

@@ -115,4 +115,11 @@ public class GlobalExceptionHandler {
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
+
+    @ExceptionHandler(GithubCommitsNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(GithubCommitsNotFoundException e) {
+        log.warn("Github commits not found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
 }

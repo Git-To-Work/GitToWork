@@ -11,6 +11,7 @@ import com.gittowork.global.exception.AccessTokenNotFoundException;
 import com.gittowork.global.exception.AutoLogInException;
 import com.gittowork.global.exception.GithubSignInException;
 import com.gittowork.global.exception.UserNotFoundException;
+import com.gittowork.global.service.GithubRestApiService;
 import com.gittowork.global.service.RedisService;
 import com.gittowork.global.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,14 +40,8 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class GithubAuthenticationService {
 
-    @Value("${github.client.id}")
-    private String clientId;
+    private final GithubRestApiService githubRestApiService;
 
-    @Value("${github.client.secret}")
-    private String clientSecret;
-
-    @Value("${github.redirect.uri}")
-    private String redirectUri;
 
     private final UserRepository userRepository;
     private final UserGitInfoRepository userGitInfoRepository;
@@ -57,11 +52,12 @@ public class GithubAuthenticationService {
     public GithubAuthenticationService(UserRepository userRepository,
                                        RedisService redisService,
                                        UserGitInfoRepository userGitInfoRepository,
-                                       JwtUtil jwtUtil) {
+                                       JwtUtil jwtUtil, GithubRestApiService githubRestApiService) {
         this.userRepository = userRepository;
         this.userGitInfoRepository = userGitInfoRepository;
         this.redisService = redisService;
         this.jwtUtil = jwtUtil;
+        this.githubRestApiService = githubRestApiService;
     }
 
     /**
@@ -77,25 +73,7 @@ public class GithubAuthenticationService {
     private String getAccessToken(String code) {
         RestTemplate restTemplate = new RestTemplate();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("client_id", clientId);
-        body.add("client_secret", clientSecret);
-        body.add("redirect_uri", redirectUri);
-        body.add("code", code);
-
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-        String accessTokenUrl = "https://github.com/login/oauth/access_token";
-
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                accessTokenUrl,
-                HttpMethod.POST,
-                request,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-        );
-        Map<String, Object> responseBody = response.getBody();
+        Map<String, Object> responseBody = githubRestApiService.getAccessToken(code);
 
         if (Objects.isNull(responseBody) || !responseBody.containsKey("access_token")) {
             throw new GithubSignInException("Unauthorized or Invalid Code.");
@@ -114,25 +92,12 @@ public class GithubAuthenticationService {
      * 4. return: GitHub 사용자 정보가 담긴 Map
      */
     private Map<String, Object> getUserInfo(String accessToken) {
-        RestTemplate restTemplate = new RestTemplate();
+        Map<String, Object> userInfo = githubRestApiService.getUserInfo(accessToken);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-
-        HttpEntity<String> request = new HttpEntity<>(headers);
-
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                "https://api.github.com/user",
-                HttpMethod.GET,
-                request,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-        );
-
-        Map<String, Object> userInfo = response.getBody();
         if (userInfo == null || !userInfo.containsKey("login")) {
             throw new GithubSignInException("Failed to fetch GitHub user info.");
         }
+
         return userInfo;
     }
 
