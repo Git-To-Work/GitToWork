@@ -18,7 +18,6 @@ import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.service.RedisService;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;

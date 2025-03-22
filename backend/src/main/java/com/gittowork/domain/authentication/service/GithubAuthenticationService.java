@@ -17,16 +17,11 @@ import com.gittowork.global.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -71,8 +66,6 @@ public class GithubAuthenticationService {
      * 4. return: GitHub 액세스 토큰 문자열
      */
     private String getAccessToken(String code) {
-        RestTemplate restTemplate = new RestTemplate();
-
         Map<String, Object> responseBody = githubRestApiService.getAccessToken(code);
 
         if (Objects.isNull(responseBody) || !responseBody.containsKey("access_token")) {

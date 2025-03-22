@@ -1,23 +1,19 @@
 package com.gittowork.global.service;
 
-import com.gittowork.domain.github.entity.GithubCommit;
 import com.gittowork.domain.github.entity.GithubRepository;
 import com.gittowork.domain.github.entity.Repository;
 import com.gittowork.domain.github.repository.GithubRepoRepository;
 import com.gittowork.global.exception.GithubRepositoryNotFoundException;
-import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
