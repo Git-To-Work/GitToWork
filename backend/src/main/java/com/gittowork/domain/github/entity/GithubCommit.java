@@ -15,7 +15,7 @@ import java.util.List;
 public class GithubCommit {
 
     @Id
-    private String id;
+    private String githubCommitId;
 
     private int userId;
 

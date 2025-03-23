@@ -15,7 +15,7 @@ import java.util.List;
 public class GithubRepository {
 
     @Id
-    private int githubRepositoryId;
+    private String githubRepositoryId;
 
     private int userId;
 

@@ -2,6 +2,7 @@ package com.gittowork.domain.user.service;
 
 import com.gittowork.domain.field.entity.Field;
 import com.gittowork.domain.field.repository.FieldRepository;
+import com.gittowork.domain.github.service.GithubService;
 import com.gittowork.domain.user.dto.request.InsertProfileRequest;
 import com.gittowork.domain.user.dto.request.UpdateInterestsFieldsRequest;
 import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
@@ -39,6 +40,7 @@ public class UserService {
     private final UserGitInfoRepository userGitInfoRepository;
     private final RedisService redisService;
     private final FieldRepository fieldRepository;
+    private final GithubService githubService;
 
     /**
      * 1. 메서드 설명: 프로필 추가 정보를 저장하는 API.
@@ -46,6 +48,7 @@ public class UserService {
      *    - 현재 인증 정보에서 username을 조회하고, Redis에서 사용자 기본 정보와 GitHub 추가 정보를 가져온다.
      *    - 조회한 데이터를 바탕으로 User 엔티티를 생성 및 저장하여 auto increment된 id를 확보한다.
      *    - 해당 id를 기반으로 UserGitInfo 엔티티를 생성하고, User와 양방향 연관관계를 설정한 후 저장한다.
+     *    - User의 Githhub Repository 정보를 저장하는 비동기 메서드를 실행한다.
      * 3. param: insertProfileRequest - 프로필 추가 정보를 담은 DTO.
      * 4. return: 성공 시 "추가 정보가 성공적으로 업데이트되었습니다." 메시지를 포함한 MessageOnlyResponse 객체.
      */
@@ -100,6 +103,8 @@ public class UserService {
 
         redisService.deleteKey("user:" + username);
         redisService.deleteKey("userGitInfo:" + username);
+
+        githubService.saveUserGithubRepositoryInfo(user.getGithubAccessToken(), username, user.getId());
 
         return MessageOnlyResponse.builder()
                 .message("추가 정보가 성공적으로 업데이트되었습니다.")

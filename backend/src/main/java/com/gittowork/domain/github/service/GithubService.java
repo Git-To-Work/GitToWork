@@ -13,8 +13,11 @@ import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.GithubRepositoryNotFoundException;
 import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.response.MessageOnlyResponse;
+import com.gittowork.global.service.GithubRestApiService;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @AllArgsConstructor(onConstructor = @__(@Autowired))
 public class GithubService {
@@ -30,6 +34,7 @@ public class GithubService {
     private final GithubRepoRepository githubRepoRepository;
     private final UserRepository userRepository;
     private final SelectedRepoRepository selectedRepoRepository;
+    private final GithubRestApiService githubRestApiService;
 
     /**
      * 1. 메서드 설명: 선택된 GitHub repository 정보를 저장하는 API.
@@ -140,6 +145,30 @@ public class GithubService {
         return GetMyRepositoryCombinationResponse.builder()
                 .repositoryCombinations(repositoryCombinations)
                 .build();
+    }
+
+    /**
+     * 1. 메서드 설명: GitHub API를 통해 사용자 관련 repository, commit, repository language, issues, pull requests, 코드 정보를 비동기적으로 조회 및 저장하는 메서드.
+     * 2. 로직:
+     *    - githubRestApiService의 메서드들을 호출하여 각 GitHub 관련 정보를 순차적으로 저장한다.
+     *    - 각 저장 작업은 내부적으로 GitHub API와의 통신을 통해 데이터를 조회한 후 데이터베이스에 저장한다.
+     *    - @Async 어노테이션이 적용되어 해당 메서드는 별도 쓰레드에서 실행되므로 호출 후 바로 리턴된다.
+     * 3. param:
+     *      accessToken - GitHub API 접근에 사용되는 access token.
+     *      userName    - GitHub 사용자 이름.
+     *      userId      - 로컬 사용자 식별자.
+     * 4. return: 없음.
+     */
+    @Async
+    public void saveUserGithubRepositoryInfo(String accessToken, String userName, int userId) {
+        githubRestApiService.saveUserGithubRepository(accessToken, userName, userId);
+        githubRestApiService.saveUserGithubCommits(accessToken, userName, userId);
+        githubRestApiService.saveUserRepositoryLanguage(accessToken, userName, userId);
+        githubRestApiService.saveGithubIssues(accessToken);
+        githubRestApiService.saveGithubPullRequests(accessToken);
+        githubRestApiService.saveGithubCode(accessToken, userName, userId);
+
+        log.info("{}: Github repository info saved", userName);
     }
 
     /**

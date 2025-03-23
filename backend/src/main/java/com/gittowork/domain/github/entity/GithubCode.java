@@ -4,7 +4,7 @@ import jakarta.persistence.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Document
 @Getter
@@ -12,12 +12,21 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SelectedRepository {
+public class GithubCode {
 
     @Id
-    private String selectedRepositoryId;
+    private String githubCodeId;
 
     private int userId;
 
-    private List<Repository> repositories;
+    private int repoId;
+
+    private String commitSha;
+
+    private LocalDateTime commitDate;
+
+    private String fileName;
+
+    private String codeContent;
+
 }

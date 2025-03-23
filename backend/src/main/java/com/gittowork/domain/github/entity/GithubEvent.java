@@ -4,20 +4,18 @@ import jakarta.persistence.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.List;
-
 @Document
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SelectedRepository {
+public class GithubEvent {
 
     @Id
-    private String selectedRepositoryId;
+    private String githubEventId;
 
     private int userId;
 
-    private List<Repository> repositories;
+    private Event events;
 }
