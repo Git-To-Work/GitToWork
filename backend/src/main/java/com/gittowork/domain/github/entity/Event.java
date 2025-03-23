@@ -1,6 +1,5 @@
 package com.gittowork.domain.github.entity;
 
-import jakarta.websocket.server.ServerEndpoint;
 import lombok.*;
 
 import java.time.LocalDateTime;

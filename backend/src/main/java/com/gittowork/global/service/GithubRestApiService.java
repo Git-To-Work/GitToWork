@@ -780,27 +780,4 @@ public class GithubRestApiService {
         headers.setAccept(Collections.singletonList(mediaType));
         return headers;
     }
-
-    /**
-     * 1. 메서드 설명: 지정된 URL과 요청 객체를 사용하여 API 호출 후 응답을 List<Map<String, Object>> 형태로 반환하는 헬퍼 메서드.
-     * 2. 로직:
-     *    - restTemplate.exchange()를 호출한 후 응답 상태가 2xx가 아니면 예외를 발생시키고,
-     *      본문이 null이면 빈 리스트를 반환한다.
-     * 3. param:
-     *      url     - API 호출 URL.
-     *      request - HTTP 요청 객체.
-     * 4. return: 응답 데이터를 포함한 List<Map<String, Object>> 객체.
-     */
-    private List<Map<String, Object>> fetchApiResponseList(String url, HttpEntity<String> request) {
-        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                request,
-                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
-        );
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new GithubRepositoryNotFoundException("Failed to fetch API response - HTTP " + response.getStatusCode());
-        }
-        return Optional.ofNullable(response.getBody()).orElse(Collections.emptyList());
-    }
 }

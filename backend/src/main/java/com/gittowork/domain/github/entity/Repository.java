@@ -1,7 +1,6 @@
 package com.gittowork.domain.github.entity;
 
 import lombok.*;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
