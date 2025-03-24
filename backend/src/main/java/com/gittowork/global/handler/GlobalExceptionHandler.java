@@ -20,7 +20,8 @@ public class GlobalExceptionHandler {
     public enum ErrorCode {
         NOT_FOUND("NF","Not found"),
         UNAUTHORIZED("UR", "Unauthorized."),
-        DUPLICATE("DP", "Duplicate entry");
+        DUPLICATE("DP", "Duplicate entry"),
+        SONAR_ANALYSIS_ERROR("SAE", "SonarQube analysis failed");
 
         private final String code;
         private final String message;
@@ -121,5 +122,12 @@ public class GlobalExceptionHandler {
         log.warn("Github commits not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
+
+    @ExceptionHandler(SonarAnalysisException.class)
+    public ResponseEntity<?> exceptionHandler(SonarAnalysisException e) {
+        log.warn("Sonar Analysis failed: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.SONAR_ANALYSIS_ERROR.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.SONAR_ANALYSIS_ERROR.getCode(), message);
     }
 }

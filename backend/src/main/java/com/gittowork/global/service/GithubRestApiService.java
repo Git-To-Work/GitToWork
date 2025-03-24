@@ -26,7 +26,6 @@ public class GithubRestApiService {
     private final GithubLanguageRepository githubLanguageRepository;
     private final GithubIssueRepository githubIssueRepository;
     private final GithubPullRequestRepository githubPullRequestRepository;
-    private final GithubCodeRepository githubCodeRepository;
     private final GithubEventRepository githubEventRepository;
 
     @Value("${github.client.id}")
@@ -45,14 +44,13 @@ public class GithubRestApiService {
                                 GithubLanguageRepository githubLanguageRepository,
                                 GithubIssueRepository githubIssueRepository,
                                 GithubPullRequestRepository githubPullRequestRepository,
-                                GithubCodeRepository githubCodeRepository, GithubEventRepository githubEventRepository) {
+                                GithubEventRepository githubEventRepository) {
         this.restTemplate = restTemplate;
         this.githubRepoRepository = githubRepoRepository;
         this.githubCommitRepository = githubCommitRepository;
         this.githubLanguageRepository = githubLanguageRepository;
         this.githubIssueRepository = githubIssueRepository;
         this.githubPullRequestRepository = githubPullRequestRepository;
-        this.githubCodeRepository = githubCodeRepository;
         this.githubEventRepository = githubEventRepository;
     }
 
@@ -637,80 +635,13 @@ public class GithubRestApiService {
     }
 
     // ============================================================
-    // 7. Code 관련 메서드
-    // ============================================================
-
-    /**
-     * 1. 메서드 설명: 사용자 GitHub repository의 commit 정보를 조회하여, 각 commit의 파일 내용을 상세 API를 통해 가져와서
-     *    GithubCode 엔티티에 저장하는 메서드.
-     * 2. 로직:
-     *    - accessToken과 userName을 사용하여 HTTP 헤더를 생성한다.
-     *    - userId로 해당 사용자의 repository 목록을 조회하고, 각 repository마다 commit 목록을 조회한다.
-     *    - 각 commit에서 변경된 파일 목록(filesChanged)을 순회하며 파일의 상세 내용을 GitHub API를 통해 조회하고,
-     *      HTTP 상태가 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 해당 파일은 건너뛴다.
-     *    - 조회된 파일 내용을 포함하여 GithubCode 객체를 생성한 후 배치 저장한다.
-     * 3. param:
-     *      accessToken - GitHub API 호출에 사용되는 access token.
-     *      userName    - GitHub 사용자 이름.
-     *      userId      - 로컬 사용자 식별자.
-     * 4. return: 없음.
-     */
-    public void saveGithubCode(String accessToken, String userName, int userId) {
-        HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.valueOf("application/vnd.github.v3+json")));
-        List<Repository> repositories = githubRepoRepository.findByUserId(userId)
-                .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"))
-                .getRepositories();
-        List<GithubCode> githubCodes = repositories.stream()
-                .flatMap(repository -> {
-                    String repoName = repository.getRepoName();
-                    int repoId = repository.getRepoId();
-                    GithubCommit githubCommit = githubCommitRepository.findByRepoId(repoId)
-                            .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
-                    return githubCommit.getCommits().stream()
-                            .flatMap(commit -> {
-                                String commitSha = commit.getCommitSha();
-                                LocalDateTime commitDate = commit.getCommitDate();
-                                return commit.getFilesChanged().stream()
-                                        .map(filePath -> {
-                                            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                                                    "https://api.github.com/repos/{githubName}/{repositoryName}/contents/{fileName}?ref={commitSha}",
-                                                    HttpMethod.GET,
-                                                    request,
-                                                    new ParameterizedTypeReference<Map<String, Object>>() {},
-                                                    userName,
-                                                    repoName,
-                                                    filePath,
-                                                    commitSha
-                                            );
-                                            if (!response.getStatusCode().is2xxSuccessful()) {
-                                                throw new GithubRepositoryNotFoundException("Failed to fetch code for file: " + filePath + " - HTTP " + response.getStatusCode());
-                                            }
-                                            Map<String, Object> commitContents = response.getBody();
-                                            if (commitContents == null || commitContents.get("contents") == null) {
-                                                throw new GithubRepositoryNotFoundException("No content found for file: " + filePath);
-                                            }
-                                            return GithubCode.builder()
-                                                    .userId(userId)
-                                                    .repoId(repoId)
-                                                    .commitSha(commitSha)
-                                                    .commitDate(commitDate)
-                                                    .fileName(filePath)
-                                                    .codeContent((String) commitContents.get("content"))
-                                                    .build();
-                                        });
-                            });
-                })
-                .collect(Collectors.toList());
-        githubCodeRepository.saveAll(githubCodes);
-    }
-
-    // ============================================================
-    // 8. Event 관련 메서드
+    // 7. Event 관련 메서드
     // ============================================================
 
     /**
      * 1. 메서드 설명: GitHub API를 호출하여 사용자의 이벤트 정보를 조회하고,
-     *    DB에 저장된 최신 이벤트와 비교하여 새로운 이벤트가 추가되었는지 여부를 판단하는 메서드.
+     *    DB에 저장된 최신 이벤트와 비교하여 새로운 이벤트가 추가되었는지 여부를 판단하며,
+     *    새로운 이벤트가 있을 경우 DB에 저장하는 메서드.
      * 2. 로직:
      *    - accessToken과 userName을 사용하여 HTTP 헤더를 생성한 후, "https://api.github.com/users/{userName}/events" 엔드포인트에 GET 요청을 보낸다.
      *    - 응답 상태가 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 빈 리스트로 처리한다.
@@ -718,8 +649,9 @@ public class GithubRestApiService {
      *         - DB에서 해당 사용자의 최신 이벤트를 조회한다.
      *         - 최신 이벤트의 생성일이 현재 시간 기준 90일 이전이면 true, 90일 이내이면 false를 반환한다.
      *         - DB에 이벤트가 하나도 없으면 새로운 이벤트가 있다고 판단하여 true를 반환한다.
-     *    - (B) API 응답 이벤트가 있는 경우:
-     *         - 응답 이벤트 목록 중 event type이 "PushEvent", "IssuesEvent", "PullRequestEvent" 중 하나라도 존재하면 true, 그렇지 않으면 false를 반환한다.
+     *    - (B) API 응답 이벤트가 있을 경우:
+     *         - DB에 저장된 이벤트 ID들을 조회한 후, API 응답 이벤트 중 새로운 이벤트만 필터링하여 GithubEvent Document 객체로 변환한다.
+     *         - 새로운 이벤트가 있으면 DB에 저장하고, 그 중 event type이 "PushEvent", "IssuesEvent", "PullRequestEvent" 중 하나라도 존재하면 true, 그렇지 않으면 false를 반환한다.
      * 3. param:
      *      accessToken - GitHub API 접근에 사용되는 access token.
      *      userName    - GitHub 사용자 이름.
@@ -740,8 +672,8 @@ public class GithubRestApiService {
         }
         List<Map<String, Object>> apiEvents = response.getBody();
         apiEvents = (apiEvents == null ? Collections.emptyList() : apiEvents);
+        Set<String> allowedTypes = Set.of("PushEvent", "IssuesEvent", "PullRequestEvent");
 
-        // (A) API 응답 이벤트가 없을 경우 : DB의 최신 이벤트와 날짜 비교
         if (apiEvents.isEmpty()) {
             Optional<GithubEvent> latestEventOpt = githubEventRepository.findTopByUserIdOrderByEventsCreatedAtDesc(userId);
             if (latestEventOpt.isPresent()) {
@@ -750,18 +682,55 @@ public class GithubRestApiService {
             } else {
                 return true;
             }
+        } else {
+            Set<String> existingEventIds = githubEventRepository.findAllByUserId(userId)
+                    .stream()
+                    .map(GithubEvent::getGithubEventId)
+                    .collect(Collectors.toSet());
+            List<GithubEvent> newEvents = apiEvents.stream()
+                    .filter(eventMap -> {
+                        String eventId = (String) eventMap.get("id");
+                        return !existingEventIds.contains(eventId);
+                    })
+                    .map(eventMap -> {
+                        String eventId = (String) eventMap.get("id");
+                        String eventType = (String) eventMap.get("type");
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> repoMap = (Map<String, Object>) eventMap.get("repo");
+                        String repoName = repoMap != null ? (String) repoMap.get("name") : null;
+                        String createdAtStr = (String) eventMap.get("created_at");
+                        LocalDateTime createdAt = OffsetDateTime.parse(createdAtStr).toLocalDateTime();
+                        Event event = Event.builder()
+                                .eventType(eventType)
+                                .repo(repoName)
+                                .createdAt(createdAt)
+                                .build();
+                        return GithubEvent.builder()
+                                .githubEventId(eventId)
+                                .userId(userId)
+                                .events(event)
+                                .build();
+                    })
+                    .collect(Collectors.toList());
+            if (!newEvents.isEmpty()) {
+                githubEventRepository.saveAll(newEvents);
+                return newEvents.stream()
+                        .map(githubEvent -> githubEvent.getEvents().getEventType())
+                        .anyMatch(allowedTypes::contains);
+            } else {
+                Optional<GithubEvent> latestEventOpt = githubEventRepository.findTopByUserIdOrderByEventsCreatedAtDesc(userId);
+                if (latestEventOpt.isPresent()) {
+                    LocalDateTime lastEventTime = latestEventOpt.get().getEvents().getCreatedAt();
+                    return lastEventTime.isBefore(LocalDateTime.now().minusDays(90));
+                } else {
+                    return false;
+                }
+            }
         }
-
-        // (B) API 응답 이벤트가 있을 경우 : 이벤트 타입이 Push, Issues, PullRequest 인지 확인
-        Set<String> allowedTypes = Set.of("PushEvent", "IssuesEvent", "PullRequestEvent");
-        return apiEvents.stream()
-                .map(event -> (String) event.get("type"))
-                .anyMatch(allowedTypes::contains);
     }
 
-
     // ============================================================
-    // 9. 공통 헬퍼 메서드
+    // 8. 공통 헬퍼 메서드
     // ============================================================
 
     /**

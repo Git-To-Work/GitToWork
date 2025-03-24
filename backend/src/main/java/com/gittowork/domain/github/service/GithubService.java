@@ -3,24 +3,30 @@ package com.gittowork.domain.github.service;
 import com.gittowork.domain.github.dto.response.GetMyRepositoryCombinationResponse;
 import com.gittowork.domain.github.dto.response.GetMyRepositoryResponse;
 import com.gittowork.domain.github.dto.response.Repo;
+import com.gittowork.domain.github.entity.GithubAnalysisResult;
 import com.gittowork.domain.github.entity.GithubRepository;
 import com.gittowork.domain.github.entity.Repository;
 import com.gittowork.domain.github.entity.SelectedRepository;
+import com.gittowork.domain.github.repository.GithubAnalysisResultRepository;
 import com.gittowork.domain.github.repository.GithubRepoRepository;
 import com.gittowork.domain.github.repository.SelectedRepoRepository;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.GithubRepositoryNotFoundException;
+import com.gittowork.global.exception.SonarAnalysisException;
 import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.response.MessageOnlyResponse;
 import com.gittowork.global.service.GithubRestApiService;
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -28,13 +34,34 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@AllArgsConstructor(onConstructor = @__(@Autowired))
 public class GithubService {
+
+    private final GithubAnalysisResultRepository githubAnalysisResultRepository;
+    @Value("${sonar.host.url}")
+    private String sonarHostUrl;
+
+    @Value("${sonar.login.token}")
+    private String sonarLoginToken;
 
     private final GithubRepoRepository githubRepoRepository;
     private final UserRepository userRepository;
     private final SelectedRepoRepository selectedRepoRepository;
     private final GithubRestApiService githubRestApiService;
+    private final RestTemplate restTemplate;
+
+    @Autowired
+    public GithubService(GithubRepoRepository githubRepoRepository,
+                         UserRepository userRepository,
+                         SelectedRepoRepository selectedRepoRepository,
+                         GithubRestApiService githubRestApiService,
+                         RestTemplate restTemplate, GithubAnalysisResultRepository githubAnalysisResultRepository) {
+        this.githubRepoRepository = githubRepoRepository;
+        this.userRepository = userRepository;
+        this.selectedRepoRepository = selectedRepoRepository;
+        this.githubRestApiService = githubRestApiService;
+        this.restTemplate = restTemplate;
+        this.githubAnalysisResultRepository = githubAnalysisResultRepository;
+    }
 
     /**
      * 1. 메서드 설명: 선택된 GitHub repository 정보를 저장하는 API.
@@ -166,9 +193,77 @@ public class GithubService {
         githubRestApiService.saveUserRepositoryLanguage(accessToken, userName, userId);
         githubRestApiService.saveGithubIssues(accessToken);
         githubRestApiService.saveGithubPullRequests(accessToken);
-        githubRestApiService.saveGithubCode(accessToken, userName, userId);
+        githubRestApiService.checkNewGithubEvents(accessToken, userName, userId);
 
         log.info("{}: Github repository info saved", userName);
+    }
+
+    @Async
+    public void analysisAllRepository(int userId) {
+        GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
+                .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
+
+        List<Repository> repositories = githubRepository.getRepositories();
+
+        List<String> repositoryPathUrls = repositories.stream()
+                .map(repository -> {
+                    String repoFullName = repository.getFullName();
+
+                    return "https://github.com/" + repoFullName + ".git";
+                })
+                .toList();
+
+        for (String repositoryPathUrl : repositoryPathUrls) {
+            try {
+                File localRepo = cloneRepository(repositoryPathUrl);
+
+                String projectKey = extractProjectKey(repositoryPathUrl);
+
+                ProcessBuilder processBuilder = new ProcessBuilder(
+                        "sonar-scanner",
+                        "-Dsonar.projectKey=" + projectKey,
+                        "-Dsonar.sources=" + localRepo.getAbsolutePath(),
+                        "-Dsonar.host.url=" + sonarHostUrl,
+                        "-Dsonar.login=" + sonarLoginToken
+                );
+
+                processBuilder.directory(localRepo);
+                log.info("Starting sonar scanner for project : {}, project Key : {}", repositoryPathUrl, projectKey);
+
+                Process process = processBuilder.start();
+                int exitCode = process.exitValue();
+                if (exitCode != 0) {
+                    log.error("sonar-scanner failed for project {} with exit code {}", repositoryPathUrl, exitCode);
+                }
+
+                GithubAnalysisResult result = pollAnalysisResult(projectKey);
+                githubAnalysisResultRepository.save(result);
+                log.info("Analysis result saved for project: {}", repositoryPathUrl);
+            } catch (Exception e) {
+                log.error("Exception while analyzing repository: {}", repositoryPathUrl, e);
+                throw new SonarAnalysisException("SonarQube analysis failed : " + e.getMessage());
+            }
+        }
+    }
+    private GithubAnalysisResult pollAnalysisResult(String projectKey) throws InterruptedException {
+        Thread.sleep(30000);
+        return GithubAnalysisResult.builder().build();
+    }
+
+    private File cloneRepository(String repoUrl) {
+        String projectKey = extractProjectKey(repoUrl);
+        File repoDir = new File("/tmp/repositories/" + projectKey);
+        if (!repoDir.exists()) {
+            log.info("Cloning repository {} into {}", repoUrl, repoDir.getAbsolutePath());
+        }
+        return repoDir;
+    }
+
+    private String extractProjectKey(String repoUrl) {
+        String[] parts = repoUrl.split("/");
+        String org = parts[parts.length - 2];
+        String project = parts[parts.length - 1].replace(".git", "");
+        return org + "_" + project;
     }
 
     /**
