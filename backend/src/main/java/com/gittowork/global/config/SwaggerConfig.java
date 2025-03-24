@@ -32,7 +32,16 @@ public class SwaggerConfig {
     }
 
     @Bean
-    public GroupedOpenApi githubAuthenticationAPI() {
+    public GroupedOpenApi versionApi() {
+        return GroupedOpenApi.builder()
+                .group("API Versions")
+                .pathsToMatch("/api/**")
+                .build();
+    }
+
+
+    @Bean
+    public GroupedOpenApi githubAuthenticationApi() {
         return GroupedOpenApi.builder()
                 .group("Github Authentication")
                 .pathsToMatch("/auth/**")
@@ -42,8 +51,16 @@ public class SwaggerConfig {
     @Bean
     public GroupedOpenApi userApi() {
         return GroupedOpenApi.builder()
-                .group("User")
+                .group("User API")
                 .pathsToMatch("/user/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi githubApi() {
+        return GroupedOpenApi.builder()
+                .group("Github API")
+                .pathsToMatch("/github/**")
                 .build();
     }
 
