@@ -32,7 +32,7 @@ class OnboardingScreen extends StatelessWidget {
                     builder: (context) => SignupDetailScreen(nickname: 'hansnam1105', avatarUrl: 'https://avatars.githubusercontent.com/u/34000255?v=4',),
                     // 비즈니스 분야 호출 화면
                     //builder: (context) => BusinessInterestScreen(),
-                   //builder: (context) => const AppBarBottomNavLayout(),
+                    //builder: (context) => const AppBarBottomNavLayout(),
                   ),
                 );
               },

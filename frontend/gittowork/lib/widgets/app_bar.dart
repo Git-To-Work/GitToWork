@@ -30,5 +30,5 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   // AppBar 높이를 고정 80으로 설정
   @override
-  Size get preferredSize => const Size.fromHeight(60);
+  Size get preferredSize => const Size.fromHeight(120);
 }
