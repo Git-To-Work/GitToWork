@@ -17,10 +17,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,22 +37,22 @@ public class GithubService {
      *    - username을 이용해 User 엔티티를 검색하여 사용자 정보를 가져온다.
      *    - 조회된 User 엔티티의 id를 사용해 GithubRepository 엔티티를 조회한다.
      *    - 전달받은 repository ID 배열을 Set으로 변환한 후, GithubRepository에 저장된 repository 목록 중 선택된 항목을 필터링한다.
-     *    - 필터링된 repository 리스트와 userId를 바탕으로 SelectedRepository 엔티티를 생성 및 저장한다.
-     * 3. param: selectedGithubRepositories - 사용자가 선택한 repository의 ID 배열.
+     *    - 필터링된 repository 리스트와 userId를 바탕으로 SelectedRepository 엔티티를 생성 또는 갱신하고 저장한다.
+     * 3. param: selectedGithubRepositoryIds - 사용자가 선택한 repository의 ID 배열.
      * 4. return: 성공 시 "레포지토리 선택 저장 요청 처리 완료" 메시지를 포함한 MessageOnlyResponse 객체.
      */
-    public MessageOnlyResponse saveSelectedGithubRepository(int[] selectedGithubRepositories) {
+    @Transactional
+    public MessageOnlyResponse saveSelectedGithubRepository(int[] selectedGithubRepositoryIds) {
         String username = getUserName();
 
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
-
         int userId = user.getId();
 
         GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
 
-        Set<Integer> selectedIds = Arrays.stream(selectedGithubRepositories)
+        Set<Integer> selectedIds = Arrays.stream(selectedGithubRepositoryIds)
                 .boxed()
                 .collect(Collectors.toSet());
 
@@ -61,16 +60,40 @@ public class GithubService {
                 .filter(repo -> selectedIds.contains(repo.getRepoId()))
                 .collect(Collectors.toList());
 
-        SelectedRepository selectedRepository = SelectedRepository.builder()
-                .userId(userId)
-                .repositories(selectedRepositories)
-                .build();
+        SelectedRepository selectedRepository = findMatchingSelectedRepository(userId, selectedRepositories)
+                .map(existing -> {
+                    existing.setRepositories(selectedRepositories);
+                    return existing;
+                })
+                .orElseGet(() -> SelectedRepository.builder()
+                        .userId(userId)
+                        .repositories(selectedRepositories)
+                        .build());
 
         selectedRepoRepository.save(selectedRepository);
 
         return MessageOnlyResponse.builder()
                 .message("레포지토리 선택 저장 요청 처리 완료")
                 .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 지정된 userId와 선택된 repository 리스트를 기반으로 기존에 저장된 SelectedRepository 엔티티 중 동일한 것을 찾는 메서드.
+     * 2. 로직:
+     *    - userId를 기준으로 해당 사용자의 모든 SelectedRepository 엔티티를 조회한다.
+     *    - 각 SelectedRepository 엔티티에 대해, 저장된 repository 리스트의 크기가 선택된 repository 리스트와 동일하며,
+     *      저장된 repository 집합이 선택된 repository 집합을 모두 포함하는지 검사한다.
+     * 3. param:
+     *      - userId: 사용자 식별자.
+     *      - selectedRepositories: 필터링된 선택 repository 리스트.
+     * 4. return: 동일한 repository 정보가 존재하면 Optional로 해당 SelectedRepository를 반환, 그렇지 않으면 Optional.empty() 반환.
+     */
+    private Optional<SelectedRepository> findMatchingSelectedRepository(int userId, List<Repository> selectedRepositories) {
+        List<SelectedRepository> existingSelectedRepos = selectedRepoRepository.findAllByUserId(userId);
+        return existingSelectedRepos.stream()
+                .filter(existing -> existing.getRepositories().size() == selectedRepositories.size()
+                        && new HashSet<>(existing.getRepositories()).containsAll(selectedRepositories))
+                .findFirst();
     }
 
     /**
