@@ -1,15 +1,19 @@
 package com.gittowork.domain.github.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gittowork.domain.github.dto.response.GetMyRepositoryCombinationResponse;
 import com.gittowork.domain.github.dto.response.GetMyRepositoryResponse;
 import com.gittowork.domain.github.dto.response.Repo;
-import com.gittowork.domain.github.entity.GithubAnalysisResult;
-import com.gittowork.domain.github.entity.GithubRepository;
-import com.gittowork.domain.github.entity.Repository;
-import com.gittowork.domain.github.entity.SelectedRepository;
-import com.gittowork.domain.github.repository.GithubAnalysisResultRepository;
-import com.gittowork.domain.github.repository.GithubRepoRepository;
-import com.gittowork.domain.github.repository.SelectedRepoRepository;
+import com.gittowork.domain.github.entity.*;
+import com.gittowork.domain.github.model.analysis.Stats;
+import com.gittowork.domain.github.model.commit.Commit;
+import com.gittowork.domain.github.model.repository.Repository;
+import com.gittowork.domain.github.model.analysis.RepositoryResult;
+import com.gittowork.domain.github.model.sonar.Measure;
+import com.gittowork.domain.github.model.sonar.MeasuresResponse;
+import com.gittowork.domain.github.model.sonar.SonarResponse;
+import com.gittowork.domain.github.repository.*;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.GithubRepositoryNotFoundException;
@@ -18,8 +22,14 @@ import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.response.MessageOnlyResponse;
 import com.gittowork.global.service.GithubRestApiService;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -27,6 +37,8 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -38,6 +50,9 @@ import java.util.stream.Collectors;
 public class GithubService {
 
     private final GithubAnalysisResultRepository githubAnalysisResultRepository;
+    private final GithubCommitRepository githubCommitRepository;
+    private final GithubPullRequestRepository githubPullRequestRepository;
+    private final GithubIssueRepository githubIssueRepository;
     @Value("${sonar.host.url}")
     private String sonarHostUrl;
 
@@ -55,13 +70,16 @@ public class GithubService {
                          UserRepository userRepository,
                          SelectedRepoRepository selectedRepoRepository,
                          GithubRestApiService githubRestApiService,
-                         RestTemplate restTemplate, GithubAnalysisResultRepository githubAnalysisResultRepository) {
+                         RestTemplate restTemplate, GithubAnalysisResultRepository githubAnalysisResultRepository, GithubCommitRepository githubCommitRepository, GithubPullRequestRepository githubPullRequestRepository, GithubIssueRepository githubIssueRepository) {
         this.githubRepoRepository = githubRepoRepository;
         this.userRepository = userRepository;
         this.selectedRepoRepository = selectedRepoRepository;
         this.githubRestApiService = githubRestApiService;
         this.restTemplate = restTemplate;
         this.githubAnalysisResultRepository = githubAnalysisResultRepository;
+        this.githubCommitRepository = githubCommitRepository;
+        this.githubPullRequestRepository = githubPullRequestRepository;
+        this.githubIssueRepository = githubIssueRepository;
     }
 
     /**
@@ -224,26 +242,30 @@ public class GithubService {
     }
 
     @Async
-    public void analysisAllRepository(int userId) {
+    public void analysisSelectedRepositories(int userId, int[] selectedRepositoryIds) {
         GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
 
-        List<Repository> repositories = githubRepository.getRepositories();
+        List<Repository> allRepositories = githubRepository.getRepositories();
 
-        List<String> repositoryPathUrls = repositories.stream()
-                .map(repository -> {
-                    String repoFullName = repository.getFullName();
+        List<Repository> selectedRepositories = new ArrayList<>();
+        for (int selectedRepositoryId : selectedRepositoryIds) {
+            for (Repository allRepository : allRepositories) {
+                if (selectedRepositoryId == allRepository.getRepoId()) {
+                    selectedRepositories.add(allRepository);
+                }
+            }
+        }
 
-                    return "https://github.com/" + repoFullName + ".git";
-                })
-                .toList();
+        SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndRepositories(userId, selectedRepositories)
+                .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
 
-        for (String repositoryPathUrl : repositoryPathUrls) {
+        List<RepositoryResult> repositoryResults = new ArrayList<>();
+        for (Repository repository : selectedRepository.getRepositories()) {
+            String repositoryPathUrl = "https://github.com/" + repository.getFullName() + ".git";
             try {
                 File localRepo = cloneRepository(repositoryPathUrl);
-
                 String projectKey = extractProjectKey(repositoryPathUrl);
-
                 ProcessBuilder processBuilder = new ProcessBuilder(
                         "sonar-scanner",
                         "-Dsonar.projectKey=" + projectKey,
@@ -251,28 +273,83 @@ public class GithubService {
                         "-Dsonar.host.url=" + sonarHostUrl,
                         "-Dsonar.login=" + sonarLoginToken
                 );
-
                 processBuilder.directory(localRepo);
-                log.info("Starting sonar scanner for project : {}, project Key : {}", repositoryPathUrl, projectKey);
+                log.info("Starting sonar scanner for project {}, projectKey: {} ", repositoryPathUrl, projectKey);
 
                 Process process = processBuilder.start();
-                int exitCode = process.exitValue();
+                int exitCode = process.waitFor();
                 if (exitCode != 0) {
-                    log.error("sonar-scanner failed for project {} with exit code {}", repositoryPathUrl, exitCode);
+                    log.error("sonar-scanner failed for project {} with code {}", repositoryPathUrl, exitCode);
+                    throw new SonarAnalysisException("SonarQube analysis failed for project: " + repositoryPathUrl);
                 }
+                RepositoryResult result = pollAndParseAnalysisResult(projectKey, repository.getRepoId());
+                log.info("Analysis result parsed for project {}", repositoryPathUrl);
 
-                GithubAnalysisResult result = pollAnalysisResult(projectKey);
-                githubAnalysisResultRepository.save(result);
-                log.info("Analysis result saved for project: {}", repositoryPathUrl);
+                GithubCommit githubCommit = githubCommitRepository.findByRepoId(repository.getRepoId())
+                        .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
+
+                List<GithubPullRequest> githubPullRequests = githubPullRequestRepository.findAllByRepoId(repository.getRepoId())
+                        .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
+
+                List<GithubIssue> githubIssues = githubIssueRepository.findAllByRepoId(repository.getRepoId())
+                        .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
+
+                int totalCommitCnt = githubCommit.getCommits().size();
+                int totalPRCnt = githubPullRequests.size();
+                int totalIssueCnt = githubIssues.size();
+
+                Stats stats = Stats.builder()
+                        .stargazersCount(repository.getStargazersCount())
+                        .commitCount(totalCommitCnt)
+                        .prCount(totalPRCnt)
+                        .issueCount(totalIssueCnt)
+                        .build();
+
+                result.setStats(stats);
+
+                List<Commit> commits = githubCommit.getCommits();
+                commits.sort(Comparator.comparing(Commit::getCommitDate).reversed());
+
+                LocalDateTime latestDate = commits.get(0).getCommitDate();
+                LocalDateTime oldestDate = commits.get(commits.size() - 1).getCommitDate();
+
+                int daysDifference = (int) ChronoUnit.DAYS.between(oldestDate, latestDate);
+
+                int commitFrequency = totalCommitCnt / daysDifference;
+
+                repositoryResults.add(result);
+
+                result.setCommitFrequency(commitFrequency);
+
             } catch (Exception e) {
                 log.error("Exception while analyzing repository: {}", repositoryPathUrl, e);
-                throw new SonarAnalysisException("SonarQube analysis failed : " + e.getMessage());
+                throw new SonarAnalysisException("SonarQube analysis failed: " + e.getMessage());
             }
         }
-    }
-    private GithubAnalysisResult pollAnalysisResult(String projectKey) throws InterruptedException {
-        Thread.sleep(30000);
-        return GithubAnalysisResult.builder().build();
+
+        // TODO: languageRatio 합산
+
+        // TODO: overallScore 합산
+        
+        // TODO: ActivityMetrics 계산
+
+        // TODO: primaryRole, roleScore, aiAnalysis GPT API 활용
+
+        GithubAnalysisResult githubAnalysisResult = GithubAnalysisResult.builder()
+                .userId(userId)
+                .analysisDate(LocalDateTime.now())
+                .selectedRepositoriesId(selectedRepository.getSelectedRepositoryId())
+                .selectedRepositories(selectedRepository.getRepositories())
+                .languageRatios(null)
+                .repositories(repositoryResults)
+                .overallScore(0)
+                .primaryRole(null)
+                .roleScores(null)
+                .activityMetrics(null)
+                .aiAnalysis(null)
+                .build();
+
+        githubAnalysisResultRepository.save(githubAnalysisResult);
     }
 
     private File cloneRepository(String repoUrl) {
@@ -280,6 +357,15 @@ public class GithubService {
         File repoDir = new File("/tmp/repositories/" + projectKey);
         if (!repoDir.exists()) {
             log.info("Cloning repository {} into {}", repoUrl, repoDir.getAbsolutePath());
+            try {
+                Git.cloneRepository()
+                        .setURI(repoUrl)
+                        .setDirectory(repoDir)
+                        .call();
+            } catch (GitAPIException e) {
+                log.error("Error while cloning repository: {}", repoUrl, e);
+                throw new SonarAnalysisException("Failed to clone repository: " + e.getMessage());
+            }
         }
         return repoDir;
     }
@@ -289,6 +375,182 @@ public class GithubService {
         String org = parts[parts.length - 2];
         String project = parts[parts.length - 1].replace(".git", "");
         return org + "_" + project;
+    }
+
+    private RepositoryResult pollAndParseAnalysisResult(String projectKey, int repoId) throws InterruptedException {
+        Map<String, Double> weights = new HashMap<>();
+        weights.put("coverage", 20.0);
+        weights.put("bugs", 40.0);
+        weights.put("code_smells", 30.0);
+        weights.put("vulnerabilities", 50.0);
+        weights.put("duplicated_lines_density", 10.0);
+
+        while (true) {
+            SonarResponse sonarResponse = fetchAnalysisResult(projectKey);
+
+            if (sonarResponse.isSuccessful()) {
+                double totalPenalty = sonarResponse.getProjectStatus().getConditions().stream()
+                        .mapToDouble(condition -> {
+                            double weight = weights.getOrDefault(condition.getMetricKey(), 10.0);
+                            if ("ERROR".equalsIgnoreCase(condition.getStatus())) {
+                                try {
+                                    double actual = Double.parseDouble(condition.getActualValue());
+                                    double threshold = Double.parseDouble(condition.getErrorThreshold());
+                                    double penaltyFactor = Math.min(actual / threshold, 1.0);
+                                    return weight * penaltyFactor;
+                                } catch (NumberFormatException e) {
+                                    return weight;
+                                }
+                            }
+                            return 0.0;
+                        }).sum();
+                int overallScore = (int) Math.max(0, 100 - totalPenalty);
+
+                Map<String, Double> languageDistribution = fetchLanguageDistribution(projectKey);
+                double totalLines = languageDistribution.values().stream().mapToDouble(Double::doubleValue).sum();
+                Map<String, Double> languageRatios = new HashMap<>();
+                if (totalLines > 0) {
+                    languageRatios = languageDistribution.entrySet().stream()
+                            .collect(Collectors.toMap(
+                                    Map.Entry::getKey,
+                                    e -> (e.getValue() / totalLines) * 100
+                            ));
+                }
+
+                Map<String, String> projectMeasures = fetchProjectMeasures(projectKey);
+                Map<String, Double> languageQualityScores = computeQualityScoreByLanguage(projectMeasures);
+
+                return RepositoryResult.builder()
+                        .repoId(repoId)
+                        .score(overallScore)
+                        .insights("Coverage: " + sonarResponse.getCoverage() +
+                                "%, Bugs: " + sonarResponse.getBugCount())
+                        .languages(languageRatios.entrySet().stream()
+                                .collect(Collectors.toMap(
+                                        Map.Entry::getKey,
+                                        e -> e.getValue().intValue()
+                                )))
+                        .stats(null)
+                        .commitFrequency(0)
+                        .languageLevel(languageQualityScores)
+                        .build();
+            } else if (sonarResponse.isError()) {
+                throw new SonarAnalysisException("SonarQube analysis returned error: " + sonarResponse.getErrorMessage());
+            }
+        }
+    }
+
+    private SonarResponse fetchAnalysisResult(String projectKey) {
+        String url = sonarHostUrl + "/api/qualitygates/project_status?projectKey=" + projectKey;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Basic " +
+                Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
+        HttpEntity<String> request = new HttpEntity<>(headers);
+
+        ResponseEntity<SonarResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, SonarResponse.class);
+        return response.getBody();
+    }
+
+    private Map<String, Double> fetchLanguageDistribution(String projectKey) {
+        String url = sonarHostUrl + "/api/measures/component?componentKey=" + projectKey +
+                "&metricKeys=ncloc_language_distribution";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Basic " +
+                Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
+        HttpEntity<String> request = new HttpEntity<>(headers);
+
+        ResponseEntity<MeasuresResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, MeasuresResponse.class);
+        MeasuresResponse measuresResponse = response.getBody();
+
+        if (measuresResponse != null && measuresResponse.getComponent() != null) {
+            List<Measure> measures = measuresResponse.getComponent().getMeasures();
+            for (Measure measure : measures) {
+                if ("ncloc_language_distribution".equals(measure.getMetric())) {
+                    String value = measure.getValue();
+                    try {
+                        ObjectMapper mapper = new ObjectMapper();
+                        Map<String, String> tempMap = mapper.readValue(value, new TypeReference<Map<String, String>>() {});
+                        Map<String, Double> languageDistribution = new HashMap<>();
+                        for (Map.Entry<String, String> entry : tempMap.entrySet()) {
+                            languageDistribution.put(entry.getKey(), Double.parseDouble(entry.getValue()));
+                        }
+                        return languageDistribution;
+                    } catch (Exception e) {
+                        log.error("Error parsing language distribution for projectKey {}: {}", projectKey, e.getMessage());
+                        return Collections.emptyMap();
+                    }
+                }
+            }
+        }
+        return Collections.emptyMap();
+    }
+
+    private Map<String, String> fetchProjectMeasures(String projectKey) {
+        String metricKeys = "coverage,bugs,code_smells,vulnerabilities,duplicated_lines_density";
+        String url = sonarHostUrl + "/api/measures/component?componentKey=" + projectKey + "&metricKeys=" + metricKeys;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Basic " +
+                Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
+        HttpEntity<String> request = new HttpEntity<>(headers);
+
+        ResponseEntity<MeasuresResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, MeasuresResponse.class);
+        MeasuresResponse measuresResponse = response.getBody();
+
+        Map<String, String> measuresMap = new HashMap<>();
+        if (measuresResponse != null && measuresResponse.getComponent() != null) {
+            for (Measure measure : measuresResponse.getComponent().getMeasures()) {
+                measuresMap.put(measure.getMetric(), measure.getValue());
+            }
+        }
+
+        return measuresMap;
+    }
+
+    private Map<String, Double> computeQualityScoreByLanguage(Map<String, String> measuresMap) {
+        Map<String, Map<String, Double>> languageMetrics = new HashMap<>();
+        for (Map.Entry<String, String> entry : measuresMap.entrySet()) {
+            String key = entry.getKey(); // 예: "coverage:Java"
+            String valueStr = entry.getValue();
+            String[] parts = key.split(":");
+
+            if (parts.length == 2) {
+                String metric = parts[0];
+                String language = parts[1];
+                double value = parseDoubleOrDefault(valueStr);
+                languageMetrics.computeIfAbsent(language, k -> new HashMap<>()).put(metric, value);
+            }
+        }
+
+        return getStringDoubleMap(languageMetrics);
+    }
+
+    private static Map<String, Double> getStringDoubleMap(Map<String, Map<String, Double>> languageMetrics) {
+        Map<String, Double> languageQualityScores = new HashMap<>();
+        for (Map.Entry<String, Map<String, Double>> entry : languageMetrics.entrySet()) {
+            Map<String, Double> metrics = entry.getValue();
+
+            double coverage = metrics.getOrDefault("coverage", 0.0);
+            double bugs = metrics.getOrDefault("bugs", 0.0);
+            double codeSmells = metrics.getOrDefault("code_smells", 0.0);
+            double vulnerabilities = metrics.getOrDefault("vulnerabilities", 0.0);
+            double duplicatedLinesDensity = metrics.getOrDefault("duplicated_lines_density", 0.0);
+
+            double qualityScore = coverage - (bugs * 2 + codeSmells * 0.5 + vulnerabilities * 5 + duplicatedLinesDensity);
+            languageQualityScores.put(entry.getKey(), qualityScore);
+        }
+
+        return languageQualityScores;
+    }
+
+    private double parseDoubleOrDefault(String value) {
+        try {
+            return value != null ? Double.parseDouble(value) : 0.0;
+        } catch (NumberFormatException e) {
+            return 0.0;
+        }
     }
 
     /**

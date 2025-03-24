@@ -1,10 +1,11 @@
 package com.gittowork.domain.github.entity;
 
+import com.gittowork.domain.github.model.event.Event;
 import jakarta.persistence.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document
+@Document(collection = "github_event")
 @Getter
 @Setter
 @NoArgsConstructor

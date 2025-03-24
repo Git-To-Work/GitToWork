@@ -1,4 +1,4 @@
-package com.gittowork.domain.github.entity;
+package com.gittowork.domain.github.model.pullrequest;
 
 import lombok.*;
 
@@ -7,7 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GithubPullRequestUser {
+public class PullRequestUser {
     private String login;
     private int id;
 }

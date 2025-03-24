@@ -1,6 +1,13 @@
 package com.gittowork.global.service;
 
 import com.gittowork.domain.github.entity.*;
+import com.gittowork.domain.github.model.commit.Commit;
+import com.gittowork.domain.github.model.event.Event;
+import com.gittowork.domain.github.model.issue.IssueLabel;
+import com.gittowork.domain.github.model.issue.IssueUser;
+import com.gittowork.domain.github.model.pullrequest.PullRequestBranch;
+import com.gittowork.domain.github.model.pullrequest.PullRequestUser;
+import com.gittowork.domain.github.model.repository.Repository;
 import com.gittowork.domain.github.repository.*;
 import com.gittowork.global.exception.GithubRepositoryNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -431,15 +438,15 @@ public class GithubRestApiService {
         int comments = ((Number) issueMap.get("comments")).intValue();
         @SuppressWarnings("unchecked")
         Map<String, Object> userMap = (Map<String, Object>) issueMap.get("user");
-        GithubIssueUser user = parseIssueUser(userMap);
+        IssueUser user = parseIssueUser(userMap);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> labelsList = (List<Map<String, Object>>) issueMap.get("labels");
-        List<GithubIssueLabel> labels = Optional.ofNullable(labelsList)
+        List<IssueLabel> labels = Optional.ofNullable(labelsList)
                 .orElse(Collections.emptyList())
                 .stream()
                 .map(this::parseLabel)
                 .collect(Collectors.toList());
-        GithubIssueUser assignee = null;
+        IssueUser assignee = null;
         if (issueMap.get("assignee") != null) {
             @SuppressWarnings("unchecked")
             Map<String, Object> assigneeMap = (Map<String, Object>) issueMap.get("assignee");
@@ -447,7 +454,7 @@ public class GithubRestApiService {
         }
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> assigneesList = (List<Map<String, Object>>) issueMap.get("assignees");
-        List<GithubIssueUser> assignees = Optional.ofNullable(assigneesList)
+        List<IssueUser> assignees = Optional.ofNullable(assigneesList)
                 .orElse(Collections.emptyList())
                 .stream()
                 .map(this::parseIssueUser)
@@ -475,10 +482,10 @@ public class GithubRestApiService {
      *      userMap - GitHub 이슈 API 응답의 user 데이터 Map.
      * 4. return: 파싱된 정보를 기반으로 생성된 GithubIssueUser 객체.
      */
-    private GithubIssueUser parseIssueUser(Map<String, Object> userMap) {
+    private IssueUser parseIssueUser(Map<String, Object> userMap) {
         String login = (String) userMap.get("login");
         int id = ((Number) userMap.get("id")).intValue();
-        return GithubIssueUser.builder()
+        return IssueUser.builder()
                 .login(login)
                 .id(id)
                 .build();
@@ -492,12 +499,12 @@ public class GithubRestApiService {
      *      labelMap - GitHub 이슈 API 응답의 레이블 데이터 Map.
      * 4. return: 파싱된 정보를 기반으로 생성된 GithubIssueLabel 객체.
      */
-    private GithubIssueLabel parseLabel(Map<String, Object> labelMap) {
+    private IssueLabel parseLabel(Map<String, Object> labelMap) {
         int id = ((Number) labelMap.get("id")).intValue();
         String name = (String) labelMap.get("name");
         String color = (String) labelMap.get("color");
         String description = (String) labelMap.get("description");
-        return GithubIssueLabel.builder()
+        return IssueLabel.builder()
                 .id(id)
                 .name(name)
                 .color(color)
@@ -568,11 +575,11 @@ public class GithubRestApiService {
         int commitsCount = prMap.get("commits") != null ? ((Number) prMap.get("commits")).intValue() : 0;
         @SuppressWarnings("unchecked")
         Map<String, Object> userMap = (Map<String, Object>) prMap.get("user");
-        GithubPullRequestUser user = parsePRUser(userMap);
+        PullRequestUser user = parsePRUser(userMap);
         @SuppressWarnings("unchecked")
         Map<String, Object> headMap = (Map<String, Object>) prMap.get("head");
-        GithubPullRequestBranch head = parsePRBranch(headMap);
-        GithubPullRequestBranch base = parsePRBranch(baseMap);
+        PullRequestBranch head = parsePRBranch(headMap);
+        PullRequestBranch base = parsePRBranch(baseMap);
         return GithubPullRequest.builder()
                 .repoId(repoId)
                 .prId(prId)
@@ -599,10 +606,10 @@ public class GithubRestApiService {
      *      userMap - GitHub Pull Request API 응답의 user 데이터 Map.
      * 4. return: 파싱된 정보를 기반으로 생성된 GithubPullRequestUser 객체.
      */
-    private GithubPullRequestUser parsePRUser(Map<String, Object> userMap) {
+    private PullRequestUser parsePRUser(Map<String, Object> userMap) {
         String login = (String) userMap.get("login");
         int id = ((Number) userMap.get("id")).intValue();
-        return GithubPullRequestUser.builder()
+        return PullRequestUser.builder()
                 .login(login)
                 .id(id)
                 .build();
@@ -616,17 +623,17 @@ public class GithubRestApiService {
      *      branchMap - GitHub Pull Request API 응답의 head/base 데이터 Map.
      * 4. return: 파싱된 정보를 기반으로 생성된 GithubPullRequestBranch 객체.
      */
-    private GithubPullRequestBranch parsePRBranch(Map<String, Object> branchMap) {
+    private PullRequestBranch parsePRBranch(Map<String, Object> branchMap) {
         String label = (String) branchMap.get("label");
         String ref = (String) branchMap.get("ref");
         String sha = (String) branchMap.get("sha");
-        GithubPullRequestUser user = null;
+        PullRequestUser user = null;
         if (branchMap.get("user") != null) {
             @SuppressWarnings("unchecked")
             Map<String, Object> userMap = (Map<String, Object>) branchMap.get("user");
             user = parsePRUser(userMap);
         }
-        return GithubPullRequestBranch.builder()
+        return PullRequestBranch.builder()
                 .label(label)
                 .ref(ref)
                 .sha(sha)

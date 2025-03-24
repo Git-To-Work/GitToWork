@@ -1,4 +1,4 @@
-package com.gittowork.domain.github.entity;
+package com.gittowork.domain.github.model.issue;
 
 import lombok.*;
 
@@ -7,7 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GithubIssueUser {
+public class IssueUser {
     private String login;
     private int id;
 }

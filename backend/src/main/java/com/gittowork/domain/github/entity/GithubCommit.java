@@ -1,12 +1,13 @@
 package com.gittowork.domain.github.entity;
 
+import com.gittowork.domain.github.model.commit.Commit;
 import jakarta.persistence.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.List;
 
-@Document
+@Document(collection = "github_commit")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,7 +20,7 @@ public class GithubCommit {
 
     private int userId;
 
-    private int repoId;
+    private String repoId;
 
     private List<Commit> commits;
 }

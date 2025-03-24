@@ -1,4 +1,4 @@
-package com.gittowork.domain.github.entity;
+package com.gittowork.domain.github.model.repository;
 
 import lombok.*;
 

@@ -1,4 +1,4 @@
-package com.gittowork.domain.github.entity;
+package com.gittowork.domain.github.model.analysis;
 
 import lombok.*;
 
@@ -7,7 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SonarActivityMetrics {
+public class ActivityMetrics {
     private int totalCommits;
     private int prParticipation;
     private int issueComments;

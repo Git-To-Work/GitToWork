@@ -1,12 +1,14 @@
 package com.gittowork.domain.github.entity;
 
+import com.gittowork.domain.github.model.issue.IssueLabel;
+import com.gittowork.domain.github.model.issue.IssueUser;
 import jakarta.persistence.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.List;
 
-@Document
+@Document(collection = "github_issue")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -28,13 +30,13 @@ public class GithubIssue {
 
     private String body;
 
-    private GithubIssueUser user;
+    private IssueUser user;
 
-    private List<GithubIssueLabel> labels;
+    private List<IssueLabel> labels;
 
-    private GithubIssueUser assignee;
+    private IssueUser assignee;
 
-    private List<GithubIssueUser> assignees;
+    private List<IssueUser> assignees;
 
     private int comments;
 }

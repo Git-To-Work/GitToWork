@@ -1,5 +1,7 @@
 package com.gittowork.domain.github.entity;
 
+import com.gittowork.domain.github.model.pullrequest.PullRequestBranch;
+import com.gittowork.domain.github.model.pullrequest.PullRequestUser;
 import jakarta.persistence.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -15,7 +17,7 @@ public class GithubPullRequest {
     @Id
     private String id;  // MongoDB Document ID (자동 생성 혹은 직접 설정 가능)
 
-    private String repoId;
+    private int repoId;
 
     private int prId;
 
@@ -37,10 +39,10 @@ public class GithubPullRequest {
 
     private int commitsCount;
 
-    private GithubPullRequestUser user;
+    private PullRequestUser user;
 
-    private GithubPullRequestBranch head;
+    private PullRequestBranch head;
 
-    private GithubPullRequestBranch base;
+    private PullRequestBranch base;
 
 }

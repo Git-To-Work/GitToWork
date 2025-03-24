@@ -1,4 +1,4 @@
-package com.gittowork.domain.github.entity;
+package com.gittowork.domain.github.model.analysis;
 
 import lombok.*;
 
@@ -9,7 +9,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SonarAIAnalysis {
+public class AIAnalysis {
     private List<String> analysisSummary;
     private List<String> improvementSuggestions;
 }

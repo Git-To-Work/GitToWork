@@ -6,7 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Map;
 
-@Document
+@Document(collection = "github_language")
 @Getter
 @Setter
 @NoArgsConstructor
