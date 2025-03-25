@@ -2,10 +2,11 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
 
+load_dotenv()
 
-# 환경 변수에서 MYSQL_URL을 읽어오도록 설정 (.env 파일 참조)
-DATABASE_URL = os.getenv("MYSQL_URL", "mysql+pymysql://ssafy:ssafy@127.0.0.1/gittowork")
+DATABASE_URL = os.getenv("MYSQL_URL")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
