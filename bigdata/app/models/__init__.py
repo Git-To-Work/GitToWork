@@ -6,4 +6,11 @@ from .tech_stack import TechStack
 from .benefit import Benefit
 from .company_benefits import CompanyBenefits
 from .category import Category
-
+from .user import User
+from .user_alert_log import UserAlertLog
+from .user_blacklist import UserBlacklist
+from .user_git_info import UserGitInfo
+from .user_likes import UserLikes
+from .user_scraps import UserScraps
+from .cover_letter import CoverLetter
+from .cover_letter_analysis import CoverLetterAnalysis
