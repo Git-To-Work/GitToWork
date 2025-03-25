@@ -2,7 +2,6 @@ package com.gittowork.domain.github.dto.response;
 
 import com.gittowork.domain.github.model.analysis.AIAnalysis;
 import com.gittowork.domain.github.model.analysis.ActivityMetrics;
-import com.gittowork.domain.github.model.analysis.Stats;
 import lombok.*;
 
 import java.util.List;

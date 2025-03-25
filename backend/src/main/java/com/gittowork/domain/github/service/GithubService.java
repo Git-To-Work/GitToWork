@@ -570,7 +570,7 @@ public class GithubService {
      *      repoId - repository 식별자.
      * 4. return: RepositoryResult 객체.
      */
-    private RepositoryResult pollAndParseAnalysisResult(String projectKey, int repoId) throws InterruptedException {
+    private RepositoryResult pollAndParseAnalysisResult(String projectKey, int repoId) {
         Map<String, Double> weights = Map.of(
                 "coverage", 20.0,
                 "bugs", 40.0,

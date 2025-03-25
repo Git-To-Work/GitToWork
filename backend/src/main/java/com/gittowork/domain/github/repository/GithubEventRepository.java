@@ -9,7 +9,6 @@ import java.util.Optional;
 
 @Repository
 public interface GithubEventRepository extends MongoRepository<GithubEvent, String> {
-    Optional<GithubEvent> findTopByUserIdOrderByEventsCreatedAtDesc(int userId);
 
     Collection<GithubEvent> findAllByUserId(int userId);
 
