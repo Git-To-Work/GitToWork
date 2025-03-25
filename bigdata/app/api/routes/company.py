@@ -13,7 +13,6 @@ router = APIRouter()
 def read_companies(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db),
-    company_name: Optional[str] = None,
     tech_stacks: Optional[List[str]] = Query(None),
     business_field: Optional[str] = None,
     career: Optional[int] = None,
@@ -27,12 +26,11 @@ def read_companies(
     companies, total_count = search_companies(
         db=db,
         user_id=user_id,
-        company_name=company_name,
+        company_name=keyword,
         tech_stacks=tech_stacks,
         business_field=business_field,
         career=career,
         location=location,
-        keyword=keyword,
         page=page,
         size=size
     )
