@@ -13,6 +13,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
     networks:
       - app-network
+      - s12p21c103_app-network
 
   fastapi:
     container_name: fastapi
@@ -31,6 +32,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
     networks:
       - app-network
+      - s12p21c103_app-network
 
   nginx:
     image: nginx:latest
@@ -49,8 +51,10 @@ services:
       - fastapi
     networks:
       - app-network
+      - s12p21c103_app-network
 
 networks:
   app-network:
     driver: bridge
-
+  s12p21c103_app-network:
+    external: true
