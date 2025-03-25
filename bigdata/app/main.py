@@ -1,3 +1,6 @@
+# uvicorn app.main:app --reload
+# uvicorn app.main:app --reload --reload-dir .
+
 print(">>> app/main.py loaded")
 
 # 반드시 먼저 모든 모델을 로드해서 __init__.py에 의해 등록되도록 함
