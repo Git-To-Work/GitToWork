@@ -34,8 +34,7 @@ public class SecurityConfig {
 
         http.cors(cors -> cors.configurationSource(request -> {
             CorsConfiguration config = new CorsConfiguration();
-            config.setAllowedOrigins(Collections.singletonList("http://localhost:8080"));
-            config.setAllowedOrigins(Collections.singletonList("http://j12c103.p.ssafy.io"));
+            config.setAllowedOrigins(Arrays.asList("http://localhost:8080", "http://j12c103.p.ssafy.io"));
             config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
             config.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
             config.setAllowCredentials(true);
@@ -47,6 +46,7 @@ public class SecurityConfig {
 
                 .requestMatchers("/auth/create/signin").permitAll()
                 .requestMatchers("/auth/create/login").permitAll()
+                .requestMatchers("/api/select/version").permitAll()
                 .anyRequest().authenticated()
         );
 
