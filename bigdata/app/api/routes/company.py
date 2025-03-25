@@ -1,7 +1,7 @@
 # app/api/routes/company.py
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.core.deps import get_db, get_current_user

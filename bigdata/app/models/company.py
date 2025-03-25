@@ -25,3 +25,4 @@ class Company(Base):
     company_benefits = relationship("CompanyBenefits", back_populates="company")
     user_scraps = relationship("UserScraps", back_populates="company")
     user_likes = relationship("UserLikes", back_populates="company")
+    user_blacklists = relationship("UserBlacklist", back_populates="company")
