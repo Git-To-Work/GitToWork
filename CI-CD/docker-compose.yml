@@ -12,8 +12,12 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
-      - app-network
-      - s12p21c103_app-network
+      app-network:
+        aliases:
+          - backend
+      s12p21c103_app-network:
+        aliases:
+          - backend
 
   fastapi:
     container_name: fastapi
@@ -31,8 +35,12 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
-      - app-network
-      - s12p21c103_app-network
+      app-network:
+        aliases:
+          - fastapi
+      s12p21c103_app-network:
+        aliases:
+          - fastapi
 
 networks:
   app-network:
