@@ -6,7 +6,6 @@ import '../profile/user_profile.dart';
 
 class AuthProvider with ChangeNotifier {
   String? _accessToken;
-  String? _authCode;
   UserProfile? _userProfile;
   SignInResponse? signInResponse;
   final ApiService _apiService = ApiService();
@@ -53,7 +52,6 @@ class AuthProvider with ChangeNotifier {
       return null;
     }
 
-    _authCode = code;
     try {
       final response = await _apiService.signInWithGitHub(code!);
       signInResponse = response;
