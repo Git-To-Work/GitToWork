@@ -8,7 +8,8 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class ActivityMetrics {
+    private int totalStars;
     private int totalCommits;
-    private int prParticipation;
-    private int issueComments;
+    private int totalPRs;
+    private int totalIssues;
 }
