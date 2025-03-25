@@ -42,7 +42,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ../CI-CD/gittowork.conf:/etc/nginx/conf.d/gittowork.conf:ro
+      - ./gittowork.conf:/etc/nginx/conf.d/gittowork.conf:ro
       - /etc/letsencrypt:/etc/nginx/ssl:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
