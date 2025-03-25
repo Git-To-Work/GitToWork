@@ -9,6 +9,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GetMyRepositoryCombinationResponse {
-    private List<RepositoryCombination> repositoryCombinations;
+public class RepositoryCombination {
+    private String selectedRepositoryId;
+    private List<String> repositoryNames;
 }
