@@ -13,28 +13,42 @@ class OnboardingScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Onboarding')),
       body: Center(
-        child: ElevatedButton(
-          onPressed: () async {
-            // GitHub 로그인 시도 및 백엔드 API 호출을 통해 SignInResponse를 받아옴
-            final signInResponse = await authProvider.loginWithGitHub(context); // BuildContext 전달
-            if (signInResponse != null) {
-              // 로그인 성공 시 SignupDetailScreen으로 이동 (필요한 데이터 전달)
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SignupDetailScreen(
-                    nickname: signInResponse.nickname,
-                    avatarUrl: signInResponse.avatarUrl,
-                  ),
-                ),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("로그인에 실패했습니다.")),
-              );
-            }
-          },
-          child: const Text("Login with GitHub"),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                // GitHub 로그인 시도 및 백엔드 API 호출을 통해 SignInResponse를 받아옴
+                final signInResponse = await authProvider.loginWithGitHub(context); // BuildContext 전달
+                if (signInResponse != null) {
+                  // 로그인 성공 시 SignupDetailScreen으로 이동 (필요한 데이터 전달)
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SignupDetailScreen(
+                        nickname: signInResponse.nickname,
+                        avatarUrl: signInResponse.avatarUrl,
+                      ),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("로그인에 실패했습니다.")),
+                  );
+                }
+              },
+              child: const Text("Login with GitHub"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SignupDetailScreen(nickname: 'hansnam1105', avatarUrl: '',)),
+                );
+              },
+              child: Text("Go to Signup Detail"),
+            ),
+          ],
         ),
       ),
     );
