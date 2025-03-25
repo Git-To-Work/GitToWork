@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../services/api_service.dart';
-import '../profile/user_profile.dart';
+import '../models/user_profile.dart';
 
 class AuthProvider with ChangeNotifier {
   String? _accessToken;
@@ -46,13 +46,13 @@ class AuthProvider with ChangeNotifier {
         ),
       ),
     );
-    debugPrint('Final code after WebView: $code');
     if (code == null) {
       debugPrint('인증 코드가 null입니다.');
       return null;
     }
 
     try {
+      debugPrint('Final code after WebView: $code');
       final response = await _apiService.signInWithGitHub(code!);
       signInResponse = response;
       _accessToken = response.accessToken;
@@ -85,8 +85,8 @@ class WebViewPage extends StatefulWidget {
   const WebViewPage({
     required this.initialUrl,
     required this.onCodeReceived,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   State<WebViewPage> createState() => _WebViewPageState();
@@ -119,11 +119,14 @@ class _WebViewPageState extends State<WebViewPage> {
 
   void _handleRedirect(String url) {
     final uri = Uri.parse(url);
+    debugPrint('Redirect URL: $url');
     if (uri.scheme == 'gittowork' && uri.host == 'callback') {
       final code = uri.queryParameters['code'];
+      debugPrint('Extracted code: $code');
       if (code != null) {
         widget.onCodeReceived(code);
-        Navigator.pop(context); // WebView 닫기
+        debugPrint('Code received, closing WebView');
+        Navigator.pop(context);
       }
     }
   }

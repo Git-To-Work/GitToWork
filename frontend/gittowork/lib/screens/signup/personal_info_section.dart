@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../widgets/build_ios_like_row.dart';
-import 'phone_number_formatter.dart';
+import '../../utils/phone_number_formatter.dart';
 
 class PersonalInfoSection extends StatelessWidget {
   final TextEditingController nameController;

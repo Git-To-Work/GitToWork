@@ -17,8 +17,32 @@ class BusinessField {
 }
 
 class BusinessInterestScreen extends StatefulWidget {
-  final Map signupParams;
-  const BusinessInterestScreen({super.key, required this.signupParams});
+  /// 회원가입 시나리오 여부
+  final bool isSignUp;
+
+  /// 회원가입 시, 이전 화면에서 넘겨받은 회원가입 파라미터
+  final Map? signupParams;
+
+  /// 회원정보 수정 시, 이미 선택되어 있는 분야들 (분야명 리스트)
+  final List<String> initialSelectedFields;
+
+  /// 회원가입 시나리오용 생성자
+  const BusinessInterestScreen({
+    Key? key,
+    required Map signupParams,
+  })  : isSignUp = true,
+        signupParams = signupParams,
+        initialSelectedFields = const [],
+        super(key: key);
+
+  /// 회원정보 수정 시나리오용 named constructor
+  const BusinessInterestScreen.edit({
+    Key? key,
+    required List<String> initialSelectedFields,
+  })  : isSignUp = false,
+        signupParams = null,
+        initialSelectedFields = initialSelectedFields,
+        super(key: key);
 
   @override
   State<BusinessInterestScreen> createState() => _BusinessInterestScreenState();
@@ -32,15 +56,11 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
   void initState() {
     super.initState();
     _fetchBusinessFields();
-
-    // 전달받은 회원가입 파라미터 확인 (디버그용)
-    debugPrint("이전 회원가입 파라미터: ${widget.signupParams}");
   }
 
   // 백엔드에서 비즈니스 분야 리스트를 가져오는 로직 (가짜 예시)
   Future<void> _fetchBusinessFields() async {
     // TODO: 실제 ApiService 등을 사용하여 백엔드에서 받아오세요.
-    // 여기서는 예시로 6개만 넣었지만, 실제로는 13개 이상이 될 것입니다.
     final fetchedFields = [
       BusinessField(fieldId: 1, fieldName: "솔루션 SI", logoUrl: "https://picsum.photos/200/120"),
       BusinessField(fieldId: 2, fieldName: "game", logoUrl: "https://picsum.photos/200/120"),
@@ -48,18 +68,31 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
       BusinessField(fieldId: 4, fieldName: "인프라", logoUrl: "https://picsum.photos/200/120"),
       BusinessField(fieldId: 5, fieldName: "빅데이터", logoUrl: "https://picsum.photos/200/120"),
       BusinessField(fieldId: 6, fieldName: "AI", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 7, fieldName: "솔루션 SI", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 8, fieldName: "game", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 9, fieldName: "클라우드", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 10, fieldName: "인프라", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 11, fieldName: "빅데이터", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 12, fieldName: "AI", logoUrl: "https://picsum.photos/200/120"),
-      // ... 실제 데이터 더 추가
+      BusinessField(fieldId: 7, fieldName: "블록체인", logoUrl: "https://picsum.photos/200/120"),
+      BusinessField(fieldId: 8, fieldName: "IoT", logoUrl: "https://picsum.photos/200/120"),
+      BusinessField(fieldId: 9, fieldName: "보안", logoUrl: "https://picsum.photos/200/120"),
+      BusinessField(fieldId: 10, fieldName: "로봇", logoUrl: "https://picsum.photos/200/120"),
+      BusinessField(fieldId: 11, fieldName: "커머스", logoUrl: "https://picsum.photos/200/120"),
+      BusinessField(fieldId: 12, fieldName: "핀테크", logoUrl: "https://picsum.photos/200/120"),
+      // ...
     ];
+
+    // 이미 선택된 분야(수정 시나리오)를 반영
+    // widget.initialSelectedFields 에 포함된 분야명과 동일하면 isSelected = true
+    for (final field in fetchedFields) {
+      if (widget.initialSelectedFields.contains(field.fieldName)) {
+        field.isSelected = true;
+      }
+    }
 
     setState(() {
       businessFields = fetchedFields;
     });
+
+    if (widget.isSignUp) {
+      // 디버그용
+      debugPrint("이전 회원가입 파라미터: ${widget.signupParams}");
+    }
   }
 
   // 아이템을 탭했을 때 선택/해제 로직
@@ -85,15 +118,25 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
     // 선택된 항목들만 추려내기
     final selectedFields = businessFields.where((field) => field.isSelected).toList();
 
-    // signupParams에 interestsFields 추가 (최대 5개)
-    widget.signupParams['interestsFields'] = selectedFields;
+    // 분야명만 추출 (["빅데이터", "AI", ...])
+    final selectedNames = selectedFields.map((f) => f.fieldName).toList();
 
-    debugPrint("최종 회원가입 정보: ${widget.signupParams}");
+    if (widget.isSignUp) {
+      // 회원가입 시나리오
+      widget.signupParams?['interestsFields'] = selectedNames;
+      debugPrint("최종 회원가입 정보: ${widget.signupParams}");
 
-    // TODO: 백엔드로 회원가입 정보 전송
-    // 예: ApiService.sendSignupData(widget.signupParams);
+      // TODO: 백엔드로 회원가입 정보 전송 etc.
+      // 예) ApiService.sendSignupData(widget.signupParams!);
 
-    // 전송 후 다음 화면으로 이동하거나 완료 처리를 진행
+      // 전송 후 다음 화면으로 이동하거나 완료 처리
+      // 여기서는 그냥 pop
+      Navigator.pop(context);
+    } else {
+      // 회원정보 수정 시나리오
+      // 선택 결과를 MyInfoEditScreen으로 돌려주어 거기서 반영
+      Navigator.pop(context, selectedNames);
+    }
   }
 
   @override
@@ -150,7 +193,11 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
                                     const Positioned(
                                       top: 8,
                                       right: 8,
-                                      child: Icon(Icons.check_circle, color: Colors.green, size: 24),
+                                      child: Icon(
+                                        Icons.check_circle,
+                                        color: Colors.green,
+                                        size: 24,
+                                      ),
                                     ),
                                 ],
                               ),
@@ -175,7 +222,7 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
               ),
             ),
           ),
-          // 하단 버튼: Expanded를 사용해 스크롤 영역과 구분하여 고정
+          // 하단 버튼
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30.0),
             child: Container(
@@ -186,19 +233,18 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
                 child: GestureDetector(
                   onTap: _onComplete,
                   child: const Text(
-
-                  '선택 완료',
-                  style: TextStyle(
-                    color: Color(0xFFD6D6D6),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
+                    '선택 완료',
+                    style: TextStyle(
+                      color: Color(0xFFD6D6D6),
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ),
-              ),
             ),
           ),
-          const SizedBox(height: 100), // 네비게이션 바 위로 50px 위치하도록 추가 여백
+          const SizedBox(height: 100), // 네비게이션 바 위로 여백
         ],
       ),
     );

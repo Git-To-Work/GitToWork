@@ -20,6 +20,7 @@ class OnboardingScreen extends StatelessWidget {
               onPressed: () async {
                 // GitHub 로그인 시도 및 백엔드 API 호출을 통해 SignInResponse를 받아옴
                 final signInResponse = await authProvider.loginWithGitHub(context); // BuildContext 전달
+                debugPrint('signInResponse: $signInResponse');
                 if (signInResponse != null) {
                   // 로그인 성공 시 SignupDetailScreen으로 이동 (필요한 데이터 전달)
                   Navigator.push(
