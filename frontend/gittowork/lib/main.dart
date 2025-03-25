@@ -11,11 +11,14 @@ import 'package:gittowork/providers/github_analysis_provider.dart';
 // 레이아웃 파일 (스플래시로 쓸 화면)
 import 'layouts/no_appbar_no_bottom_nav_layout.dart';
 // 온보딩 화면 (3초 후 이동)
-import 'screens/onboarding/test.dart';
+import 'screens/onboarding/onboarding.dart';
 // 홈 화면 (자동 로그인 후 이동할 화면)
 import 'layouts/appbar_bottom_nav_layout.dart';
 
-// 비동기 async를 하려면 Future
+// GlobalKey for ScaffoldMessenger
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+GlobalKey<ScaffoldMessengerState>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -27,7 +30,6 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
-
       ],
       child: MyApp(initialToken: token),
     ),
@@ -42,15 +44,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // 저장된 토큰이 있으면 AuthProvider에 설정
     if (initialToken != null) {
-      Provider.of<AuthProvider>(context, listen: false).setAccessToken(initialToken!);
+      Provider.of<AuthProvider>(context, listen: false)
+          .setAccessToken(initialToken!);
     }
     return MaterialApp(
       title: 'Git To Work',
+      scaffoldMessengerKey: scaffoldMessengerKey, // GlobalKey 적용
       theme: ThemeData(
         primaryColor: Colors.white,
         scaffoldBackgroundColor: Colors.white,
         fontFamily: 'Pretendard', // 글로벌 폰트 지정
-        // Material 3에서 사용하는 새로운 TextTheme 네이밍 사용
         textTheme: const TextTheme(
           displayLarge: TextStyle(fontWeight: FontWeight.w500),
           displayMedium: TextStyle(fontWeight: FontWeight.w500),
@@ -87,7 +90,8 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     // 3초 후에 자동 로그인 여부에 따라 화면 전환
     Timer(const Duration(seconds: 3), () {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final authProvider =
+      Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.accessToken != null) {
         // 토큰이 있으면 홈 화면으로 전환 (자동 로그인)
         Navigator.of(context).pushReplacement(
@@ -104,7 +108,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 처음에 보여줄 스플래시 레이아웃
     return const NoAppBarNoBottomNavLayout();
   }
 }
