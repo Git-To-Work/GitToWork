@@ -34,25 +34,6 @@ services:
       - app-network
       - s12p21c103_app-network
 
-  nginx:
-    image: nginx:latest
-    container_name: nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./gittowork.conf:/etc/nginx/conf.d/gittowork.conf:ro
-      - /etc/letsencrypt:/etc/nginx/ssl:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
-    depends_on:
-      - backend
-      - fastapi
-    networks:
-      - app-network
-      - s12p21c103_app-network
-
 networks:
   app-network:
     driver: bridge
