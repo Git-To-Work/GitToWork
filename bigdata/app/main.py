@@ -8,10 +8,12 @@ import app.models
 
 from fastapi import FastAPI
 from app.api.routes.company import router as company_router
+from app.api.routes.company_detail import router as company_detail_router
 
 app = FastAPI()
 
 app.include_router(company_router, prefix="/api", tags=["companies"])
+app.include_router(company_detail_router, prefix="/api", tags=["companies"])
 
 # 디버깅: 등록된 경로 목록 출력
 print("Registered routes:")

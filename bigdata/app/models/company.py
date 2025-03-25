@@ -1,4 +1,5 @@
 # app/models/company.py
+
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -18,7 +19,9 @@ class Company(Base):
     employee_ratio_female = Column(Integer, nullable=True)
     field_id = Column(Integer, ForeignKey("field.field_id"), nullable=False)
 
-    # 관계 설정
+    # 관계 설정:
     field = relationship("Field", back_populates="companies")
     job_notices = relationship("JobNotice", back_populates="company")
     company_benefits = relationship("CompanyBenefits", back_populates="company")
+    user_scraps = relationship("UserScraps", back_populates="company")
+    user_likes = relationship("UserLikes", back_populates="company")
