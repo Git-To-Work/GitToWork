@@ -139,7 +139,7 @@ public class GithubRestApiService {
      *      userId      - 현재 애플리케이션 사용자 ID.
      * 4. return: 없음.
      */
-    public void saveUserGithubRepository(String accessToken, String githubName, int userId) {
+    public GithubRepository saveUserGithubRepository(String accessToken, String githubName, int userId) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.APPLICATION_JSON));
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 "https://api.github.com/users/{githubName}/repos",
@@ -174,7 +174,7 @@ public class GithubRestApiService {
                 .userId(userId)
                 .repositories(repositories)
                 .build();
-        githubRepoRepository.save(githubRepository);
+        return githubRepoRepository.save(githubRepository);
     }
 
     // ============================================================
@@ -562,7 +562,7 @@ public class GithubRestApiService {
         Map<String, Object> baseMap = (Map<String, Object>) prMap.get("base");
         @SuppressWarnings("unchecked")
         Map<String, Object> baseRepo = (Map<String, Object>) baseMap.get("repo");
-        String repoId = (String) baseRepo.get("full_name");
+        Integer repoId = (Integer) baseRepo.get("full_name");
         int prId = ((Number) prMap.get("number")).intValue();
         String url = (String) prMap.get("url");
         String htmlUrl = (String) prMap.get("html_url");
@@ -665,7 +665,7 @@ public class GithubRestApiService {
      *      userId      - 현재 애플리케이션 사용자 ID.
      * 4. return: 새로운 이벤트가 존재하면 true, 그렇지 않으면 false.
      */
-    public boolean checkNewGithubEvents(String accessToken, String userName, int userId) {
+    public boolean checkNewGithubEvents(String accessToken, String userName, int userId, List<String> repoNames) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.APPLICATION_JSON));
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 "https://api.github.com/users/{userName}/events",
@@ -674,27 +674,48 @@ public class GithubRestApiService {
                 new ParameterizedTypeReference<List<Map<String, Object>>>() {},
                 userName
         );
+
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new GithubRepositoryNotFoundException("Failed to fetch events - HTTP " + response.getStatusCode());
         }
+
         List<Map<String, Object>> apiEvents = response.getBody();
         apiEvents = (apiEvents == null ? Collections.emptyList() : apiEvents);
         Set<String> allowedTypes = Set.of("PushEvent", "IssuesEvent", "PullRequestEvent");
 
-        if (apiEvents.isEmpty()) {
-            Optional<GithubEvent> latestEventOpt = githubEventRepository.findTopByUserIdOrderByEventsCreatedAtDesc(userId);
-            if (latestEventOpt.isPresent()) {
-                LocalDateTime lastEventTime = latestEventOpt.get().getEvents().getCreatedAt();
-                return lastEventTime.isBefore(LocalDateTime.now().minusDays(90));
-            } else {
-                return true;
+        List<Map<String, Object>> filteredApiEvents = apiEvents.stream()
+                .filter(event -> {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> repoMap = (Map<String, Object>) event.get("repo");
+                    if (repoMap != null) {
+                        String repoName = (String) repoMap.get("name");
+                        return repoNames.contains(repoName);
+                    }
+                    return false;
+                })
+                .toList();
+
+        if (filteredApiEvents.isEmpty()) {
+            for (String repoName : repoNames) {
+                Optional<GithubEvent> latestEventOpt = githubEventRepository
+                        .findTopByUserIdAndEvents_RepoOrderByEventsCreatedAtDesc(userId, repoName);
+                if (latestEventOpt.isPresent()) {
+                    LocalDateTime lastEventTime = latestEventOpt.get().getEvents().getCreatedAt();
+                    if (lastEventTime.isBefore(LocalDateTime.now().minusDays(90))) {
+                        return true;
+                    }
+                } else {
+                    return true;
+                }
             }
+            return false;
         } else {
             Set<String> existingEventIds = githubEventRepository.findAllByUserId(userId)
                     .stream()
                     .map(GithubEvent::getGithubEventId)
                     .collect(Collectors.toSet());
-            List<GithubEvent> newEvents = apiEvents.stream()
+
+            List<GithubEvent> newEvents = filteredApiEvents.stream()
                     .filter(eventMap -> {
                         String eventId = (String) eventMap.get("id");
                         return !existingEventIds.contains(eventId);
@@ -707,6 +728,7 @@ public class GithubRestApiService {
                         String repoName = repoMap != null ? (String) repoMap.get("name") : null;
                         String createdAtStr = (String) eventMap.get("created_at");
                         LocalDateTime createdAt = OffsetDateTime.parse(createdAtStr).toLocalDateTime();
+
                         Event event = Event.builder()
                                 .eventType(eventType)
                                 .repo(repoName)
@@ -719,20 +741,29 @@ public class GithubRestApiService {
                                 .build();
                     })
                     .collect(Collectors.toList());
+
             if (!newEvents.isEmpty()) {
                 githubEventRepository.saveAll(newEvents);
-                return newEvents.stream()
+                boolean hasAllowed = newEvents.stream()
                         .map(githubEvent -> githubEvent.getEvents().getEventType())
                         .anyMatch(allowedTypes::contains);
-            } else {
-                Optional<GithubEvent> latestEventOpt = githubEventRepository.findTopByUserIdOrderByEventsCreatedAtDesc(userId);
-                if (latestEventOpt.isPresent()) {
-                    LocalDateTime lastEventTime = latestEventOpt.get().getEvents().getCreatedAt();
-                    return lastEventTime.isBefore(LocalDateTime.now().minusDays(90));
-                } else {
-                    return false;
+                if (hasAllowed) {
+                    return true;
                 }
             }
+
+            LocalDateTime latestEventTime = null;
+            for (String repoName : repoNames) {
+                Optional<GithubEvent> latestEventOpt = githubEventRepository
+                        .findTopByUserIdAndEvents_RepoOrderByEventsCreatedAtDesc(userId, repoName);
+                if (latestEventOpt.isPresent()) {
+                    LocalDateTime eventTime = latestEventOpt.get().getEvents().getCreatedAt();
+                    if (latestEventTime == null || eventTime.isAfter(latestEventTime)) {
+                        latestEventTime = eventTime;
+                    }
+                }
+            }
+            return latestEventTime != null && latestEventTime.isBefore(LocalDateTime.now().minusDays(90));
         }
     }
 

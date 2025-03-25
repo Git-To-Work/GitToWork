@@ -3,9 +3,7 @@ package com.gittowork.domain.github.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gittowork.domain.github.dto.response.GetMyRepositoryCombinationResponse;
-import com.gittowork.domain.github.dto.response.GetMyRepositoryResponse;
-import com.gittowork.domain.github.dto.response.Repo;
+import com.gittowork.domain.github.dto.response.*;
 import com.gittowork.domain.github.entity.*;
 import com.gittowork.domain.github.model.analysis.ActivityMetrics;
 import com.gittowork.domain.github.model.analysis.Stats;
@@ -18,9 +16,7 @@ import com.gittowork.domain.github.model.sonar.SonarResponse;
 import com.gittowork.domain.github.repository.*;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
-import com.gittowork.global.exception.GithubRepositoryNotFoundException;
-import com.gittowork.global.exception.SonarAnalysisException;
-import com.gittowork.global.exception.UserNotFoundException;
+import com.gittowork.global.exception.*;
 import com.gittowork.global.response.MessageOnlyResponse;
 import com.gittowork.global.service.GithubRestApiService;
 import com.gittowork.global.service.GptService;
@@ -36,15 +32,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -69,7 +63,6 @@ public class GithubService {
 
     @Value("${sonar.login.token}")
     private String sonarLoginToken;
-
 
     @Autowired
     public GithubService(GithubRepoRepository githubRepoRepository,
@@ -108,18 +101,15 @@ public class GithubService {
     @Transactional
     public MessageOnlyResponse saveSelectedGithubRepository(int[] selectedGithubRepositoryIds) {
         String username = getUserName();
-
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         int userId = user.getId();
-
         GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
 
         Set<Integer> selectedIds = Arrays.stream(selectedGithubRepositoryIds)
                 .boxed()
                 .collect(Collectors.toSet());
-
         List<Repository> selectedRepositories = githubRepository.getRepositories().stream()
                 .filter(repo -> selectedIds.contains(repo.getRepoId()))
                 .collect(Collectors.toList());
@@ -135,7 +125,6 @@ public class GithubService {
                         .build());
 
         selectedRepoRepository.save(selectedRepository);
-
         return MessageOnlyResponse.builder()
                 .message("레포지토리 선택 저장 요청 처리 완료")
                 .build();
@@ -153,8 +142,7 @@ public class GithubService {
      * 4. return: 동일한 repository 정보가 존재하면 Optional로 해당 SelectedRepository를 반환, 그렇지 않으면 Optional.empty() 반환.
      */
     private Optional<SelectedRepository> findMatchingSelectedRepository(int userId, List<Repository> selectedRepositories) {
-        List<SelectedRepository> existingSelectedRepos = selectedRepoRepository.findAllByUserId(userId);
-        return existingSelectedRepos.stream()
+        return selectedRepoRepository.findAllByUserId(userId).stream()
                 .filter(existing -> existing.getRepositories().size() == selectedRepositories.size()
                         && new HashSet<>(existing.getRepositories()).containsAll(selectedRepositories))
                 .findFirst();
@@ -173,11 +161,9 @@ public class GithubService {
      */
     public GetMyRepositoryResponse getMyRepository() {
         String username = getUserName();
-
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         int userId = user.getId();
-
         GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
 
@@ -187,7 +173,6 @@ public class GithubService {
                         .repoName(repo.getRepoName())
                         .build())
                 .collect(Collectors.toList());
-
         return GetMyRepositoryResponse.builder()
                 .repositories(repos)
                 .build();
@@ -208,25 +193,142 @@ public class GithubService {
      */
     public GetMyRepositoryCombinationResponse getMyRepositoryCombination() {
         String username = getUserName();
-
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         int userId = user.getId();
 
-        List<SelectedRepository> selectedRepositories = selectedRepoRepository.findAllByUserId(userId);
-
-        List<List<Repo>> repositoryCombinations = selectedRepositories.stream()
+        List<List<Repo>> repositoryCombinations = selectedRepoRepository.findAllByUserId(userId).stream()
                 .map(selectedRepo -> selectedRepo.getRepositories().stream()
                         .map(repo -> Repo.builder()
                                 .repoId(repo.getRepoId())
                                 .repoName(repo.getRepoName())
                                 .build())
                         .collect(Collectors.toList()))
-                .toList();
-
+                .collect(Collectors.toList());
         return GetMyRepositoryCombinationResponse.builder()
                 .repositoryCombinations(repositoryCombinations)
                 .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자의 GitHub 분석을 위한 Repository 리스트를 필터링하여,
+     *    신규 이벤트가 있는지 확인한 후, 분석을 시작하거나 메시지를 반환하는 API.
+     * 2. 로직:
+     *    - 현재 인증된 사용자의 username을 조회한다.
+     *    - username을 기반으로 User 엔티티를 검색하여 userId와 GitHub Access Token을 확보한다.
+     *    - userId를 사용하여 GithubRepository를 조회하고, 사용자의 Repository 리스트를 확보한다.
+     *    - 파라미터로 전달된 repositories 배열과 사용자의 Repository repoId를 비교하여,
+     *      해당하는 repository 이름 리스트를 구성한다.
+     *    - 구성된 repository 이름 리스트를 이용하여, 신규 GitHub 이벤트가 있는지 체크한다.
+     *    - 신규 이벤트가 존재하면, 비동기로 GitHub 분석을 시작하고, 분석 시작 메시지를 반환한다.
+     * 3. param: int[] repositories - 분석 대상 repository의 repoId 배열.
+     * 4. return: CreateGithubAnalysisByRepositoryResponse - 분석 시작 여부와 메시지를 담은 DTO.
+     */
+    public CreateGithubAnalysisByRepositoryResponse createGithubAnalysisByRepositoryResponse(int[] repositories) {
+        String userName = getUserName();
+        User user = userRepository.findByGithubName(userName)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        int userId = user.getId();
+        String githubAccessToken = user.getGithubAccessToken();
+
+        GithubRepository userGithubRepository = githubRepoRepository.findByUserId(userId)
+                .orElseThrow(() -> new GithubRepositoryNotFoundException("Github Repository not found"));
+        List<Repository> userRepositories = userGithubRepository.getRepositories();
+
+        List<Integer> repositoryList = Arrays.stream(repositories)
+                .boxed()
+                .collect(Collectors.toList());
+        List<String> repositoryNames = userRepositories.stream()
+                .filter(repository -> repositoryList.contains(repository.getRepoId()))
+                .map(Repository::getRepoName)
+                .collect(Collectors.toList());
+
+        boolean analysisStarted = githubRestApiService.checkNewGithubEvents(githubAccessToken, userName, userId, repositoryNames);
+        if (analysisStarted) {
+            githubAnalysisByRepository(repositories, userName);
+        }
+        return CreateGithubAnalysisByRepositoryResponse.builder()
+                .analysisStarted(analysisStarted)
+                .message(analysisStarted ? "분석이 시작되었습니다." : "마지막 분석 이후로 추가 이벤트가 없습니다.")
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 선택된 Repository의 Github 분석 결과를 조회하여,
+     *    각 Repository의 분석 정보(전체 점수, 언어 수준, 활동 지표, AI 분석 결과 등)를 기반으로
+     *    최종 분석 결과 DTO(GetGithubAnalysisByRepositoryResponse)를 생성하여 반환하는 API.
+     * 2. 로직:
+     *    - selectedRepositoryId를 기반으로 GithubAnalysisResult를 조회한다.
+     *    - 전체 점수를 기준으로 overallScore(문자 등급)를 산출한다.
+     *    - 각 RepositoryResult의 languageLevel 맵의 엔트리들을 병합하여, 키별 평균값을 계산한다.
+     *    - 각 언어의 평균값을 기준으로 1~10 점수로 변환한 languageScore 맵을 생성한다.
+     *    - Repository 이름 리스트, 분석 날짜, 언어 비율, 활동 지표, AI 분석 결과 등을 포함하여
+     *      최종 응답 DTO를 빌더 패턴으로 생성한다.
+     * 3. param: int selectedRepositoryId - 분석 대상 Repository의 식별자.
+     * 4. return: GetGithubAnalysisByRepositoryResponse - 분석 결과 정보를 담은 DTO.
+     */
+    public GetGithubAnalysisByRepositoryResponse getGithubAnalysisByRepository(int selectedRepositoryId) {
+        GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
+                .findBySelectedRepositoriesId(String.valueOf(selectedRepositoryId))
+                .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Result not found"));
+
+        int overallScoreValue = githubAnalysisResult.getOverallScore();
+        String overallScore = overallScoreValue > 90 ? "A+"
+                : overallScoreValue > 80 ? "A"
+                : overallScoreValue > 70 ? "B+"
+                : overallScoreValue > 60 ? "B" : "C";
+
+        Map<String, Double> averageLanguageScore = githubAnalysisResult.getRepositories().stream()
+                .flatMap(repositoryResult -> repositoryResult.getLanguageLevel().entrySet().stream())
+                .collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.averagingDouble(Map.Entry::getValue)));
+
+        Map<String, Integer> languageScore = averageLanguageScore.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> {
+                            double avg = entry.getValue();
+                            if (avg > 90) return 10;
+                            else if (avg > 80) return 9;
+                            else if (avg > 70) return 8;
+                            else if (avg > 60) return 7;
+                            else if (avg > 50) return 6;
+                            else if (avg > 40) return 5;
+                            else if (avg > 30) return 4;
+                            else if (avg > 20) return 3;
+                            else if (avg > 10) return 2;
+                            else if (avg > 0)  return 1;
+                            else return 0;
+                        }
+                ));
+
+        return GetGithubAnalysisByRepositoryResponse.builder()
+                .analysisDate(githubAnalysisResult.getAnalysisDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                .languageRatios(githubAnalysisResult.getLanguageRatios())
+                .languageLevel(languageScore)
+                .selectedRepositories(githubAnalysisResult.getSelectedRepositories().stream()
+                        .map(Repository::getRepoName)
+                        .collect(Collectors.toList()))
+                .overallScore(overallScore)
+                .activityMetrics(githubAnalysisResult.getActivityMetrics())
+                .aiAnalysis(githubAnalysisResult.getAiAnalysis())
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 비동기로 선택된 repository에 대해 GitHub 분석을 수행하는 API.
+     * 2. 로직:
+     *    - username을 기반으로 User 엔티티를 조회하여 userId를 확보한다.
+     *    - 확보한 userId와 선택된 repository 배열을 사용하여 분석 로직을 수행한다.
+     * 3. param:
+     *      int[] selectedRepositories - 분석 대상 repository의 repoId 배열.
+     *      String userName - 현재 인증된 사용자의 username.
+     * 4. return: 없음 (비동기 작업 수행).
+     */
+    @Async
+    public void githubAnalysisByRepository(int[] selectedRepositories, String userName) {
+        User user = userRepository.findByGithubName(userName)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        analysisSelectedRepositories(user.getId(), selectedRepositories);
     }
 
     /**
@@ -243,13 +345,14 @@ public class GithubService {
      */
     @Async
     public void saveUserGithubRepositoryInfo(String accessToken, String userName, int userId) {
-        githubRestApiService.saveUserGithubRepository(accessToken, userName, userId);
+        GithubRepository userGithubRepository = githubRestApiService.saveUserGithubRepository(accessToken, userName, userId);
         githubRestApiService.saveUserGithubCommits(accessToken, userName, userId);
         githubRestApiService.saveUserRepositoryLanguage(accessToken, userName, userId);
         githubRestApiService.saveGithubIssues(accessToken);
         githubRestApiService.saveGithubPullRequests(accessToken);
-        githubRestApiService.checkNewGithubEvents(accessToken, userName, userId);
-
+        githubRestApiService.checkNewGithubEvents(accessToken, userName, userId, userGithubRepository.getRepositories().stream()
+                .map(Repository::getRepoName)
+                .collect(Collectors.toList()));
         log.info("{}: Github repository info saved", userName);
     }
 
@@ -266,7 +369,7 @@ public class GithubService {
      * 4. return: 없음.
      */
     @Async
-    public void analysisSelectedRepositories(int userId, int[] selectedRepositoryIds) throws JsonProcessingException {
+    public void analysisSelectedRepositories(int userId, int[] selectedRepositoryIds) {
         GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
 
@@ -320,7 +423,12 @@ public class GithubService {
                 .build();
 
         String prompt = gptService.generateGithubAnalysisPrompt(githubAnalysisResult);
-        String gptAnalysisResult = gptService.githubDataAnalysis(prompt, 500);
+        String gptAnalysisResult;
+        try {
+            gptAnalysisResult = gptService.githubDataAnalysis(prompt, 500);
+        } catch (JsonProcessingException e) {
+            throw new GithubAnalysisException("Github analysis failed" + e.getMessage());
+        }
         githubAnalysisResult = gptService.githubAnalysisResultParser(gptAnalysisResult);
         githubAnalysisResultRepository.save(githubAnalysisResult);
     }
@@ -361,17 +469,12 @@ public class GithubService {
                     "-Dsonar.login=" + sonarLoginToken
             );
             processBuilder.directory(localRepo);
-            log.info("Starting sonar scanner for project {}, projectKey: {}", repositoryPathUrl, projectKey);
-
             Process process = processBuilder.start();
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                log.error("sonar-scanner failed for project {} with code {}", repositoryPathUrl, exitCode);
                 throw new SonarAnalysisException("SonarQube analysis failed for project: " + repositoryPathUrl);
             }
-
             RepositoryResult result = pollAndParseAnalysisResult(projectKey, repository.getRepoId());
-            log.info("Analysis result parsed for project {}", repositoryPathUrl);
 
             GithubCommit githubCommit = githubCommitRepository.findByRepoId(repository.getRepoId())
                     .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
@@ -409,7 +512,6 @@ public class GithubService {
             totalCommits.addAndGet(commitCount);
             totalPRs.addAndGet(prCount);
             totalIssues.addAndGet(issueCount);
-
             return result;
         } catch (Exception e) {
             log.error("Exception while analyzing repository: {}", repositoryPathUrl, e);
@@ -429,7 +531,6 @@ public class GithubService {
         String projectKey = extractProjectKey(repoUrl);
         File repoDir = new File("/tmp/repositories/" + projectKey);
         if (!repoDir.exists()) {
-            log.info("Cloning repository {} into {}", repoUrl, repoDir.getAbsolutePath());
             try {
                 Git.cloneRepository()
                         .setURI(repoUrl)
@@ -477,10 +578,8 @@ public class GithubService {
                 "vulnerabilities", 50.0,
                 "duplicated_lines_density", 10.0
         );
-
         while (true) {
             SonarResponse sonarResponse = fetchAnalysisResult(projectKey);
-
             if (sonarResponse.isSuccessful()) {
                 double totalPenalty = sonarResponse.getProjectStatus().getConditions().stream()
                         .mapToDouble(condition -> {
@@ -496,21 +595,16 @@ public class GithubService {
                             }
                             return 0.0;
                         }).sum();
-
                 int overallScore = (int) Math.max(0, 100 - totalPenalty);
-
                 Map<String, Double> languageDistribution = fetchLanguageDistribution(projectKey);
                 Map<String, Integer> languageDistributionInt = languageDistribution.entrySet().stream()
                         .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().intValue()));
-
                 Map<String, String> projectMeasures = fetchProjectMeasures(projectKey);
                 Map<String, Double> languageQualityScores = computeQualityScoreByLanguage(projectMeasures);
-
                 return RepositoryResult.builder()
                         .repoId(repoId)
                         .score(overallScore)
-                        .insights("Coverage: " + sonarResponse.getCoverage() +
-                                "%, Bugs: " + sonarResponse.getBugCount())
+                        .insights("Coverage: " + sonarResponse.getCoverage() + "%, Bugs: " + sonarResponse.getBugCount())
                         .languages(languageDistributionInt)
                         .stats(null)
                         .commitFrequency(0)
@@ -532,12 +626,9 @@ public class GithubService {
      */
     private SonarResponse fetchAnalysisResult(String projectKey) {
         String url = sonarHostUrl + "/api/qualitygates/project_status?projectKey=" + projectKey;
-
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " +
-                Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
+        headers.set("Authorization", "Basic " + Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
         HttpEntity<String> request = new HttpEntity<>(headers);
-
         ResponseEntity<SonarResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, SonarResponse.class);
         return response.getBody();
     }
@@ -551,17 +642,12 @@ public class GithubService {
      * 4. return: 언어별 라인 수 분포를 나타내는 Map.
      */
     private Map<String, Double> fetchLanguageDistribution(String projectKey) {
-        String url = sonarHostUrl + "/api/measures/component?componentKey=" + projectKey +
-                "&metricKeys=ncloc_language_distribution";
-
+        String url = sonarHostUrl + "/api/measures/component?componentKey=" + projectKey + "&metricKeys=ncloc_language_distribution";
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " +
-                Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
+        headers.set("Authorization", "Basic " + Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
         HttpEntity<String> request = new HttpEntity<>(headers);
-
         ResponseEntity<MeasuresResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, MeasuresResponse.class);
         MeasuresResponse measuresResponse = response.getBody();
-
         if (measuresResponse != null && measuresResponse.getComponent() != null) {
             List<Measure> measures = measuresResponse.getComponent().getMeasures();
             for (Measure measure : measures) {
@@ -594,15 +680,11 @@ public class GithubService {
     private Map<String, String> fetchProjectMeasures(String projectKey) {
         String metricKeys = "coverage,bugs,code_smells,vulnerabilities,duplicated_lines_density";
         String url = sonarHostUrl + "/api/measures/component?componentKey=" + projectKey + "&metricKeys=" + metricKeys;
-
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " +
-                Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
+        headers.set("Authorization", "Basic " + Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
         HttpEntity<String> request = new HttpEntity<>(headers);
-
         ResponseEntity<MeasuresResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, MeasuresResponse.class);
         MeasuresResponse measuresResponse = response.getBody();
-
         Map<String, String> measuresMap = new HashMap<>();
         if (measuresResponse != null && measuresResponse.getComponent() != null) {
             measuresResponse.getComponent().getMeasures().forEach(measure ->

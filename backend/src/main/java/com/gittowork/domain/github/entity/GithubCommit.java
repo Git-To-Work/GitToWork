@@ -20,7 +20,7 @@ public class GithubCommit {
 
     private int userId;
 
-    private String repoId;
+    private int repoId;
 
     private List<Commit> commits;
 }

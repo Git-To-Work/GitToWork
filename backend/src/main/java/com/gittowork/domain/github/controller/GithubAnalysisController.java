@@ -7,12 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import javax.validation.Valid;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/github")
@@ -22,8 +17,18 @@ public class GithubAnalysisController {
 
     private final GithubService githubService;
 
+    @GetMapping("/select/analysis-by-repository")
+    public ApiResponse<?> getGithubAnalysisByRepository(@NotNull @RequestParam int selectedRepositoryId) {
+        return ApiResponse.success(githubService.getGithubAnalysisByRepository(selectedRepositoryId));
+    }
+
+    @PostMapping("/create/analysis-by-repository")
+    public ApiResponse<?> createAnalysisByRepository(@NotNull int[] repositories) {
+        return ApiResponse.success(HttpStatus.OK, githubService.createGithubAnalysisByRepositoryResponse(repositories));
+    }
+
     @PostMapping("/create/save-selected-repository")
-    public ApiResponse<?> saveSelectedRepositories(@NotNull @Valid int[] repositories) {
+    public ApiResponse<?> saveSelectedRepositories(@NotNull int[] repositories) {
         return ApiResponse.success(HttpStatus.OK, githubService.saveSelectedGithubRepository(repositories));
     }
 
@@ -36,4 +41,6 @@ public class GithubAnalysisController {
     public ApiResponse<?> myRepositoryCombination() {
         return ApiResponse.success(HttpStatus.OK, githubService.getMyRepositoryCombination());
     }
+
+
 }

@@ -12,4 +12,6 @@ public interface GithubEventRepository extends MongoRepository<GithubEvent, Stri
     Optional<GithubEvent> findTopByUserIdOrderByEventsCreatedAtDesc(int userId);
 
     Collection<GithubEvent> findAllByUserId(int userId);
+
+    Optional<GithubEvent> findTopByUserIdAndEvents_RepoOrderByEventsCreatedAtDesc(int userId, String events_repo);
 }
