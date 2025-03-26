@@ -109,4 +109,10 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, ErrorCode.DUPLICATE.getCode(), message);
     }
 
+    @ExceptionHandler(GithubRepositoryNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(GithubRepositoryNotFoundException e) {
+        log.warn("Github repository not found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
 }

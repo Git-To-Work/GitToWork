@@ -30,7 +30,7 @@ class StatsScreen extends StatelessWidget {
             ),
             boxShadow: [ // 👈 추가된 부분 (그림자 효과)
               BoxShadow(
-                color: Colors.black.withOpacity(0.25),
+                color: const Color.fromARGB(64, 0, 0, 0),
                 blurRadius: 4,
                 offset: const Offset(0, 4),
               ),

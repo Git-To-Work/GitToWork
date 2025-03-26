@@ -15,6 +15,7 @@ import com.gittowork.global.service.RedisService;
 import com.gittowork.global.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -36,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 public class GithubAuthenticationService {
 
@@ -79,11 +81,12 @@ public class GithubAuthenticationService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("client_id", clientId);
         body.add("client_secret", clientSecret);
-        body.add("redirect_uri", redirectUri);
+//        body.add("redirect_uri", redirectUri);
         body.add("code", code);
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
@@ -96,6 +99,8 @@ public class GithubAuthenticationService {
                 new ParameterizedTypeReference<Map<String, Object>>() {}
         );
         Map<String, Object> responseBody = response.getBody();
+
+        log.info(responseBody.toString());
 
         if (Objects.isNull(responseBody) || !responseBody.containsKey("access_token")) {
             throw new GithubSignInException("Unauthorized or Invalid Code.");
