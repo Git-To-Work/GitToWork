@@ -24,8 +24,8 @@ public class GithubAnalysisController {
     }
 
     @PostMapping("/create/analysis-by-repository")
-    public ApiResponse<?> createAnalysisByRepository(@NotNull int[] repositories) {
-        return ApiResponse.success(HttpStatus.OK, githubService.createGithubAnalysisByRepositoryResponse(repositories));
+    public ApiResponse<?> createAnalysisByRepository(@NotNull @RequestBody SaveSelectedRepositoriesRequest saveSelectedRepositoriesRequest) {
+        return ApiResponse.success(HttpStatus.OK, githubService.createGithubAnalysisByRepositoryResponse(saveSelectedRepositoriesRequest.getRepositories()));
     }
 
     @PostMapping("/create/save-selected-repository")

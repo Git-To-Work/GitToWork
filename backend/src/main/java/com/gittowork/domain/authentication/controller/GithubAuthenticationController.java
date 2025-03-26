@@ -7,13 +7,16 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 @AllArgsConstructor(onConstructor = @__(@Autowired))
@@ -23,7 +26,8 @@ public class GithubAuthenticationController {
 
     @Operation(summary = "Github OAuth", description = "깃허브 추가")
     @PostMapping("/create/signin")
-    public ApiResponse<?> signInGithub(@NotNull SignInGithubRequest signInGithubRequest) {
+    public ApiResponse<?> signInGithub(@NotNull @RequestBody SignInGithubRequest signInGithubRequest) {
+        log.info("signInGithubRequest: {}", signInGithubRequest.getCode());
         return ApiResponse.success(HttpStatus.OK, githubAuthenticationService.signInGithub(signInGithubRequest.getCode()));
     }
 

@@ -18,6 +18,6 @@ public class ApiController {
                 .releaseDate("2025-03-19")
                 .build();
 
-        return ApiResponse.success(HttpStatus.OK, ApiResponse.success(apiVersionResponse));
+        return ApiResponse.success(HttpStatus.OK, apiVersionResponse);
     }
 }

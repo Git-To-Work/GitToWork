@@ -20,55 +20,55 @@ public class CompanyInteractionController {
 
     @Operation(summary = "스크랩한 회사 목록 조회", description = "현재 인증된 사용자가 스크랩한 회사 목록을 조회합니다.")
     @GetMapping("/select/scrap")
-    public ApiResponse<?> getScrapCompany(InteractionGetRequest interactionGetRequest) {
+    public ApiResponse<?> getScrapCompany(@RequestBody InteractionGetRequest interactionGetRequest) {
         return ApiResponse.success(companyInteractionService.getScrapCompany(interactionGetRequest));
     }
 
     @Operation(summary = "회사 스크랩 추가", description = "현재 인증된 사용자가 특정 회사를 스크랩 목록에 추가합니다.")
     @PostMapping("/create/scrap")
-    public ApiResponse<?> addScrapCompany(InteractionPostRequest interactionPostRequest) {
+    public ApiResponse<?> addScrapCompany(@RequestBody InteractionPostRequest interactionPostRequest) {
         return ApiResponse.success(companyInteractionService.addScrapCompany(interactionPostRequest.getCompanyId()));
     }
 
     @Operation(summary = "회사 스크랩 삭제", description = "현재 인증된 사용자의 스크랩 목록에서 특정 회사를 삭제합니다.")
     @DeleteMapping("/delete/scrap")
-    public ApiResponse<?> deleteScrapCompany(InteractionPostRequest interactionPostRequest) {
+    public ApiResponse<?> deleteScrapCompany(@RequestBody InteractionPostRequest interactionPostRequest) {
         return ApiResponse.success(companyInteractionService.deleteScrapCompany(interactionPostRequest.getCompanyId()));
     }
 
     @Operation(summary = "좋아요한 회사 목록 조회", description = "현재 인증된 사용자가 좋아요한 회사 목록을 조회합니다.")
     @GetMapping("/select/like")
-    public ApiResponse<?> getMyLikeCompany(InteractionGetRequest interactionGetRequest) {
+    public ApiResponse<?> getMyLikeCompany(@RequestBody InteractionGetRequest interactionGetRequest) {
         return ApiResponse.success(companyInteractionService.getMyLikeCompany(interactionGetRequest));
     }
 
     @Operation(summary = "회사 좋아요 추가", description = "현재 인증된 사용자가 특정 회사를 좋아요 목록에 추가합니다.")
     @PostMapping("/create/like")
-    public ApiResponse<?> addLikeCompany(InteractionPostRequest interactionPostRequest) {
+    public ApiResponse<?> addLikeCompany(@RequestBody InteractionPostRequest interactionPostRequest) {
         return ApiResponse.success(companyInteractionService.addLikeCompany(interactionPostRequest.getCompanyId()));
     }
 
     @Operation(summary = "회사 좋아요 삭제", description = "현재 인증된 사용자의 좋아요 목록에서 특정 회사를 삭제합니다.")
     @DeleteMapping("/delete/like")
-    public ApiResponse<?> deleteLikeCompany(InteractionPostRequest interactionPostRequest) {
+    public ApiResponse<?> deleteLikeCompany(@RequestBody InteractionPostRequest interactionPostRequest) {
         return ApiResponse.success(companyInteractionService.deleteLikeCompany(interactionPostRequest.getCompanyId()));
     }
 
     @Operation(summary = "블랙리스트 회사 목록 조회", description = "현재 인증된 사용자가 블랙리스트에 등록한 회사 목록을 조회합니다.")
     @GetMapping("/select/blacklist")
-    public ApiResponse<?> getMyBlackList(InteractionGetRequest interactionGetRequest) {
+    public ApiResponse<?> getMyBlackList(@RequestBody InteractionGetRequest interactionGetRequest) {
         return ApiResponse.success(companyInteractionService.getMyBlackList(interactionGetRequest));
     }
 
     @Operation(summary = "블랙리스트 회사 추가", description = "현재 인증된 사용자가 특정 회사를 블랙리스트에 추가합니다.")
     @PostMapping("/create/blacklist")
-    public ApiResponse<?> addMyBlackList(InteractionPostRequest interactionPostRequest) {
+    public ApiResponse<?> addMyBlackList(@RequestBody InteractionPostRequest interactionPostRequest) {
         return ApiResponse.success(companyInteractionService.addMyBlackList(interactionPostRequest.getCompanyId()));
     }
 
     @Operation(summary = "블랙리스트 회사 삭제", description = "현재 인증된 사용자의 블랙리스트에서 특정 회사를 삭제합니다.")
     @DeleteMapping("/delete/blacklist")
-    public ApiResponse<?> deleteMyBlackList(InteractionPostRequest interactionPostRequest) {
+    public ApiResponse<?> deleteMyBlackList(@RequestBody InteractionPostRequest interactionPostRequest) {
         return ApiResponse.success(companyInteractionService.deleteMyBlackList(interactionPostRequest.getCompanyId()));
     }
 }
