@@ -23,23 +23,20 @@ public class GithubAuthenticationController {
 
     @Operation(summary = "Github OAuth", description = "깃허브 추가")
     @PostMapping("/create/signin")
-    public ResponseEntity<?> signInGithub(@NotNull SignInGithubRequest signInGithubRequest) {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, githubAuthenticationService.signInGithub(signInGithubRequest.getCode())));
+    public ApiResponse<?> signInGithub(@NotNull SignInGithubRequest signInGithubRequest) {
+        return ApiResponse.success(HttpStatus.OK, githubAuthenticationService.signInGithub(signInGithubRequest.getCode()));
     }
 
     @Operation(summary = "Github Auto Login", description = "깃허브 자동 로그인")
     @PostMapping("/create/login")
-    public ResponseEntity<?> autoLogInGithub() {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, githubAuthenticationService.autoLogInGithub()));
+    public ApiResponse<?> autoLogInGithub() {
+        return ApiResponse.success(HttpStatus.OK, githubAuthenticationService.autoLogInGithub());
     }
 
     @Operation(summary = "Github logout", description = "깃허브 로그아웃")
     @PostMapping("/create/logout")
-    public ResponseEntity<?> logOutGithub() {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, githubAuthenticationService.logout()));
+    public ApiResponse<?> logOutGithub() {
+        return ApiResponse.success(HttpStatus.OK, githubAuthenticationService.logout());
     }
 
 }
