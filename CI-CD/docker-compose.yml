@@ -3,6 +3,7 @@ version: '3.8'
 services:
   backend:
     container_name: backend
+    hostname: backend
     build:
       context: ../backend
       dockerfile: Dockerfile
@@ -12,15 +13,13 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
-      app-network:
-        aliases:
-          - backend
       s12p21c103_app-network:
         aliases:
           - backend
 
   fastapi:
     container_name: fastapi
+    hostname: fastapi
     build:
       context: ../bigdata
       dockerfile: Dockerfile
@@ -35,15 +34,10 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
-      app-network:
-        aliases:
-          - fastapi
       s12p21c103_app-network:
         aliases:
           - fastapi
 
 networks:
-  app-network:
-    driver: bridge
   s12p21c103_app-network:
     external: true
