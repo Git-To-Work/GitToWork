@@ -20,7 +20,9 @@ public class GlobalExceptionHandler {
     public enum ErrorCode {
         NOT_FOUND("NF","Not found"),
         UNAUTHORIZED("UR", "Unauthorized."),
-        DUPLICATE("DP", "Duplicate entry");
+        DUPLICATE("DP", "Duplicate entry"),
+        SONAR_ANALYSIS_ERROR("SAE", "SonarQube analysis failed"),
+        GITHUB_ANALYSIS_ERROR("GSA", "Github analysis failed"),;
 
         private final String code;
         private final String message;
@@ -112,6 +114,34 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(GithubRepositoryNotFoundException.class)
     public ResponseEntity<?> exceptionHandler(GithubRepositoryNotFoundException e) {
         log.warn("Github repository not found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
+
+    @ExceptionHandler(GithubCommitsNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(GithubCommitsNotFoundException e) {
+        log.warn("Github commits not found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
+
+    @ExceptionHandler(SonarAnalysisException.class)
+    public ResponseEntity<?> exceptionHandler(SonarAnalysisException e) {
+        log.warn("Sonar Analysis failed: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.SONAR_ANALYSIS_ERROR.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.SONAR_ANALYSIS_ERROR.getCode(), message);
+    }
+
+    @ExceptionHandler(GithubAnalysisException.class)
+    public ResponseEntity<?> exceptionHandler(GithubAnalysisException e) {
+        log.warn("Github analysis failed: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.GITHUB_ANALYSIS_ERROR.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.GITHUB_ANALYSIS_ERROR.getCode(), message);
+    }
+
+    @ExceptionHandler(GithubAnalysisNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(GithubAnalysisNotFoundException e) {
+        log.warn("Github analysis not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }

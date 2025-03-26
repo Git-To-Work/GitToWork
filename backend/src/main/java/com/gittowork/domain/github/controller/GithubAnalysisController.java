@@ -18,6 +18,16 @@ public class GithubAnalysisController {
 
     private final GithubService githubService;
 
+    @GetMapping("/select/analysis-by-repository")
+    public ApiResponse<?> getGithubAnalysisByRepository(@NotNull @RequestParam int selectedRepositoryId) {
+        return ApiResponse.success(githubService.getGithubAnalysisByRepository(selectedRepositoryId));
+    }
+
+    @PostMapping("/create/analysis-by-repository")
+    public ApiResponse<?> createAnalysisByRepository(@NotNull int[] repositories) {
+        return ApiResponse.success(HttpStatus.OK, githubService.createGithubAnalysisByRepositoryResponse(repositories));
+    }
+
     @PostMapping("/create/save-selected-repository")
     public ApiResponse<?> saveSelectedRepositories(@NotNull SaveSelectedRepositoriesRequest saveSelectedRepositoriesRequest) {
         return ApiResponse.success(HttpStatus.OK, githubService.saveSelectedGithubRepository(saveSelectedRepositoriesRequest.getRepositories()));
@@ -32,4 +42,6 @@ public class GithubAnalysisController {
     public ApiResponse<?> myRepositoryCombination() {
         return ApiResponse.success(HttpStatus.OK, githubService.getMyRepositoryCombination());
     }
+
+
 }

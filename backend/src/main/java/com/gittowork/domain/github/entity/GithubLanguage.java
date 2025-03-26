@@ -1,24 +1,25 @@
 package com.gittowork.domain.github.entity;
 
-import com.gittowork.domain.github.model.repository.Repository;
 import jakarta.persistence.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.List;
+import java.util.Map;
 
-@Document(collection = "selected_repository")
+@Document(collection = "github_language")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SelectedRepository {
+public class GithubLanguage {
 
     @Id
-    private String selectedRepositoryId;
+    private String githubLanguageId;
 
     private int userId;
 
-    private List<Repository> repositories;
+    private int repoId;
+
+    private Map<String, Long> languages;
 }

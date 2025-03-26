@@ -1,24 +1,22 @@
 package com.gittowork.domain.github.entity;
 
-import com.gittowork.domain.github.model.repository.Repository;
+import com.gittowork.domain.github.model.event.Event;
 import jakarta.persistence.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.List;
-
-@Document(collection = "selected_repository")
+@Document(collection = "github_event")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SelectedRepository {
+public class GithubEvent {
 
     @Id
-    private String selectedRepositoryId;
+    private String githubEventId;
 
     private int userId;
 
-    private List<Repository> repositories;
+    private Event events;
 }

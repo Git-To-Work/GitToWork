@@ -1,5 +1,6 @@
 package com.gittowork.domain.github.entity;
 
+import com.gittowork.domain.github.model.repository.Repository;
 import jakarta.persistence.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -15,7 +16,7 @@ import java.util.List;
 public class GithubRepository {
 
     @Id
-    private int githubRepositoryId;
+    private String githubRepositoryId;
 
     private int userId;
 
