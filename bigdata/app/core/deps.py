@@ -1,14 +1,12 @@
 # app/core/deps.py
-
 from app.core.database import SessionLocal
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import APIKeyHeader
-from fastapi import Security
 from app.core.security import verify_access_token
 from sqlalchemy.orm import Session
 from app.models.user import User
+from app.exceptions import UserNotFoundException
 
-# 데이터베이스 세션 의존성
 def get_db():
     db = SessionLocal()
     try:
@@ -16,8 +14,6 @@ def get_db():
     finally:
         db.close()
 
-
-# JWT 토큰 검증 후 사용자 정보 반환 의존성
 api_key_header = APIKeyHeader(name="Authorization")
 
 """
@@ -33,7 +29,6 @@ api_key_header = APIKeyHeader(name="Authorization")
      - User 객체 (필요에 따라 dict 형태로 변환 가능)
 """
 def get_current_user(token: str = Security(api_key_header), db: Session = Depends(get_db)):
-    # "Bearer " prefix 제거
     if not token.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid token format")
     token = token[7:]  # Remove "Bearer "
@@ -41,8 +36,12 @@ def get_current_user(token: str = Security(api_key_header), db: Session = Depend
     payload = verify_access_token(token)
     username = payload.get("sub")
     if not username:
-        raise HTTPException(status_code=401, detail="Token payload does not contain username")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token payload does not contain username",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     user = db.query(User).filter(User.github_name == username).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise UserNotFoundException()
     return user

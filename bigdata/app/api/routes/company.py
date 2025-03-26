@@ -13,6 +13,7 @@ router = APIRouter()
 def read_companies(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db),
+    company_name: Optional[str] = None,
     tech_stacks: Optional[List[str]] = Query(None),
     business_field: Optional[str] = None,
     career: Optional[int] = None,
@@ -21,16 +22,17 @@ def read_companies(
     page: int = 1,
     size: int = 20
 ):
-    user_id = current_user.user_id if hasattr(current_user, "user_id") else current_user.get("user_id")
+    user_id = current_user.user_id
 
     companies, total_count = search_companies(
         db=db,
         user_id=user_id,
-        company_name=keyword,
+        company_name=company_name,
         tech_stacks=tech_stacks,
         business_field=business_field,
         career=career,
         location=location,
+        keyword=keyword,
         page=page,
         size=size
     )
@@ -38,23 +40,16 @@ def read_companies(
     result = []
     now = datetime.now()
     for company in companies:
-        # Field 정보: 연결된 Field 객체에서 field_name 추출
         field_name = company.field.field_name if company.field else None
-
-        # Category 정보: Field와 연결된 Category 목록 추출
         categories = []
         if company.field and hasattr(company.field, "categories"):
             categories = [
                 {"category_id": cat.category_id, "category_name": cat.category_name}
                 for cat in company.field.categories
             ]
-
-        # scraped: user_id가 주어졌을 경우, 회사의 user_scraps 관계를 통해 스크랩 여부 판단
         scraped = False
         if user_id and hasattr(company, "user_scraps"):
             scraped = any(us.user_id == user_id for us in company.user_scraps)
-
-        # tech_stacks: 모든 채용 공고(JobNotice)에서 연결된 기술 스택 이름을 집합으로 모으기 (마감일 상관없이)
         tech_stack_set = set()
         if hasattr(company, "job_notices"):
             for job in company.job_notices:
@@ -63,8 +58,6 @@ def read_companies(
                         if nts.tech_stack:
                             tech_stack_set.add(nts.tech_stack.tech_stack_name)
         tech_stack_list = list(tech_stack_set)
-
-        # has_job_notice: 현재 시각 이후 마감하는 채용 공고가 있는지 판단
         has_job_notice = False
         if hasattr(company, "job_notices"):
             has_job_notice = any(job.deadline_dttm > now for job in company.job_notices)
