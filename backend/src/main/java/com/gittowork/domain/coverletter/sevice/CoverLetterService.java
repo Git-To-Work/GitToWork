@@ -154,6 +154,7 @@ public class CoverLetterService {
      * 3. param: 없음.
      * 4. return: 사용자의 CoverLetter 정보를 담은 GetMyCoverLetterListResponse DTO.
      */
+    @Transactional(readOnly = true)
     public GetMyCoverLetterListResponse getMyCoverLetterList() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
@@ -190,6 +191,7 @@ public class CoverLetterService {
      * 3. param: int coverLetterId - 삭제할 CoverLetter의 식별자.
      * 4. return: 삭제 완료 메시지를 담은 MessageOnlyResponse DTO.
      */
+    @Transactional
     public MessageOnlyResponse deleteCoverLetter(int coverLetterId) {
         CoverLetter coverLetter = coverLetterRepository.findById(coverLetterId)
                 .orElseThrow(() -> new CoverLetterNotFoundException("CoverLetter not found"));
