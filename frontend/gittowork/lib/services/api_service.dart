@@ -17,11 +17,12 @@ class SignInResponse {
   });
 
   factory SignInResponse.fromJson(Map<String, dynamic> json) {
+    final results = json['results'] ?? {};
     return SignInResponse(
-      nickname: json['nickname'] as String,
-      accessToken: json['accessToken'] as String,
-      privacyPolicyAgreed: json['privacyPolicyAgreed'] as bool,
-      avatarUrl: json['avatarUrl'] as String,
+      accessToken: results['accessToken'] as String,
+      nickname: results['nickname'] as String,
+      privacyPolicyAgreed: results['privacyPolicyAgreed'] as bool,
+      avatarUrl: results['avatarUrl'] as String,
     );
   }
 }
@@ -31,7 +32,7 @@ class ApiService {
     BaseOptions(
       baseUrl: dotenv.env['API_BASE_URL'] ?? '',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
       connectTimeout: const Duration(milliseconds: 3000),
     ),
