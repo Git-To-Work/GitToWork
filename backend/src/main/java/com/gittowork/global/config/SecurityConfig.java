@@ -1,9 +1,12 @@
 package com.gittowork.global.config;
 
 import com.gittowork.global.utils.JwtUtil;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -18,10 +21,10 @@ import java.util.Collections;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
+@AllArgsConstructor(onConstructor_ = {@Autowired})
 public class SecurityConfig {
 
-    private final JwtUtil jwtUtil;
+    private final JwtFilter jwtFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(org.springframework.security.config.annotation.web.builders.HttpSecurity http) throws Exception {
@@ -40,12 +43,14 @@ public class SecurityConfig {
         }));
 
         http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
+
                 .requestMatchers("/auth/create/signin").permitAll()
                 .requestMatchers("/auth/create/login").permitAll()
                 .anyRequest().authenticated()
         );
 
-        http.addFilterBefore(new JwtFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         http.httpBasic(Customizer.withDefaults());
 

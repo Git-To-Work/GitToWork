@@ -165,10 +165,11 @@ public class GithubAuthenticationService {
         user.put("githubId", githubUserInfo.get("id"));
         user.put("githubName", username);
         user.put("githubEmail", githubUserInfo.get("email"));
+        user.put("githubAccessToken", githubAccessToken);
 
         // Redis에 저장할 키 생성
-        String userKey = "user:" + githubUserInfo.get("id");
-        String userGitInfoKey = "userGitInfo:" + githubUserInfo.get("id");
+        String userKey = "user: " + username;
+        String userGitInfoKey = "userGitInfo: " + username;
 
         // Redis에 사용자 정보 저장 및 만료 시간 설정
         redisService.saveUser(userKey, user);
