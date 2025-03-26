@@ -23,7 +23,7 @@ public class UserController {
 
     @Operation(summary = "Insert Profile", description = "개인 프로필 삽입")
     @PostMapping("/create/profile")
-    public ApiResponse<?> insertProfile(@NotNull InsertProfileRequest insertProfileRequest) {
+    public ApiResponse<?> insertProfile(@NotNull @RequestBody InsertProfileRequest insertProfileRequest) {
         return ApiResponse.success(HttpStatus.OK, userService.insertProfile(insertProfileRequest));
     }
 
@@ -35,7 +35,7 @@ public class UserController {
 
     @Operation(summary = "Update Profile", description = "개인 프로필 수정")
     @PutMapping("/update/profile")
-    public ApiResponse<?> updateProfile(@NotNull UpdateProfileRequest updateProfileRequest) {
+    public ApiResponse<?> updateProfile(@NotNull @RequestBody UpdateProfileRequest updateProfileRequest) {
         return ApiResponse.success(HttpStatus.OK, userService.updateProfile(updateProfileRequest));
     }
 
@@ -47,7 +47,7 @@ public class UserController {
 
     @Operation(summary = "Update Interest Field", description = "관심분야 수정")
     @PutMapping("/update/interest-field")
-    public ApiResponse<?> updateInterestField(@NotNull UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
+    public ApiResponse<?> updateInterestField(@NotNull @RequestBody UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
         return ApiResponse.success(HttpStatus.OK, userService.updateInterestFields(updateInterestsFieldsRequest));
     }
 

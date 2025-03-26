@@ -1,5 +1,6 @@
 package com.gittowork.domain.github.controller;
 
+import com.gittowork.domain.github.dto.request.CreateAnalysisByRepositoryRequest;
 import com.gittowork.domain.github.dto.request.SaveSelectedRepositoriesRequest;
 import com.gittowork.domain.github.service.GithubService;
 import com.gittowork.global.response.ApiResponse;
@@ -24,8 +25,8 @@ public class GithubAnalysisController {
     }
 
     @PostMapping("/create/analysis-by-repository")
-    public ApiResponse<?> createAnalysisByRepository(@NotNull int[] repositories) {
-        return ApiResponse.success(HttpStatus.OK, githubService.createGithubAnalysisByRepositoryResponse(repositories));
+    public ApiResponse<?> createAnalysisByRepository(@NotNull @RequestBody CreateAnalysisByRepositoryRequest createAnalysisByRepositoryRequest) {
+        return ApiResponse.success(HttpStatus.OK, githubService.createGithubAnalysisByRepositoryResponse(createAnalysisByRepositoryRequest.getRepositories()));
     }
 
     @PostMapping("/create/save-selected-repository")
