@@ -44,5 +44,9 @@ public class GithubAnalysisController {
         return ApiResponse.success(HttpStatus.OK, githubService.getMyRepositoryCombination());
     }
 
+    @DeleteMapping("/delete/my-repository-combination")
+    public ApiResponse<?> deleteGithubAnalysisByRepository(@NotNull @RequestParam int selectedRepositoryId) {
+        return ApiResponse.success(HttpStatus.OK, githubService.deleteSelectedGithubRepository(selectedRepositoryId));
+    }
 
 }

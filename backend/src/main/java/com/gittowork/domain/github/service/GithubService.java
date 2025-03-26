@@ -101,6 +101,7 @@ public class GithubService {
      * 3. param: int selectedRepositoryId - 분석 대상 Repository의 식별자.
      * 4. return: GetGithubAnalysisByRepositoryResponse - 분석 결과 정보를 담은 DTO.
      */
+    @Transactional(readOnly = true)
     public GetGithubAnalysisByRepositoryResponse getGithubAnalysisByRepository(int selectedRepositoryId) {
         GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
                 .findBySelectedRepositoriesId(String.valueOf(selectedRepositoryId))
@@ -162,6 +163,7 @@ public class GithubService {
      * 3. param: int[] repositories - 분석 대상 repository의 repoId 배열.
      * 4. return: CreateGithubAnalysisByRepositoryResponse - 분석 시작 여부와 메시지를 담은 DTO.
      */
+    @Transactional
     public CreateGithubAnalysisByRepositoryResponse createGithubAnalysisByRepositoryResponse(int[] repositories) {
         String userName = getUserName();
         User user = userRepository.findByGithubName(userName)
@@ -263,6 +265,7 @@ public class GithubService {
      * 3. param: 없음.
      * 4. return: 사용자의 GitHub 저장소 정보를 담은 GetMyRepositoryResponse 객체.
      */
+    @Transactional(readOnly = true)
     public GetMyRepositoryResponse getMyRepository() {
         String username = getUserName();
         User user = userRepository.findByGithubName(username)
@@ -296,6 +299,7 @@ public class GithubService {
      * 3. param: 없음.
      * 4. return: 변환된 repository 조합 정보를 담은 GetMyRepositoryCombinationResponse 객체.
      */
+    @Transactional(readOnly = true)
     public GetMyRepositoryCombinationResponse getMyRepositoryCombination() {
         String username = getUserName();
         User user = userRepository.findByGithubName(username)
@@ -315,6 +319,41 @@ public class GithubService {
 
         return GetMyRepositoryCombinationResponse.builder()
                 .repositoryCombinations(repoComb)
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 현재 인증된 사용자의 선택된 GitHub repository 조합과 해당 분석 결과를 삭제하는 API.
+     * 2. 로직:
+     *    - SecurityContext에서 현재 인증된 사용자의 username을 조회한다.
+     *    - username을 기반으로 User 엔티티를 검색하여 userId를 확보한다.
+     *    - 전달받은 selectedGithubRepositoryIds를 문자열로 변환한다.
+     *    - userId와 변환된 식별자를 이용하여 해당 SelectedRepository를 조회한다.
+     *    - 동일한 식별자로 GithubAnalysisResult를 조회한다.
+     *    - 조회된 SelectedRepository와 GithubAnalysisResult를 삭제한다.
+     * 3. param: int selectedGithubRepositoryIds - 삭제할 repository 조합의 식별자.
+     * 4. return: 삭제 완료 메시지를 담은 MessageOnlyResponse 객체.
+     */
+    @Transactional
+    public MessageOnlyResponse deleteSelectedGithubRepository(int selectedGithubRepositoryIds) {
+        int userId = userRepository.findByGithubName(getUserName())
+                .orElseThrow(() -> new UserNotFoundException("User not found"))
+                .getId();
+
+        String selectedRepoIdStr = String.valueOf(selectedGithubRepositoryIds);
+
+        SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndSelectedRepositoryId(userId, selectedRepoIdStr)
+                .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository combination not found"));
+
+        GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
+                .findBySelectedRepositoriesId(selectedRepoIdStr)
+                .orElseThrow(() -> new GithubAnalysisNotFoundException("Github analysis result not found"));
+
+        selectedRepoRepository.delete(selectedRepository);
+        githubAnalysisResultRepository.delete(githubAnalysisResult);
+
+        return MessageOnlyResponse.builder()
+                .message("레포지토리 조합과 분석 결과가 삭제되었습니다.")
                 .build();
     }
 
