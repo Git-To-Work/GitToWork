@@ -12,9 +12,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
-      app-network:
-        aliases:
-          - backend
       s12p21c103_app-network:
         aliases:
           - backend
@@ -35,15 +32,10 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
-      app-network:
-        aliases:
-          - fastapi
       s12p21c103_app-network:
         aliases:
           - fastapi
 
 networks:
-  app-network:
-    driver: bridge
   s12p21c103_app-network:
     external: true
