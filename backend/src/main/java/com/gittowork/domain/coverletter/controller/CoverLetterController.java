@@ -1,10 +1,8 @@
 package com.gittowork.domain.coverletter.controller;
 
-import com.gittowork.domain.coverletter.entity.CoverLetter;
 import com.gittowork.domain.coverletter.sevice.CoverLetterService;
 import com.gittowork.global.response.ApiResponse;
 import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
