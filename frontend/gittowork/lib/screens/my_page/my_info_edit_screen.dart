@@ -32,7 +32,7 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
     // 초기값 설정 (API or userProfile에서 가져온 값)
     _nicknameController.text = widget.userProfile.nickname;
     _nameController.text = widget.userProfile.name; // readOnly
-    _birthController.text = widget.userProfile.dateOfBirth; // readOnly
+    _birthController.text = widget.userProfile.birthDt; // readOnly
     _phoneController.text = widget.userProfile.phone;
     // _serviceNotification = ... // userProfile에 관련 필드가 있으면 적용
   }

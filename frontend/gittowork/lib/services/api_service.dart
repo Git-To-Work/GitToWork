@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user_profile.dart';
+import '../screens/signup/business_interest_screen.dart';
 
 class SignInResponse {
   final String nickname;
@@ -75,7 +76,7 @@ class ApiService {
     final response = await _dio.get('/api/user/select/profile');
     if (response.statusCode == 200) {
       final data = response.data;
-      final result = data['result'];
+      final result = data['results'];
       return UserProfile.fromJson(result);
     } else {
       throw Exception('Failed to load user profile: ${response.statusCode}');
@@ -106,6 +107,32 @@ class ApiService {
     } catch (error) {
       debugPrint('회원가입 실패(예외 발생): $error');
       return false;
+    }
+  }
+
+  static Future<List<BusinessField>> fetchInterestFields() async {
+    try {
+      final token = await FlutterSecureStorage().read(key: 'jwt_token');
+      final response = await _dio.get(
+        '/api/user/select/interest-field-list',
+        options: Options(headers: {
+          'authorization': 'Bearer $token',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['fields'] as List;
+        return data.map((json) => BusinessField(
+          fieldId: json['fieldId'],
+          fieldName: json['fieldName'],
+          logoUrl: json['logoUrl'],
+        )).toList();
+      } else {
+        throw Exception('관심 분야 목록 불러오기 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('관심 분야 목록 에러: $e');
+      return [];
     }
   }
 

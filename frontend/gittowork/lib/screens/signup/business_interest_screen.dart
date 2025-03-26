@@ -58,27 +58,9 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
     _fetchBusinessFields();
   }
 
-  // 백엔드에서 비즈니스 분야 리스트를 가져오는 로직 (가짜 예시)
   Future<void> _fetchBusinessFields() async {
-    // TODO: 실제 ApiService 등을 사용하여 백엔드에서 받아오세요.
-    final fetchedFields = [
-      BusinessField(fieldId: 1, fieldName: "솔루션 SI", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 2, fieldName: "game", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 3, fieldName: "클라우드", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 4, fieldName: "인프라", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 5, fieldName: "빅데이터", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 6, fieldName: "AI", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 7, fieldName: "블록체인", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 8, fieldName: "IoT", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 9, fieldName: "보안", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 10, fieldName: "로봇", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 11, fieldName: "커머스", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 12, fieldName: "핀테크", logoUrl: "https://picsum.photos/200/120"),
-      // ...
-    ];
+    final fetchedFields = await ApiService.fetchInterestFields();
 
-    // 이미 선택된 분야(수정 시나리오)를 반영
-    // widget.initialSelectedFields 에 포함된 분야명과 동일하면 isSelected = true
     for (final field in fetchedFields) {
       if (widget.initialSelectedFields.contains(field.fieldName)) {
         field.isSelected = true;
@@ -90,10 +72,10 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
     });
 
     if (widget.isSignUp) {
-      // 디버그용
       debugPrint("이전 회원가입 파라미터: ${widget.signupParams}");
     }
   }
+
 
   // 아이템을 탭했을 때 선택/해제 로직
   void _toggleSelect(int index) {
