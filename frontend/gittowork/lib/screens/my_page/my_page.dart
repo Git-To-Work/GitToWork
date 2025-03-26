@@ -4,14 +4,14 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/app_bar.dart';
 
-class MyPageScreen extends StatefulWidget {
-  const MyPageScreen({super.key});
+class MyPage extends StatefulWidget {
+  const MyPage({super.key});
 
   @override
-  State<MyPageScreen> createState() => _MyPageScreenState();
+  State<MyPage> createState() => _MyPageScreenState();
 }
 
-class _MyPageScreenState extends State<MyPageScreen> {
+class _MyPageScreenState extends State<MyPage> {
   bool _isLoading = false;
   String? _errorMessage;
 

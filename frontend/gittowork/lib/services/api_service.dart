@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user_profile.dart';
 
 class SignInResponse {
@@ -32,7 +33,7 @@ class ApiService {
     BaseOptions(
       baseUrl: dotenv.env['API_BASE_URL'] ?? '',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
       connectTimeout: const Duration(milliseconds: 3000),
     ),
@@ -82,22 +83,16 @@ class ApiService {
   }
 
   /// 회원가입 정보 전송 메서드
-  /// [signupParams]에는 아래 파라미터들이 모두 포함되어 있어야 합니다.
-  /// - experience
-  /// - interestsFields (최대 5개)
-  /// - name
-  /// - birthDt (0000-00-00 형식)
-  /// - phone (010-0000-0000 형식)
-  /// - privacyPolicyAgreed (true/false)
-  /// - notificationAgreed (true/false)
   static Future<bool> sendSignupData(Map<dynamic, dynamic> signupParams) async {
     try {
-      // 만약 Authorization 헤더가 필요하면 미리 세팅 (토큰 보유 시)
-      // _dio.options.headers['authorization'] = 'Bearer YOUR_TOKEN';
-
+      final token = await FlutterSecureStorage().read(key: 'jwt_token');
+      debugPrint('JWT 토큰: $token');
       final response = await _dio.post(
         '/api/user/create/profile',
         data: signupParams,
+        options: Options(headers: {
+          'authorization': 'Bearer $token',
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -110,6 +105,31 @@ class ApiService {
       }
     } catch (error) {
       debugPrint('회원가입 실패(예외 발생): $error');
+      return false;
+    }
+  }
+
+  static Future<bool> updateInterestFields(List<int> interestFields) async {
+    try {
+      final token = await FlutterSecureStorage().read(key: 'jwt_token');
+      debugPrint('JWT 토큰: $token');
+      final response = await _dio.post(
+        '/api/user/update/interest-field',
+        data: {'interestFields': interestFields},
+        options: Options(headers: {
+          'authorization': 'Bearer $token',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('관심 분야 업데이트 성공: ${response.data}');
+        return true;
+      } else {
+        debugPrint('관심 분야 업데이트 실패: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('관심 분야 업데이트 에러: $e');
       return false;
     }
   }

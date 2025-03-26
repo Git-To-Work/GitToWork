@@ -113,18 +113,14 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
     });
   }
 
-  // 선택 완료 버튼 누르면 호출
   Future<void> _onComplete() async {
-    // 1. 사용자가 선택한 비즈니스 분야를 추려서
-    final selectedFields = businessFields.where((field) => field.isSelected).toList();
-    final selectedNames = selectedFields.map((f) => f.fieldName).toList();
+    final selectedFields = businessFields
+        .where((field) => field.isSelected)
+        .map((f) => f.fieldId)
+        .toList();
 
     if (widget.isSignUp) {
-      // 2. signupParams에 interestsFields로 담은 뒤
-      widget.signupParams?['interestsFields'] = selectedNames;
-      debugPrint("최종 회원가입 정보: ${widget.signupParams}");
-
-      // 3. ApiService 로 회원가입 요청
+      widget.signupParams?['interestsFields'] = selectedFields;
       final isSignupSuccess = await ApiService.sendSignupData(widget.signupParams!);
 
       if (isSignupSuccess) {
@@ -135,15 +131,20 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('회원가입에 실패했습니다. 다시 시도해주세요.')),
+          const SnackBar(content: Text('회원가입에 실패했습니다.')),
         );
       }
     } else {
-      // 회원정보 수정 로직
-      Navigator.pop(context, selectedNames);
+      final isUpdated = await ApiService.updateInterestFields(selectedFields);
+      if (isUpdated) {
+        Navigator.pop(context, selectedFields);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('관심 분야 업데이트 실패')),
+        );
+      }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

@@ -38,7 +38,7 @@ class OnboardingScreen extends StatelessWidget {
                   );
                 }
               },
-              child: const Text("Login with GitHub"),
+              child: const Text("GitHub으로 회원가입"),
             ),
             ElevatedButton(
               onPressed: () {

@@ -164,7 +164,7 @@ class _SignupDetailScreenState extends State<SignupDetailScreen> {
       'name': _nameController.text,
       'birthDt': _birthController.text,
       'phone': _phoneController.text,
-      'experience': _careerController.text,
+      'experience': int.tryParse(_careerController.text.replaceAll(RegExp(r'\D'), '')) ?? 0,
       'privacyPolicyAgreed': _agreeTerm1 && _agreeTerm2,
       'notificationAgreed': _agreeTerm3,
     };
