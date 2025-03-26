@@ -2,7 +2,7 @@ package com.gittowork.domain.github.entity;
 
 import com.gittowork.domain.github.model.issue.IssueLabel;
 import com.gittowork.domain.github.model.issue.IssueUser;
-import jakarta.persistence.Id;
+import org.springframework.data.annotation.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 

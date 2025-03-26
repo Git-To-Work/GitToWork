@@ -352,8 +352,8 @@ public class GithubService {
         GithubRepository userGithubRepository = githubRestApiService.saveUserGithubRepository(accessToken, userName, userId);
         githubRestApiService.saveUserGithubCommits(accessToken, userName, userId);
         githubRestApiService.saveUserRepositoryLanguage(accessToken, userName, userId);
-        githubRestApiService.saveGithubIssues(accessToken);
-        githubRestApiService.saveGithubPullRequests(accessToken);
+        githubRestApiService.saveGithubIssues(accessToken, userName, userId);
+        githubRestApiService.saveGithubPullRequests(accessToken, userName, userId);
         githubRestApiService.checkNewGithubEvents(accessToken, userName, userId, userGithubRepository.getRepositories().stream()
                 .map(Repository::getRepoName)
                 .collect(Collectors.toList()));
