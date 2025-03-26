@@ -15,7 +15,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class GithubPullRequest {
 
     @Id
-    private String id;  // MongoDB Document ID (자동 생성 혹은 직접 설정 가능)
+    private String githubPullRequestId;
 
     private int repoId;
 
