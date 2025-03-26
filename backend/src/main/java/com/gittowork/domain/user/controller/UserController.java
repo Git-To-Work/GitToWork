@@ -7,7 +7,6 @@ import com.gittowork.domain.user.service.UserService;
 import com.gittowork.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +23,7 @@ public class UserController {
 
     @Operation(summary = "Insert Profile", description = "개인 프로필 삽입")
     @PostMapping("/create/profile")
-    public ApiResponse<?> insertProfile(@NotNull @Valid @RequestBody InsertProfileRequest insertProfileRequest) {
+    public ApiResponse<?> insertProfile(@NotNull InsertProfileRequest insertProfileRequest) {
         return ApiResponse.success(HttpStatus.OK, userService.insertProfile(insertProfileRequest));
     }
 
@@ -36,7 +35,7 @@ public class UserController {
 
     @Operation(summary = "Update Profile", description = "개인 프로필 수정")
     @PutMapping("/update/profile")
-    public ApiResponse<?> updateProfile(@NotNull @Valid @RequestBody UpdateProfileRequest updateProfileRequest) {
+    public ApiResponse<?> updateProfile(@NotNull UpdateProfileRequest updateProfileRequest) {
         return ApiResponse.success(HttpStatus.OK, userService.updateProfile(updateProfileRequest));
     }
 
@@ -48,7 +47,7 @@ public class UserController {
 
     @Operation(summary = "Update Interest Field", description = "관심분야 수정")
     @PutMapping("/update/interest-field")
-    public ApiResponse<?> updateInterestField(@NotNull @Valid @RequestBody UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
+    public ApiResponse<?> updateInterestField(@NotNull UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
         return ApiResponse.success(HttpStatus.OK, userService.updateInterestFields(updateInterestsFieldsRequest));
     }
 
