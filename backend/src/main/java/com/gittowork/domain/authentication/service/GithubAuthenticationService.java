@@ -16,6 +16,7 @@ import com.gittowork.global.service.RedisService;
 import com.gittowork.global.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 public class GithubAuthenticationService {
 
@@ -66,6 +68,8 @@ public class GithubAuthenticationService {
      */
     private String getAccessToken(String code) {
         Map<String, Object> responseBody = githubRestApiService.getAccessToken(code);
+
+        log.info(responseBody.toString());
 
         if (Objects.isNull(responseBody) || !responseBody.containsKey("access_token")) {
             throw new GithubSignInException("Unauthorized or Invalid Code.");
