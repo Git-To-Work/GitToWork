@@ -3,7 +3,6 @@ package com.gittowork.domain.api.controller;
 import com.gittowork.domain.api.dto.response.ApiVersionResponse;
 import com.gittowork.global.response.ApiResponse;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

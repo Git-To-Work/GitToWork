@@ -1,7 +1,6 @@
 package com.gittowork.domain.authentication.controller;
 
 import com.gittowork.domain.authentication.dto.request.SignInGithubRequest;
-import com.gittowork.domain.authentication.dto.response.SignInGithubResponse;
 import com.gittowork.domain.authentication.service.GithubAuthenticationService;
 import com.gittowork.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
