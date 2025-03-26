@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../layouts/appbar_bottom_nav_layout.dart';
+import '../../services/api_service.dart';
 import '../../widgets/app_bar.dart';
 
 // 실제 DB에서 받아올 때, id/name/imageUrl 형태의 모델
@@ -28,21 +30,19 @@ class BusinessInterestScreen extends StatefulWidget {
 
   /// 회원가입 시나리오용 생성자
   const BusinessInterestScreen({
-    Key? key,
+    super.key,
     required Map signupParams,
   })  : isSignUp = true,
         signupParams = signupParams,
-        initialSelectedFields = const [],
-        super(key: key);
+        initialSelectedFields = const [];
 
   /// 회원정보 수정 시나리오용 named constructor
   const BusinessInterestScreen.edit({
-    Key? key,
+    super.key,
     required List<String> initialSelectedFields,
   })  : isSignUp = false,
         signupParams = null,
-        initialSelectedFields = initialSelectedFields,
-        super(key: key);
+        initialSelectedFields = initialSelectedFields;
 
   @override
   State<BusinessInterestScreen> createState() => _BusinessInterestScreenState();
@@ -114,30 +114,36 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
   }
 
   // 선택 완료 버튼 누르면 호출
-  void _onComplete() {
-    // 선택된 항목들만 추려내기
+  Future<void> _onComplete() async {
+    // 1. 사용자가 선택한 비즈니스 분야를 추려서
     final selectedFields = businessFields.where((field) => field.isSelected).toList();
-
-    // 분야명만 추출 (["빅데이터", "AI", ...])
     final selectedNames = selectedFields.map((f) => f.fieldName).toList();
 
     if (widget.isSignUp) {
-      // 회원가입 시나리오
+      // 2. signupParams에 interestsFields로 담은 뒤
       widget.signupParams?['interestsFields'] = selectedNames;
       debugPrint("최종 회원가입 정보: ${widget.signupParams}");
 
-      // TODO: 백엔드로 회원가입 정보 전송 etc.
-      // 예) ApiService.sendSignupData(widget.signupParams!);
+      // 3. ApiService 로 회원가입 요청
+      final isSignupSuccess = await ApiService.sendSignupData(widget.signupParams!);
 
-      // 전송 후 다음 화면으로 이동하거나 완료 처리
-      // 여기서는 그냥 pop
-      Navigator.pop(context);
+      if (isSignupSuccess) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
+              (route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원가입에 실패했습니다. 다시 시도해주세요.')),
+        );
+      }
     } else {
-      // 회원정보 수정 시나리오
-      // 선택 결과를 MyInfoEditScreen으로 돌려주어 거기서 반영
+      // 회원정보 수정 로직
       Navigator.pop(context, selectedNames);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

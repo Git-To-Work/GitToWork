@@ -3,12 +3,15 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../services/api_service.dart';
 import '../models/user_profile.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 
 class AuthProvider with ChangeNotifier {
   String? _accessToken;
   UserProfile? _userProfile;
   SignInResponse? signInResponse;
   final ApiService _apiService = ApiService();
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
   String? get accessToken => _accessToken;
   UserProfile? get userProfile => _userProfile;
@@ -22,6 +25,12 @@ class AuthProvider with ChangeNotifier {
     _accessToken = null;
     _userProfile = null;
     notifyListeners();
+  }
+
+  Future<bool> autoLoginWithToken() async {
+    if (_accessToken == null) return false;
+    final result = await _apiService.loginWithExistingToken(_accessToken!);
+    return result;
   }
 
   /// GitHub OAuth 로그인 플로우 (WebView 사용)
@@ -56,6 +65,7 @@ class AuthProvider with ChangeNotifier {
       final response = await _apiService.signInWithGitHub(code!);
       signInResponse = response;
       _accessToken = response.accessToken;
+      await _storage.write(key: 'jwt_token', value: _accessToken);
       notifyListeners();
       return response;
     } catch (e) {

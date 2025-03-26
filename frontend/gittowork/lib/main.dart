@@ -88,22 +88,42 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // 3초 후에 자동 로그인 여부에 따라 화면 전환
-    Timer(const Duration(seconds: 3), () {
-      final authProvider =
-      Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.accessToken != null) {
-        // 토큰이 있으면 홈 화면으로 전환 (자동 로그인)
+    _navigateAfterDelay();
+  }
+
+  Future<void> _navigateAfterDelay() async {
+    // 3초 스플래시 대기
+    await Future.delayed(const Duration(seconds: 3));
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // 1) accessToken 이 있는지 우선 확인
+    if (authProvider.accessToken != null) {
+      // 2) 서버로 자동 로그인 요청(이미 가지고 있는 토큰 유효성 체크)
+      final success = await authProvider.autoLoginWithToken();
+      if (success) {
+        // 자동 로그인 성공: 메인 화면
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
         );
       } else {
-        // 토큰이 없으면 온보딩 화면으로 전환
+        // 자동 로그인 실패 -> 토큰 무효. 로컬 저장된 것들도 정리
+        authProvider.logout();
+        // Secure Storage에서 지우는 로직
+        final storage = FlutterSecureStorage();
+        await storage.delete(key: 'jwt_token');
+
+        // 온보딩 화면으로 이동
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const OnboardingScreen()),
         );
       }
-    });
+    } else {
+      // 토큰이 없으므로 그대로 온보딩 화면으로 이동
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
+    }
   }
 
   @override
@@ -111,3 +131,4 @@ class _SplashScreenState extends State<SplashScreen> {
     return const NoAppBarNoBottomNavLayout();
   }
 }
+
