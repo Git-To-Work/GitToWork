@@ -7,6 +7,7 @@ from datetime import datetime
 from app.core.deps import get_db, get_current_user
 from app.services.company_service import search_companies
 from app.utils.response import success_response
+from app.utils.mongo_logger import log_user_search
 
 router = APIRouter()
 
@@ -26,6 +27,19 @@ def read_companies(
 ):
     try:
         user_id = current_user.user_id if hasattr(current_user, "user_id") else current_user.get("user_id")
+
+        # 구성: 검색 필터(페이지, size 제외)
+        search_filters = {
+            "company_name": company_name,
+            "tech_stacks": tech_stacks,
+            "business_field": business_field,
+            "career": career,
+            "location": location,
+            "keyword": keyword
+        }
+        search_filters = {k: v for k, v in search_filters.items() if v is not None}
+
+        log_user_search(user_id, search_filters)
 
         companies, total_count = search_companies(
             db=db,

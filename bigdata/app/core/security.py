@@ -14,9 +14,6 @@ JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 def verify_access_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        print("core/security/verify_access_token:")
-        print(payload)
-        print("")
         return payload
     except ExpiredSignatureError as e:
         # 토큰 만료 시

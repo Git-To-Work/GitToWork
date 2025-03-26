@@ -2,7 +2,6 @@
 
 import logging
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
 from app.exceptions import UserNotFoundException, CompanyNotFoundException, TokenExpiredException, InvalidSignatureException, InvalidTokenException
 from app.utils.response import error_response
 

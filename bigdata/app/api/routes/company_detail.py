@@ -6,19 +6,24 @@ from datetime import datetime
 from app.core.deps import get_db, get_current_user
 from app.models.company import Company
 from app.exceptions import CompanyNotFoundException
-from app.utils.response import success_response, error_response
+from app.utils.response import success_response
+from app.utils.mongo_logger import log_user_search_detail  # 추가
 
 router = APIRouter()
 
-
 @router.get("/select/company/{company_id}", response_model=dict)
 def read_company_detail(
-        company_id: int,
-        current_user=Depends(get_current_user),
-        db: Session = Depends(get_db)
+    company_id: int,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
+    # 인증된 사용자 ID 추출
     user_id = current_user.user_id if hasattr(current_user, "user_id") else current_user.get("user_id")
 
+    # MongoDB에 사용자 상세 조회 로그 저장
+    log_user_search_detail(user_id, company_id)
+
+    # 회사 조회
     company = db.query(Company).filter(Company.company_id == company_id).first()
     if not company:
         raise CompanyNotFoundException()
