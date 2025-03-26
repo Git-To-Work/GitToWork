@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 
 class GitHubAnalysisProvider extends ChangeNotifier {
-  List<int> _testData = [1, 2, 3];
+  String _repoName = 'mkos47635';
+  String _lastAnalysis = '2025/03/11 13:03:13';
 
+  String get repoName => _repoName;
+  String get lastAnalysis => _lastAnalysis;
+
+  List<int> _testData = [1, 2, 3];
   List<int> get testData => _testData;
 
-  /// 모든 숫자에 1을 더해서 업데이트합니다.
-  void incrementTestData() {
-    _testData = _testData.map((value) => value + 1).toList();
+  void updateRepoInfo(String newRepoName, String newTime) {
+    _repoName = newRepoName;
+    _lastAnalysis = newTime;
     notifyListeners();
   }
+
 }
