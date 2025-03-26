@@ -1,32 +1,40 @@
 # app/main.py
-#uvicorn app.main:app --reload --reload-dir .
 
 import logging
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
-from app.exceptions import UserNotFoundException, CompanyNotFoundException
+from app.exceptions import UserNotFoundException, CompanyNotFoundException, TokenExpiredException, InvalidSignatureException, InvalidTokenException
+from app.utils.response import error_response
 
 logging.basicConfig(level=logging.DEBUG)
 print(">>> app/main.py loaded")
 
-import app.models  # 모든 모델을 로드
-
 app = FastAPI()
 
-# 커스텀 예외 핸들러
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    # 예를 들어, HTTPException 발생 시 code를 "HTTPE"로 지정 (원하는 코드로 변경 가능)
+    return error_response(status_code=exc.status_code, message=exc.detail, code="MT")
+
 @app.exception_handler(UserNotFoundException)
 async def user_not_found_exception_handler(request: Request, exc: UserNotFoundException):
-    return JSONResponse(
-        status_code=404,
-        content={"detail": exc.message}
-    )
+    return error_response(status_code=404, message=exc.message, code="NF")
 
 @app.exception_handler(CompanyNotFoundException)
 async def company_not_found_exception_handler(request: Request, exc: CompanyNotFoundException):
-    return JSONResponse(
-        status_code=404,
-        content={"detail": exc.message}
-    )
+    return error_response(status_code=404, message=exc.message, code="NF")
+
+@app.exception_handler(TokenExpiredException)
+async def token_expired_exception_handler(request: Request, exc: TokenExpiredException):
+    return error_response(status_code=401, message=exc.message, code=exc.code)
+
+@app.exception_handler(InvalidSignatureException)
+async def invalid_signature_exception_handler(request: Request, exc: InvalidSignatureException):
+    return error_response(status_code=401, message=exc.message, code=exc.code)
+
+@app.exception_handler(InvalidTokenException)
+async def invalid_token_exception_handler(request: Request, exc: InvalidTokenException):
+    return error_response(status_code=401, message=exc.message, code=exc.code)
 
 from app.api.routes.company import router as company_router
 from app.api.routes.company_detail import router as company_detail_router
@@ -34,7 +42,6 @@ from app.api.routes.company_detail import router as company_detail_router
 app.include_router(company_router, prefix="/api", tags=["companies"])
 app.include_router(company_detail_router, prefix="/api", tags=["companies"])
 
-# 디버깅: 등록된 경로 출력
 print("Registered routes:")
 for route in app.routes:
     print(route.path, route.name)

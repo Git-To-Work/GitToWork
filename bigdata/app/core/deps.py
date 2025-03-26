@@ -1,4 +1,5 @@
 # app/core/deps.py
+
 from app.core.database import SessionLocal
 from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import APIKeyHeader
@@ -14,25 +15,23 @@ def get_db():
     finally:
         db.close()
 
-api_key_header = APIKeyHeader(name="Authorization")
+# auto_error=False로 설정하여 토큰이 없을 때 직접 제어
+api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
-"""
-1. 메서드 설명: API 요청 시 전달된 JWT 토큰을 검증하고, 토큰 내 'sub' 필드에서 username을 추출한 후,
-   해당 username을 사용해 User 테이블에서 사용자를 검색하여 반환한다.
-2. 로직:
-     - 토큰을 verify_access_token() 함수를 사용해 디코딩 및 검증한다.
-     - payload 에서 'sub' 키를 통해 username 을 추출한다.
-     - username이 없거나 해당 사용자가 DB에 존재하지 않으면 적절한 HTTPException(401/404)을 발생시킨다.
-3. param:
-     - token: OAuth2PasswordBearer 로부터 추출된 Bearer 토큰
-4. return:
-     - User 객체 (필요에 따라 dict 형태로 변환 가능)
-"""
 def get_current_user(token: str = Security(api_key_header), db: Session = Depends(get_db)):
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is missing",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     if not token.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid token format")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     token = token[7:]  # Remove "Bearer "
-
     payload = verify_access_token(token)
     username = payload.get("sub")
     if not username:

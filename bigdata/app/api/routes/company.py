@@ -1,41 +1,46 @@
 # app/api/routes/company.py
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.core.deps import get_db, get_current_user
 from app.services.company_service import search_companies
+from app.utils.response import success_response
 
 router = APIRouter()
 
+
 @router.get("/select/companies", response_model=dict)
 def read_companies(
-    current_user = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    company_name: Optional[str] = None,
-    tech_stacks: Optional[List[str]] = Query(None),
-    business_field: Optional[str] = None,
-    career: Optional[int] = None,
-    location: Optional[str] = None,
-    keyword: Optional[str] = None,
-    page: int = 1,
-    size: int = 20
+        current_user=Depends(get_current_user),
+        db: Session = Depends(get_db),
+        company_name: Optional[str] = None,
+        tech_stacks: Optional[List[str]] = Query(None),
+        business_field: Optional[str] = None,
+        career: Optional[int] = None,
+        location: Optional[str] = None,
+        keyword: Optional[str] = None,
+        page: int = 1,
+        size: int = 20
 ):
-    user_id = current_user.user_id
+    try:
+        user_id = current_user.user_id if hasattr(current_user, "user_id") else current_user.get("user_id")
 
-    companies, total_count = search_companies(
-        db=db,
-        user_id=user_id,
-        company_name=company_name,
-        tech_stacks=tech_stacks,
-        business_field=business_field,
-        career=career,
-        location=location,
-        keyword=keyword,
-        page=page,
-        size=size
-    )
+        companies, total_count = search_companies(
+            db=db,
+            user_id=user_id,
+            company_name=company_name,
+            tech_stacks=tech_stacks,
+            business_field=business_field,
+            career=career,
+            location=location,
+            keyword=keyword,
+            page=page,
+            size=size
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Bad Request")
 
     result = []
     now = datetime.now()
@@ -76,11 +81,11 @@ def read_companies(
         }
         result.append(company_data)
 
-    total_pages = (total_count - 1) // size + 1
-    return {
+    total_page = (total_count - 1) // size + 1
+    return success_response({
         "companies": result,
         "total": total_count,
         "page": page,
         "size": size,
-        "total_pages": total_pages
-    }
+        "total_page": total_page
+    }, status_code=200, message="OK", code="SU")
