@@ -1,5 +1,7 @@
 package com.gittowork.domain.authentication.controller;
 
+import com.gittowork.domain.authentication.dto.request.SignInGithubRequest;
+import com.gittowork.domain.authentication.dto.response.SignInGithubResponse;
 import com.gittowork.domain.authentication.service.GithubAuthenticationService;
 import com.gittowork.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,9 +24,9 @@ public class GithubAuthenticationController {
 
     @Operation(summary = "Github OAuth", description = "깃허브 추가")
     @PostMapping("/create/signin")
-    public ResponseEntity<?> signInGithub(@NotNull String code) {
+    public ResponseEntity<?> signInGithub(@NotNull SignInGithubRequest signInGithubRequest) {
         return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, githubAuthenticationService.signInGithub(code)));
+                .body(ApiResponse.success(HttpStatus.OK, githubAuthenticationService.signInGithub(signInGithubRequest.getCode())));
     }
 
     @Operation(summary = "Github Auto Login", description = "깃허브 자동 로그인")

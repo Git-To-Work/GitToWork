@@ -1,5 +1,6 @@
 package com.gittowork.domain.github.controller;
 
+import com.gittowork.domain.github.dto.request.SaveSelectedRepositoriesRequest;
 import com.gittowork.domain.github.service.GithubService;
 import com.gittowork.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,8 +21,8 @@ public class GithubAnalysisController {
     private final GithubService githubService;
 
     @PostMapping("/create/save-selected-repository")
-    public ApiResponse<?> saveSelectedRepositories(@RequestBody @Valid int[] repositories) {
-        return ApiResponse.success(HttpStatus.OK, githubService.saveSelectedGithubRepository(repositories));
+    public ApiResponse<?> saveSelectedRepositories(@NotNull SaveSelectedRepositoriesRequest saveSelectedRepositoriesRequest) {
+        return ApiResponse.success(HttpStatus.OK, githubService.saveSelectedGithubRepository(saveSelectedRepositoriesRequest.getRepositories()));
     }
 
     @GetMapping("/select/my-repository")

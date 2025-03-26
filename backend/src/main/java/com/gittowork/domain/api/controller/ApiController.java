@@ -13,13 +13,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class ApiController {
 
     @GetMapping("/select/version")
-    public ResponseEntity<?> apiVersion() {
+    public ApiResponse<?> apiVersion() {
         ApiVersionResponse apiVersionResponse = ApiVersionResponse.builder()
                 .version("0.0")
                 .releaseDate("2025-03-19")
                 .build();
 
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success(HttpStatus.OK, ApiResponse.success(apiVersionResponse)));
+        return ApiResponse.success(HttpStatus.OK, ApiResponse.success(apiVersionResponse));
     }
 }
