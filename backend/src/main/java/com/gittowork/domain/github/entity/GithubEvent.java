@@ -1,7 +1,7 @@
 package com.gittowork.domain.github.entity;
 
 import com.gittowork.domain.github.model.event.Event;
-import jakarta.persistence.Id;
+import org.springframework.data.annotation.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 

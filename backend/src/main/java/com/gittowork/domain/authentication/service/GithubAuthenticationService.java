@@ -71,7 +71,7 @@ public class GithubAuthenticationService {
 
         log.info(responseBody.toString());
 
-        if (Objects.isNull(responseBody) || !responseBody.containsKey("access_token")) {
+        if (!responseBody.containsKey("access_token")) {
             throw new GithubSignInException("Unauthorized or Invalid Code.");
         }
 
@@ -111,34 +111,28 @@ public class GithubAuthenticationService {
         String githubAccessToken = getAccessToken(code);
         Map<String, Object> githubUserInfo = getUserInfo(githubAccessToken);
 
-        // GitHub 로그인명 (username)
         final String username = (String) githubUserInfo.get("login");
 
-        // GitHub 추가 정보 구성
         Map<String, Object> userGitInfo = new HashMap<>();
         userGitInfo.put("githubAvatarUrl", githubUserInfo.get("avatar_url"));
         userGitInfo.put("publicRepositories", githubUserInfo.get("public_repos"));
         userGitInfo.put("followers", githubUserInfo.get("followers"));
         userGitInfo.put("following", githubUserInfo.get("following"));
 
-        // 사용자 기본 정보 구성
         Map<String, Object> user = new HashMap<>();
         user.put("githubId", githubUserInfo.get("id"));
         user.put("githubName", username);
         user.put("githubEmail", githubUserInfo.get("email"));
         user.put("githubAccessToken", githubAccessToken);
 
-        // Redis에 저장할 키 생성
         String userKey = "user: " + username;
         String userGitInfoKey = "userGitInfo: " + username;
 
-        // Redis에 사용자 정보 저장 및 만료 시간 설정
         redisService.saveUser(userKey, user);
         redisService.saveUserGitInfo(userGitInfoKey, userGitInfo);
         redisService.setExpire(userKey, 1, TimeUnit.HOURS);
         redisService.setExpire(userGitInfoKey, 1, TimeUnit.HOURS);
 
-        // Spring Security의 Authentication 객체 생성 후 SecurityContext에 등록 (OAuth 방식이므로 password는 null)
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(
                         username,
@@ -147,7 +141,6 @@ public class GithubAuthenticationService {
                 );
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
-        // JWT 토큰 발급 및 refresh token 저장
         String accessToken = jwtUtil.generateAccessToken(username);
         String refreshToken = jwtUtil.generateRefreshToken(username);
         String refreshTokenKey = username + "_refresh_token";

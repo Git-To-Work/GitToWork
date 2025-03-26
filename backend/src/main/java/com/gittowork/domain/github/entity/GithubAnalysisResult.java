@@ -4,8 +4,8 @@ import com.gittowork.domain.github.model.analysis.AIAnalysis;
 import com.gittowork.domain.github.model.analysis.ActivityMetrics;
 import com.gittowork.domain.github.model.analysis.RepositoryResult;
 import com.gittowork.domain.github.model.repository.Repository;
-import jakarta.persistence.Id;
 import lombok.*;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
