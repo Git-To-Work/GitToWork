@@ -114,8 +114,8 @@ public class GithubAuthenticationService {
         Optional<User> loginUser = userRepository.findByGithubName(username);
 
         if (loginUser.isPresent()) {
-            setAuthentication(username);
-            String accessToken = getAccessTokenAndStoreRefreshToken(code);
+            setAuthentication(loginUser.get().getGithubName());
+            String accessToken = getAccessTokenAndStoreRefreshToken(loginUser.get().getGithubName());
 
             loginUser.get().setGithubAccessToken(githubAccessToken);
 
@@ -150,7 +150,7 @@ public class GithubAuthenticationService {
         redisService.setExpire(userGitInfoKey, 1, TimeUnit.HOURS);
 
         setAuthentication(username);
-        String accessToken = getAccessTokenAndStoreRefreshToken(code);
+        String accessToken = getAccessTokenAndStoreRefreshToken(username);
 
         return SignInGithubResponse.builder()
                 .nickname(username)
