@@ -37,10 +37,23 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
   List<String> _interestFieldsNames = [];
   List<int> _interestFieldIds = [];
 
+  @override
+  void initState() {
+    super.initState();
+    _nicknameController.text = widget.userProfile.nickname;
+    _nameController.text = widget.userProfile.name;
+    _birthController.text = widget.userProfile.birthDt;
+    _experienceController.text = widget.userProfile.experience >= 10
+        ? '10년 이상'
+        : '${widget.userProfile.experience}년';
+    _phoneController.text = widget.userProfile.phone;
+    _serviceNotification = widget.userProfile.notificationAgreed;
+  }
+
   Future<void> _refreshUserProfile() async {
     try {
       final authProvider = context.read<AuthProvider>();
-      await authProvider.fetchUserProfile(); // 내부에서 상태 갱신됨
+      await authProvider.fetchUserProfile();
 
       final updatedProfile = authProvider.userProfile;
 
@@ -56,6 +69,7 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
         _experienceController.text = updatedProfile.experience >= 10
             ? '10년 이상'
             : '${updatedProfile.experience}년';
+        _serviceNotification = updatedProfile.notificationAgreed; // 👈 추가
       });
     } catch (e) {
       debugPrint('Error refreshing profile: $e');
@@ -74,10 +88,20 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
     );
 
     if (result != null) {
-      // 관심 분야 수정 후, API로 다시 최신 프로필 불러오기
-      await _refreshUserProfile();
+      setState(() {
+        // 화면 표시용 이름 배열 업데이트
+        widget.userProfile.interestFields
+          ..clear()
+          ..addAll(result['fieldNames']);
+
+        // 서버 전송용 ID 배열도 반드시 업데이트 해야 함 (추가 필수!!)
+        _interestFieldIds
+          ..clear()
+          ..addAll(result['fieldIds']);
+      });
     }
   }
+
 
 
   void _pickCareer() {
@@ -123,15 +147,16 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
 
     final updateParams = {
       'userId': widget.userProfile.userId,
-      'interestsFields': _interestFieldIds, // 정확한 이름 (interestsFields)
+      'interestsFields': _interestFieldIds,
       'name': widget.userProfile.name,
       'birthDt': widget.userProfile.birthDt,
       'experience': updatedExperience,
       'phone': _phoneController.text,
-      'notificationAgreed': _serviceNotification,
+      'notificationAgreed': _serviceNotification, // 👈 명확히 전송
     };
 
     debugPrint('전송할 관심 분야 ID: $_interestFieldIds');
+    debugPrint('서비스 알림 수신 설정: $_serviceNotification'); // 추가 로그
 
     final success = await UserApi.updateUserProfile(updateParams);
 
@@ -174,7 +199,7 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 60,
               child: ElevatedButton(
                 onPressed: _onUpdateInfo,
                 style: ElevatedButton.styleFrom(
@@ -185,7 +210,7 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
                 ),
                 child: const Text(
                   '나의 정보 수정',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.white, fontSize: 20),
                 ),
               ),
             ),
