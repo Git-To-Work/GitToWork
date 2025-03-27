@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_service.dart';
@@ -43,7 +42,7 @@ class AuthApi {
 
   static Future<bool> loginWithExistingToken(String token) async {
     try {
-      ApiService.dio.options.headers['authorization'] = 'Bearer $token';
+      // 더 이상 직접 authorization 헤더를 설정하지 않습니다.
       final response = await ApiService.dio.post('/api/auth/create/login');
       return response.statusCode == 200;
     } catch (error) {
@@ -59,7 +58,7 @@ class AuthApi {
         debugPrint('토큰이 없습니다. 로그아웃 수행 불가');
         return false;
       }
-      ApiService.dio.options.headers['authorization'] = 'Bearer $token';
+      // 직접 헤더 설정 제거, ApiService 인터셉터가 처리합니다.
       final response = await ApiService.dio.post('/api/auth/create/logout');
       if (response.statusCode == 200) {
         debugPrint('로그아웃 성공: ${response.data}');
@@ -82,7 +81,7 @@ class AuthApi {
         debugPrint('토큰이 없습니다. 회원탈퇴 수행 불가');
         return false;
       }
-      ApiService.dio.options.headers['authorization'] = 'Bearer $token';
+      // authorization 헤더 제거 (인터셉터에서 처리)
       final response = await ApiService.dio.post('/api/user/delete/account');
       if (response.statusCode == 200) {
         debugPrint('회원탈퇴 성공: ${response.data}');
