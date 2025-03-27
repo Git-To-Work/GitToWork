@@ -28,4 +28,9 @@ public class CoverLetterController {
     public ApiResponse<?> deleteCoverLetter(@RequestParam @NotNull int coverLetterId) {
         return ApiResponse.success(HttpStatus.OK, coverLetterService.deleteCoverLetter(coverLetterId));
     }
+
+    @GetMapping("/select/analysis")
+    public ApiResponse<?> getCoverLetterAnalysis(@RequestParam @NotNull int coverLetterId) {
+        return ApiResponse.success(HttpStatus.OK, coverLetterService.getCoverLetterAnalysis(coverLetterId));
+    }
 }

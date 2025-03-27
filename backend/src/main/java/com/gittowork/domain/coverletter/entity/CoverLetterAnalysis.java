@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -61,6 +61,6 @@ public class CoverLetterAnalysis {
     private Integer creativity;
 
     @Column(name = "create_dttm")
-    private Instant createDttm;
+    private LocalDateTime createDttm;
 
 }

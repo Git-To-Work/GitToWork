@@ -180,4 +180,25 @@ public class GlobalExceptionHandler {
         String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
+
+    @ExceptionHandler(CoverLetterAnalysisNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(CoverLetterAnalysisNotFoundException e) {
+        log.warn("Cover letter analysis not found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
+
+    @ExceptionHandler(CoverLetterAnalysisException.class)
+    public ResponseEntity<?> exceptionHandler(CoverLetterAnalysisException e) {
+        log.warn("Cover letter analysis not found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
+    }
+
+    @ExceptionHandler(JsonParsingException.class)
+    public ResponseEntity<?> exceptionHandler(JsonParsingException e) {
+        log.warn("Json parsing failed: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
+    }
 }
