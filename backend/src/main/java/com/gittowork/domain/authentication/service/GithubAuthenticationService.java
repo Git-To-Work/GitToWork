@@ -117,6 +117,10 @@ public class GithubAuthenticationService {
             setAuthentication(username);
             String accessToken = getAccessTokenAndStoreRefreshToken(code);
 
+            loginUser.get().setGithubAccessToken(githubAccessToken);
+
+            userRepository.save(loginUser.get());
+
             return SignInGithubResponse.builder()
                     .nickname(loginUser.get().getGithubName())
                     .privacyPolicyAgreed(loginUser.get().getPrivacyConsentDttm() != null)
