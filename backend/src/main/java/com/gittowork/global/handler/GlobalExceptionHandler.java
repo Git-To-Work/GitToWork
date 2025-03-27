@@ -21,8 +21,8 @@ public class GlobalExceptionHandler {
         NOT_FOUND("NF","Not found"),
         UNAUTHORIZED("UR", "Unauthorized."),
         DUPLICATE("DP", "Duplicate entry"),
-        SONAR_ANALYSIS_ERROR("SAE", "SonarQube analysis failed"),
-        GITHUB_ANALYSIS_ERROR("GSA", "Github analysis failed"),;
+        INTERNAL_SERVER_ERROR("ES", "Internal Server Error."),
+        INVALID_ARGUMENT("INA", "Invalid argument"),;
 
         private final String code;
         private final String message;
@@ -128,15 +128,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SonarAnalysisException.class)
     public ResponseEntity<?> exceptionHandler(SonarAnalysisException e) {
         log.warn("Sonar Analysis failed: {}", e.getMessage());
-        String message = e.getMessage() == null ? ErrorCode.SONAR_ANALYSIS_ERROR.getMessage() : e.getMessage();
-        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.SONAR_ANALYSIS_ERROR.getCode(), message);
+        String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(GithubAnalysisException.class)
     public ResponseEntity<?> exceptionHandler(GithubAnalysisException e) {
         log.warn("Github analysis failed: {}", e.getMessage());
-        String message = e.getMessage() == null ? ErrorCode.GITHUB_ANALYSIS_ERROR.getMessage() : e.getMessage();
-        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.GITHUB_ANALYSIS_ERROR.getCode(), message);
+        String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(GithubAnalysisNotFoundException.class)
@@ -144,5 +144,40 @@ public class GlobalExceptionHandler {
         log.warn("Github analysis not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
+
+    @ExceptionHandler(EmptyFileException.class)
+    public ResponseEntity<?> exceptionHandler(EmptyFileException e) {
+        log.warn("Empty file: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.INVALID_ARGUMENT.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ARGUMENT.getCode(), message);
+    }
+
+    @ExceptionHandler(S3UploadException.class)
+    public ResponseEntity<?> exceptionHandler(S3UploadException e) {
+        log.warn("S3 upload failed: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
+    }
+
+    @ExceptionHandler(FileExtensionException.class)
+    public ResponseEntity<?> exceptionHandler(FileExtensionException e) {
+        log.warn("File extension not supported: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.INVALID_ARGUMENT.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ARGUMENT.getCode(), message);
+    }
+
+    @ExceptionHandler(CoverLetterNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(CoverLetterNotFoundException e) {
+        log.warn("Cover letter not found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
+
+    @ExceptionHandler(S3DeleteException.class)
+    public ResponseEntity<?> exceptionHandler(S3DeleteException e) {
+        log.warn("S3 delete failed: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 }
