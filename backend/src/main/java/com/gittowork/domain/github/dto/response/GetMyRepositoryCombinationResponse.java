@@ -10,5 +10,5 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class GetMyRepositoryCombinationResponse {
-    private List<List<Repo>> repositoryCombinations;
+    private List<RepositoryCombination> repositoryCombinations;
 }

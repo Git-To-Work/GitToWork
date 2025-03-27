@@ -2,6 +2,7 @@ package com.gittowork.domain.user.service;
 
 import com.gittowork.domain.field.entity.Field;
 import com.gittowork.domain.field.repository.FieldRepository;
+import com.gittowork.domain.github.service.GithubService;
 import com.gittowork.domain.user.dto.request.InsertProfileRequest;
 import com.gittowork.domain.user.dto.request.UpdateInterestsFieldsRequest;
 import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
@@ -16,8 +17,8 @@ import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.DataNotFoundException;
 import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.service.RedisService;
-import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -31,14 +32,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
-@AllArgsConstructor(onConstructor = @__(@Autowired))
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
     private final UserGitInfoRepository userGitInfoRepository;
     private final RedisService redisService;
     private final FieldRepository fieldRepository;
+    private final GithubService githubService;
 
     /**
      * 1. 메서드 설명: 프로필 추가 정보를 저장하는 API.
@@ -46,6 +49,7 @@ public class UserService {
      *    - 현재 인증 정보에서 username을 조회하고, Redis에서 사용자 기본 정보와 GitHub 추가 정보를 가져온다.
      *    - 조회한 데이터를 바탕으로 User 엔티티를 생성 및 저장하여 auto increment된 id를 확보한다.
      *    - 해당 id를 기반으로 UserGitInfo 엔티티를 생성하고, User와 양방향 연관관계를 설정한 후 저장한다.
+     *    - User의 Githhub Repository 정보를 저장하는 비동기 메서드를 실행한다.
      * 3. param: insertProfileRequest - 프로필 추가 정보를 담은 DTO.
      * 4. return: 성공 시 "추가 정보가 성공적으로 업데이트되었습니다." 메시지를 포함한 MessageOnlyResponse 객체.
      */
@@ -53,7 +57,7 @@ public class UserService {
     public MessageOnlyResponse insertProfile(InsertProfileRequest insertProfileRequest) {
         String username = getUserName();
 
-        Map<String, Object> userCaching = redisService.getUser("user:" + username);
+        Map<Object, Object> userCaching = redisService.getUser("user: " + username);
 
         if (userCaching == null || userCaching.isEmpty()) {
             throw new DataNotFoundException("캐싱된 사용자 기본 정보가 없습니다.");
@@ -65,7 +69,7 @@ public class UserService {
                 .githubId(githubId)
                 .githubName(userCaching.get("githubName").toString())
                 .name(insertProfileRequest.getName())
-                .githubEmail(userCaching.get("githubEmail").toString())
+                .githubEmail(userCaching.get("githubEmail") == null ? null : userCaching.get("githubEmail").toString())
                 .phone(insertProfileRequest.getPhone())
                 .birthDt(LocalDate.parse(insertProfileRequest.getBirthDt()))
                 .experience(insertProfileRequest.getExperience())
@@ -78,7 +82,9 @@ public class UserService {
 
         user = userRepository.save(user);
 
-        Map<String, Object> userGitInfoCaching = redisService.getUserGitInfo("userGitInfo:" + username);
+        log.info(user.toString());
+
+        Map<Object, Object> userGitInfoCaching = redisService.getUserGitInfo("userGitInfo: " + username);
 
         if (userGitInfoCaching == null || userGitInfoCaching.isEmpty()) {
             throw new DataNotFoundException("캐싱된 깃허브 사용자 기본 정보가 없습니다.");
@@ -100,6 +106,8 @@ public class UserService {
 
         redisService.deleteKey("user:" + username);
         redisService.deleteKey("userGitInfo:" + username);
+
+        githubService.saveUserGithubRepositoryInfo(user.getGithubAccessToken(), username, user.getId());
 
         return MessageOnlyResponse.builder()
                 .message("추가 정보가 성공적으로 업데이트되었습니다.")
@@ -176,6 +184,7 @@ public class UserService {
      * 3. param: 없음.
      * 4. return: 모든 관심 분야 목록을 포함하는 GetInterestFieldsResponse 객체.
      */
+    @Transactional(readOnly = true)
     public GetInterestFieldsResponse getInterestFields() {
         List<Field> interestFields = fieldRepository.findAll();
 
@@ -193,6 +202,7 @@ public class UserService {
      * 3. param: updateInterestsFieldsRequest - 관심 분야 정보를 담은 DTO.
      * 4. return: 성공 메시지를 포함한 MessageOnlyResponse 객체.
      */
+    @Transactional
     public MessageOnlyResponse updateInterestFields(UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
         String username = getUserName();
 

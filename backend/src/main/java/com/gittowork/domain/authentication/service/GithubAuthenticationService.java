@@ -11,23 +11,18 @@ import com.gittowork.global.exception.AccessTokenNotFoundException;
 import com.gittowork.global.exception.AutoLogInException;
 import com.gittowork.global.exception.GithubSignInException;
 import com.gittowork.global.exception.UserNotFoundException;
+import com.gittowork.global.service.GithubRestApiService;
 import com.gittowork.global.service.RedisService;
 import com.gittowork.global.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -41,14 +36,8 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class GithubAuthenticationService {
 
-    @Value("${github.client.id}")
-    private String clientId;
+    private final GithubRestApiService githubRestApiService;
 
-    @Value("${github.client.secret}")
-    private String clientSecret;
-
-    @Value("${github.redirect.uri}")
-    private String redirectUri;
 
     private final UserRepository userRepository;
     private final UserGitInfoRepository userGitInfoRepository;
@@ -59,11 +48,12 @@ public class GithubAuthenticationService {
     public GithubAuthenticationService(UserRepository userRepository,
                                        RedisService redisService,
                                        UserGitInfoRepository userGitInfoRepository,
-                                       JwtUtil jwtUtil) {
+                                       JwtUtil jwtUtil, GithubRestApiService githubRestApiService) {
         this.userRepository = userRepository;
         this.userGitInfoRepository = userGitInfoRepository;
         this.redisService = redisService;
         this.jwtUtil = jwtUtil;
+        this.githubRestApiService = githubRestApiService;
     }
 
     /**
@@ -77,32 +67,11 @@ public class GithubAuthenticationService {
      * 4. return: GitHub 액세스 토큰 문자열
      */
     private String getAccessToken(String code) {
-        RestTemplate restTemplate = new RestTemplate();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("client_id", clientId);
-        body.add("client_secret", clientSecret);
-//        body.add("redirect_uri", redirectUri);
-        body.add("code", code);
-
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-        String accessTokenUrl = "https://github.com/login/oauth/access_token";
-
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                accessTokenUrl,
-                HttpMethod.POST,
-                request,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-        );
-        Map<String, Object> responseBody = response.getBody();
+        Map<String, Object> responseBody = githubRestApiService.getAccessToken(code);
 
         log.info(responseBody.toString());
 
-        if (Objects.isNull(responseBody) || !responseBody.containsKey("access_token")) {
+        if (!responseBody.containsKey("access_token")) {
             throw new GithubSignInException("Unauthorized or Invalid Code.");
         }
 
@@ -119,25 +88,12 @@ public class GithubAuthenticationService {
      * 4. return: GitHub 사용자 정보가 담긴 Map
      */
     private Map<String, Object> getUserInfo(String accessToken) {
-        RestTemplate restTemplate = new RestTemplate();
+        Map<String, Object> userInfo = githubRestApiService.getUserInfo(accessToken);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-
-        HttpEntity<String> request = new HttpEntity<>(headers);
-
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                "https://api.github.com/user",
-                HttpMethod.GET,
-                request,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-        );
-
-        Map<String, Object> userInfo = response.getBody();
         if (userInfo == null || !userInfo.containsKey("login")) {
             throw new GithubSignInException("Failed to fetch GitHub user info.");
         }
+
         return userInfo;
     }
 
@@ -155,34 +111,28 @@ public class GithubAuthenticationService {
         String githubAccessToken = getAccessToken(code);
         Map<String, Object> githubUserInfo = getUserInfo(githubAccessToken);
 
-        // GitHub 로그인명 (username)
         final String username = (String) githubUserInfo.get("login");
 
-        // GitHub 추가 정보 구성
         Map<String, Object> userGitInfo = new HashMap<>();
         userGitInfo.put("githubAvatarUrl", githubUserInfo.get("avatar_url"));
         userGitInfo.put("publicRepositories", githubUserInfo.get("public_repos"));
         userGitInfo.put("followers", githubUserInfo.get("followers"));
         userGitInfo.put("following", githubUserInfo.get("following"));
 
-        // 사용자 기본 정보 구성
         Map<String, Object> user = new HashMap<>();
         user.put("githubId", githubUserInfo.get("id"));
         user.put("githubName", username);
         user.put("githubEmail", githubUserInfo.get("email"));
         user.put("githubAccessToken", githubAccessToken);
 
-        // Redis에 저장할 키 생성
         String userKey = "user: " + username;
         String userGitInfoKey = "userGitInfo: " + username;
 
-        // Redis에 사용자 정보 저장 및 만료 시간 설정
         redisService.saveUser(userKey, user);
         redisService.saveUserGitInfo(userGitInfoKey, userGitInfo);
         redisService.setExpire(userKey, 1, TimeUnit.HOURS);
         redisService.setExpire(userGitInfoKey, 1, TimeUnit.HOURS);
 
-        // Spring Security의 Authentication 객체 생성 후 SecurityContext에 등록 (OAuth 방식이므로 password는 null)
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(
                         username,
@@ -191,7 +141,6 @@ public class GithubAuthenticationService {
                 );
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
-        // JWT 토큰 발급 및 refresh token 저장
         String accessToken = jwtUtil.generateAccessToken(username);
         String refreshToken = jwtUtil.generateRefreshToken(username);
         String refreshTokenKey = username + "_refresh_token";
