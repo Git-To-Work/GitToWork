@@ -3,18 +3,14 @@ from datetime import datetime
 from fastapi import HTTPException
 from app.core.mongo import get_mongo_db
 
-#검색 로그 저장
-SEARCH_HISTORY_COLLECTION = "user_search_logs"
+# 검색 로그 저장 컬렉션 이름
+SEARCH_HISTORY_COLLECTION = "user_search_history"
+SEARCH_DETAIL_COLLECTION = "user_search_detail_history"
 
-"""
-사용자의 검색 필터 정보를 MongoDB의 user_search_logs 컬렉션에 저장합니다.
-페이지와 사이즈 정보는 제외하고, user_id, 검색 조건, 검색 요청 시각 등을 기록합니다.
-"""
 def log_user_search(user_id: int, filters: dict) -> None:
     db = get_mongo_db()
     collection = db[SEARCH_HISTORY_COLLECTION]
 
-    # 저장할 문서 구성
     log_doc = {
         "user_id": user_id,
         "timestamp": datetime.utcnow(),
@@ -26,19 +22,7 @@ def log_user_search(user_id: int, filters: dict) -> None:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to log search history: {str(e)}")
 
-#상세 조회 로그 저장
-SEARCH_DETAIL_COLLECTION = "user_search_detail_log"
-
 def log_user_search_detail(user_id: int, searched_company_id: int):
-    """
-    회사 상세 조회 시, user_id와 회사 ID를 MongoDB에 저장합니다.
-    구조 예:
-    {
-        "user_id": 12345,
-        "timestamp": "2025-03-25T14:35:00Z",
-        "searched_company_id": 12
-    }
-    """
     db = get_mongo_db()
     collection = db[SEARCH_DETAIL_COLLECTION]
 
@@ -52,3 +36,22 @@ def log_user_search_detail(user_id: int, searched_company_id: int):
         collection.insert_one(doc)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to log search detail: {str(e)}")
+
+"""
+해당 user_id의 검색 로그 기록을 MongoDB의 collection_name을 가진 컬렉션에서 조회하여 리스트로 반환합니다.
+각 로그는 {"user_id": ..., "timestamp": ..., "filters": ...} 구조를 가집니다.
+"""
+def get_user_search_history(user_id: int, collection_name: str) -> list:
+
+    db = get_mongo_db()
+    collection = db[collection_name]
+    try:
+        logs = list(collection.find({"user_id": user_id}))
+        for log in logs:
+            if "timestamp" in log and isinstance(log["timestamp"], datetime):
+                log["timestamp"] = log["timestamp"].isoformat()
+            if "_id" in log:
+                log["_id"] = str(log["_id"])
+        return logs
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve search history: {str(e)}")

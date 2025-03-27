@@ -17,7 +17,6 @@ FastAPI 인스턴스에 예외 핸들러들을 한꺼번에 등록하는 함수.
 def setup_exception_handlers(app):
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
-        # HTTPException 발생 시 code를 "MT"로 지정
         return error_response(status_code=exc.status_code, message=exc.detail, code="MT")
 
     @app.exception_handler(UserNotFoundException)
