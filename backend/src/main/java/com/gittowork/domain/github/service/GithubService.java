@@ -102,9 +102,9 @@ public class GithubService {
      * 4. return: GetGithubAnalysisByRepositoryResponse - 분석 결과 정보를 담은 DTO.
      */
     @Transactional(readOnly = true)
-    public GetGithubAnalysisByRepositoryResponse getGithubAnalysisByRepository(int selectedRepositoryId) {
+    public GetGithubAnalysisByRepositoryResponse getGithubAnalysisByRepository(String selectedRepositoryId) {
         GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
-                .findBySelectedRepositoriesId(String.valueOf(selectedRepositoryId))
+                .findBySelectedRepositoriesId(selectedRepositoryId)
                 .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Result not found"));
 
         int overallScoreValue = githubAnalysisResult.getOverallScore();
@@ -335,18 +335,16 @@ public class GithubService {
      * 4. return: 삭제 완료 메시지를 담은 MessageOnlyResponse 객체.
      */
     @Transactional
-    public MessageOnlyResponse deleteSelectedGithubRepository(int selectedGithubRepositoryIds) {
+    public MessageOnlyResponse deleteSelectedGithubRepository(String selectedGithubRepositoryIds) {
         int userId = userRepository.findByGithubName(getUserName())
                 .orElseThrow(() -> new UserNotFoundException("User not found"))
                 .getId();
 
-        String selectedRepoIdStr = String.valueOf(selectedGithubRepositoryIds);
-
-        SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndSelectedRepositoryId(userId, selectedRepoIdStr)
+        SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndSelectedRepositoryId(userId, selectedGithubRepositoryIds)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository combination not found"));
 
         GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
-                .findBySelectedRepositoriesId(selectedRepoIdStr)
+                .findBySelectedRepositoriesId(selectedGithubRepositoryIds)
                 .orElseThrow(() -> new GithubAnalysisNotFoundException("Github analysis result not found"));
 
         selectedRepoRepository.delete(selectedRepository);
