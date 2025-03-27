@@ -4,16 +4,17 @@ import 'package:gittowork/screens/github_analysis/github.dart';
 import 'package:gittowork/screens/company_recommendation/company.dart';
 import 'package:gittowork/screens/cover_letter/coverLetter.dart';
 import 'package:gittowork/screens/entertainment/entertainment.dart';
-import 'package:gittowork/screens/my_page/myPage.dart';
 
-class AppBarBottomNavLayout extends StatefulWidget {
-  const AppBarBottomNavLayout({super.key});
+import '../screens/my_page/my_page_screen.dart';
+
+class BottomNavLayout extends StatefulWidget {
+  const BottomNavLayout({super.key});
 
   @override
-  State<AppBarBottomNavLayout> createState() => _AppBarBottomNavLayoutState();
+  State<BottomNavLayout> createState() => _BottomNavLayoutState();
 }
 
-class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
+class _BottomNavLayoutState extends State<BottomNavLayout> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = const [
