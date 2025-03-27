@@ -465,14 +465,14 @@ public class GithubService {
                 .aiAnalysis(null)
                 .build();
 
-        String prompt = gptService.generateGithubAnalysisPrompt(githubAnalysisResult);
-        String gptAnalysisResult;
         try {
-            gptAnalysisResult = gptService.githubDataAnalysis(prompt, 500);
+            GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
+            githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
+            githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
+            githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
         } catch (JsonProcessingException e) {
             throw new GithubAnalysisException("Github analysis failed" + e.getMessage());
         }
-        githubAnalysisResult = gptService.githubAnalysisResultParser(gptAnalysisResult);
         githubAnalysisResultRepository.save(githubAnalysisResult);
     }
 

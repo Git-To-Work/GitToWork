@@ -1,0 +1,18 @@
+package com.gittowork.domain.coverletter.dto.response;
+
+import lombok.*;
+
+import java.util.List;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class GetCoverLetterAnalysisResponse {
+    private int coverLetterId;
+    private List<String> aiAnalysisResult;
+    private CoverLetterAnalysisStat stat;
+    private String analysisDttm;
+    private String fileUrl;
+}

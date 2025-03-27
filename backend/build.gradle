@@ -57,6 +57,7 @@ dependencies {
 		exclude group: 'software.amazon.ion', module: 'ion-java'
 	}
 	implementation 'com.amazon.ion:ion-java:1.10.5'
+	implementation 'org.apache.pdfbox:pdfbox:2.0.24'
 }
 
 dependencyManagement {
