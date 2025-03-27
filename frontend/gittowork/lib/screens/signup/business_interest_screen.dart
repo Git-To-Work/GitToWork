@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../layouts/appbar_bottom_nav_layout.dart';
-import '../../services/api_service.dart';
+import '../../services/user_api.dart'; // 수정: user_api.dart 사용
 import '../../widgets/app_bar.dart';
 
 // 실제 DB에서 받아올 때, id/name/logoUrl 형태의 모델
@@ -59,7 +59,7 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
   }
 
   Future<void> _fetchBusinessFields() async {
-    final fetchedFields = await ApiService.fetchInterestFields();
+    final fetchedFields = await UserApi.fetchInterestFields();
 
     for (final field in fetchedFields) {
       if (widget.initialSelectedFields.contains(field.fieldName)) {
@@ -102,8 +102,7 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
 
     if (widget.isSignUp) {
       widget.signupParams?['interestsFields'] = selectedFields;
-      final isSignupSuccess = await ApiService.sendSignupData(widget.signupParams!);
-
+      final isSignupSuccess = await UserApi.sendSignupData(widget.signupParams!);
       if (isSignupSuccess) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -116,7 +115,7 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
         );
       }
     } else {
-      final isUpdated = await ApiService.updateInterestFields(selectedFields);
+      final isUpdated = await UserApi.updateInterestFields(selectedFields);
       if (isUpdated) {
         Navigator.pop(context, selectedFields);
       } else {

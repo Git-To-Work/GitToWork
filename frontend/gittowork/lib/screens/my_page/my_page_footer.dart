@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '../../services/api_service.dart';
+import '../../services/auth_api.dart';
 
 class MyPageFooter extends StatelessWidget {
   const MyPageFooter({Key? key}) : super(key: key);
@@ -28,7 +27,7 @@ class MyPageFooter extends StatelessWidget {
 
     if (confirmResult == true) {
       // 실제 로그아웃 API 호출
-      final success = await ApiService.logout();
+      final success = await AuthApi.logout();
       if (success) {
         // 로그아웃 성공 시 처리 (ex. 로그인 화면으로 이동)
         ScaffoldMessenger.of(context).showSnackBar(
@@ -67,7 +66,7 @@ class MyPageFooter extends StatelessWidget {
 
     if (confirmResult == true) {
       // 실제 회원탈퇴 API 호출
-      final success = await ApiService.withdrawAccount();
+      final success = await AuthApi.withdrawAccount();
       if (success) {
         // 탈퇴 성공 시 처리 (ex. 로그인 화면으로 이동)
         ScaffoldMessenger.of(context).showSnackBar(
