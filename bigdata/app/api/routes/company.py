@@ -118,6 +118,7 @@ from app.utils.response import success_response
 from app.utils.mongo_logger import log_user_search, get_user_search_history
 
 from app.utils.get_git_stat import aggregate_selected_repo_stats
+from app.utils.recommend_companies import run_hybrid_recommendation
 
 router = APIRouter()
 
@@ -182,7 +183,7 @@ def read_companies(
     #git_hub analysis 가져오기
     aggregate_selected_repo_stats_data = aggregate_selected_repo_stats(selected_repositories_id, user_id)
 
-    result = []
+    result = run_hybrid_recommendation(user_github_name, )
     now = datetime.now()
     for company in companies:
         field_name = company.field.field_name if company.field else None

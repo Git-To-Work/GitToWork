@@ -10,7 +10,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 from surprise import SVD, Dataset, Reader
 
 
-def run_hybrid_recommendation(username):
+def run_hybrid_recommendation(username,
+                              liked_companies_set,
+                              blacklisted_companies_set,
+                              scraped_companies_set,
+                              user_search_history,
+                              user_search_detail_history,
+                              aggregate_selected_repo_stats_data
+                              ):
     #############################################
     # 1. 설정 (사용자, 가중치, 좋아요/싫어요 등)
     #############################################
