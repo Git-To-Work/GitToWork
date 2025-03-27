@@ -99,15 +99,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             MyPageList(userProfile: userProfile,),
 
             // 3) 하단 로그아웃 / 회원탈퇴
-            MyPageFooter(
-              onLogout: () {
-                authProvider.logout();
-                // TODO: 로그아웃 후 이동 처리
-              },
-              onWithdraw: () {
-                // TODO: 회원 탈퇴 처리
-              },
-            ),
+            MyPageFooter(),
           ],
         ),
       ),

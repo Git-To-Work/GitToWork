@@ -24,7 +24,7 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
   final storage = FlutterSecureStorage();
   final token = await storage.read(key: 'jwt_token'); // 저장된 JWT 토큰 읽어오기
-
+  debugPrint('JWT 토큰: $token');
   runApp(
     MultiProvider(
       providers: [
@@ -42,18 +42,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 저장된 토큰이 있으면 AuthProvider에 설정
+    // 빌드가 완료된 후에 토큰 설정하도록 예약 (여기서는 async gap 없이 사용)
     if (initialToken != null) {
-      Provider.of<AuthProvider>(context, listen: false)
-          .setAccessToken(initialToken!);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Provider.of<AuthProvider>(context, listen: false)
+            .setAccessToken(initialToken!);
+      });
     }
     return MaterialApp(
       title: 'Git To Work',
-      scaffoldMessengerKey: scaffoldMessengerKey, // GlobalKey 적용
+      scaffoldMessengerKey: scaffoldMessengerKey,
       theme: ThemeData(
         primaryColor: Colors.white,
         scaffoldBackgroundColor: Colors.white,
-        fontFamily: 'Pretendard', // 글로벌 폰트 지정
+        fontFamily: 'Pretendard',
         textTheme: const TextTheme(
           displayLarge: TextStyle(fontWeight: FontWeight.w500),
           displayMedium: TextStyle(fontWeight: FontWeight.w500),
@@ -85,9 +87,13 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  late final AuthProvider _authProvider;
+
   @override
   void initState() {
     super.initState();
+    // initState에서 Provider를 읽어 저장
+    _authProvider = Provider.of<AuthProvider>(context, listen: false);
     _navigateAfterDelay();
   }
 
@@ -95,31 +101,25 @@ class _SplashScreenState extends State<SplashScreen> {
     // 3초 스플래시 대기
     await Future.delayed(const Duration(seconds: 3));
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // 위젯이 여전히 마운트 되어 있는지 확인
+    if (!mounted) return;
 
-    // 1) accessToken 이 있는지 우선 확인
-    if (authProvider.accessToken != null) {
-      // 2) 서버로 자동 로그인 요청(이미 가지고 있는 토큰 유효성 체크)
-      final success = await authProvider.autoLoginWithToken();
+    // accessToken 존재 여부에 따라 화면 이동
+    if (_authProvider.accessToken != null) {
+      final success = await _authProvider.autoLoginWithToken();
       if (success) {
-        // 자동 로그인 성공: 메인 화면
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
         );
       } else {
-        // 자동 로그인 실패 -> 토큰 무효. 로컬 저장된 것들도 정리
-        authProvider.logout();
-        // Secure Storage에서 지우는 로직
+        _authProvider.logout();
         final storage = FlutterSecureStorage();
         await storage.delete(key: 'jwt_token');
-
-        // 온보딩 화면으로 이동
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const OnboardingScreen()),
         );
       }
     } else {
-      // 토큰이 없으므로 그대로 온보딩 화면으로 이동
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const OnboardingScreen()),
       );
@@ -131,4 +131,3 @@ class _SplashScreenState extends State<SplashScreen> {
     return const NoAppBarNoBottomNavLayout();
   }
 }
-

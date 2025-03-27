@@ -3,17 +3,17 @@ import '../../layouts/appbar_bottom_nav_layout.dart';
 import '../../services/api_service.dart';
 import '../../widgets/app_bar.dart';
 
-// 실제 DB에서 받아올 때, id/name/imageUrl 형태의 모델
+// 실제 DB에서 받아올 때, id/name/logoUrl 형태의 모델
 class BusinessField {
   final int fieldId;
   final String fieldName;
-  final String logoUrl;
+  final String? logoUrl; // nullable로 변경
   bool isSelected;
 
   BusinessField({
     required this.fieldId,
     required this.fieldName,
-    required this.logoUrl,
+    this.logoUrl, // 필수 아니도록 변경
     this.isSelected = false,
   });
 }
@@ -75,7 +75,6 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
       debugPrint("이전 회원가입 파라미터: ${widget.signupParams}");
     }
   }
-
 
   // 아이템을 탭했을 때 선택/해제 로직
   void _toggleSelect(int index) {
@@ -161,6 +160,11 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
                       runSpacing: 30, // 세로 간격
                       children: List.generate(businessFields.length, (index) {
                         final field = businessFields[index];
+
+                        // logoUrl이 없을 경우에 대한 예외 처리
+                        final imageUrl = field.logoUrl;
+                        final hasLogo = imageUrl != null && imageUrl.isNotEmpty;
+
                         return InkWell(
                           onTap: () => _toggleSelect(index),
                           child: Column(
@@ -169,14 +173,26 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
                               // 이미지와 선택 체크 아이콘은 Stack으로 구현
                               Stack(
                                 children: [
-                                  ClipRRect(
+                                  // logoUrl이 null이거나 빈 문자열이면 기본 Placeholder 처리
+                                  hasLogo
+                                      ? ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
                                     child: Image.network(
-                                      field.logoUrl,
+                                      imageUrl!,
                                       width: 180,
                                       height: 100,
                                       fit: BoxFit.cover,
                                     ),
+                                  )
+                                      : Container(
+                                    width: 180,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade300,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Text('No Image'),
                                   ),
                                   if (field.isSelected)
                                     const Positioned(

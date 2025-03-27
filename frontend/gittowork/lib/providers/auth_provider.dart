@@ -76,7 +76,10 @@ class AuthProvider with ChangeNotifier {
 
   /// 사용자 프로필 조회
   Future<void> fetchUserProfile() async {
-    if (_accessToken == null) return;
+    if (_accessToken == null) {
+      debugPrint("회원정보 조회 실패");
+      return;
+    }
     try {
       final profile = await _apiService.fetchUserProfile(_accessToken!);
       _userProfile = profile;

@@ -99,7 +99,6 @@ class ApiService {
       if (response.statusCode == 200) {
         debugPrint('회원가입 성공: ${response.data}');
         return true;
-        // 추가 로직 (예: 저장, 화면 이동 등)
       } else {
         debugPrint('회원가입 실패(서버 에러): ${response.statusCode}');
         return false;
@@ -121,12 +120,26 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = response.data['fields'] as List;
-        return data.map((json) => BusinessField(
-          fieldId: json['fieldId'],
-          fieldName: json['fieldName'],
-          logoUrl: json['logoUrl'],
-        )).toList();
+        // 전체 응답에서 results -> fields까지 접근
+        final data = response.data;
+        final results = data['results'];
+        final fields = results['fields'] as List<dynamic>?;
+
+        // fields 키가 없거나 null이면 빈 리스트 반환
+        if (fields == null) {
+          debugPrint('관심 분야 목록이 null 상태입니다.');
+          return [];
+        }
+
+        // 각 필드를 BusinessField로 매핑
+        return fields.map((json) {
+          return BusinessField(
+            fieldId: json['id'] as int,
+            fieldName: json['fieldName'] as String,
+            // logoUrl를 nullable 하게 받되, 키 이름에 맞춰 fieldLogoUrl로 가져옴
+            logoUrl: json['fieldLogoUrl'] as String?,
+          );
+        }).toList();
       } else {
         throw Exception('관심 분야 목록 불러오기 실패: ${response.statusCode}');
       }
@@ -157,6 +170,60 @@ class ApiService {
       }
     } catch (e) {
       debugPrint('관심 분야 업데이트 에러: $e');
+      return false;
+    }
+  }
+
+  /// 로그아웃 메서드
+  static Future<bool> logout() async {
+    try {
+      final token = await FlutterSecureStorage().read(key: 'jwt_token');
+      if (token == null) {
+        debugPrint('토큰이 없습니다. 로그아웃 수행 불가');
+        return false;
+      }
+
+      _dio.options.headers['authorization'] = 'Bearer $token';
+
+      final response = await _dio.post('/api/auth/create/logout');
+
+      if (response.statusCode == 200) {
+        debugPrint('로그아웃 성공: ${response.data}');
+        await FlutterSecureStorage().delete(key: 'jwt_token');
+        return true;
+      } else {
+        debugPrint('로그아웃 실패(서버 에러): ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('로그아웃 실패(예외 발생): $e');
+      return false;
+    }
+  }
+
+  /// 회원탈퇴 메서드
+  static Future<bool> withdrawAccount() async {
+    try {
+      final token = await FlutterSecureStorage().read(key: 'jwt_token');
+      if (token == null) {
+        debugPrint('토큰이 없습니다. 회원탈퇴 수행 불가');
+        return false;
+      }
+
+      _dio.options.headers['authorization'] = 'Bearer $token';
+
+      final response = await _dio.post('/api/user/delete/account');
+
+      if (response.statusCode == 200) {
+        debugPrint('회원탈퇴 성공: ${response.data}');
+        await FlutterSecureStorage().delete(key: 'jwt_token');
+        return true;
+      } else {
+        debugPrint('회원탈퇴 실패(서버 에러): ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('회원탈퇴 실패(예외 발생): $e');
       return false;
     }
   }
