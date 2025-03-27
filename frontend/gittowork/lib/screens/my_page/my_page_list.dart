@@ -13,40 +13,77 @@ class MyPageList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // 1) 나의 정보 관리
-        _MyPageListTile(
-          title: '나의 정보 관리',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MyInfoEditScreen(userProfile: userProfile),
-              ),
-            );
-          },
+    // 화면에 표시할 타일들
+    final tiles = [
+      _MyPageListTile(
+        title: '나의 정보 관리',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MyInfoEditScreen(userProfile: userProfile),
+            ),
+          );
+        },
+      ),
+      _MyPageListTile(
+        title: '내가 차단한 기업',
+        onTap: () {
+          // TODO: 이동 or 액션
+        },
+      ),
+      _MyPageListTile(
+        title: '서비스 이용 약관',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const TermsServiceScreen(),
+            ),
+          );
+        },
+      ),
+    ];
+
+    // 타일과 구분선을 교차로 삽입하기 위한 children 리스트
+    final List<Widget> children = [];
+    for (int i = 0; i < tiles.length; i++) {
+      children.add(tiles[i]);
+      // 마지막 타일이 아니라면 구분선 추가
+      if (i < tiles.length - 1) {
+        children.add(
+          Container(
+            height: 1,
+            color: Colors.grey.shade300, // 원하는 구분선 색
+          ),
+        );
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 30),
+      child: Container(
+        // Rectangle 스타일
+        padding: const EdgeInsets.all(30), // 전체 컨테이너 패딩
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+            color: const Color(0xFFD6D6D6), // Stroke 색상
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              offset: Offset(0, 2), // 그림자 수직 이동
+              blurRadius: 6,       // 그림자 번짐 정도
+            ),
+          ],
         ),
-        // 2) 내가 차단한 기업
-        _MyPageListTile(
-          title: '내가 차단한 기업',
-          onTap: () {
-            // TODO: 이동 or 액션
-          },
+        // 메뉴(타일)들과 구분선을 표시
+        child: Column(
+          children: children,
         ),
-        // 3) 서비스 이용 약관
-        _MyPageListTile(
-          title: '서비스 이용 약관',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const TermsServiceScreen(),
-              ),
-            );
-          },
-        ),
-      ],
+      )
     );
   }
 }
@@ -64,13 +101,23 @@ class _MyPageListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade300),
-        ),
-      ),
+      // 각 메뉴의 세로 간격
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: ListTile(
-        title: Text(title),
+        contentPadding: EdgeInsets.zero, // ListTile 기본 패딩 제거
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF8A8A8A),
+          ),
+        ),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          size: 20,
+          color: Colors.grey,
+        ),
         onTap: onTap,
       ),
     );
