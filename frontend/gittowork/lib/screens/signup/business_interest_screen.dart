@@ -104,7 +104,7 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
       widget.signupParams?['interestsFields'] = selectedFields;
       final isSignupSuccess = await UserApi.sendSignupData(widget.signupParams!);
       if (isSignupSuccess) {
-        final isUpdated = await ApiService.updateInterestFields(selectedFields);
+        final isUpdated = await UserApi.updateInterestFields(selectedFields);
         if (isUpdated) {
           Navigator.pop(context, selectedFields);
         } else {
