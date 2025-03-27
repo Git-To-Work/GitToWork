@@ -104,6 +104,14 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
       widget.signupParams?['interestsFields'] = selectedFields;
       final isSignupSuccess = await UserApi.sendSignupData(widget.signupParams!);
       if (isSignupSuccess) {
+        final isUpdated = await ApiService.updateInterestFields(selectedFields);
+        if (isUpdated) {
+          Navigator.pop(context, selectedFields);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('관심 분야 업데이트 실패')),
+          );
+        }
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
