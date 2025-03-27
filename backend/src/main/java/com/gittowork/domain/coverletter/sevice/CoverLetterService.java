@@ -68,7 +68,7 @@ public class CoverLetterService {
         if (file == null || file.isEmpty() || file.getOriginalFilename() == null) {
             throw new EmptyFileException("Empty file input");
         }
-        validatePdfFileExtension(file.getOriginalFilename());
+        validatePdfFileExtension(file.getOriginalFilename(), file.getContentType());
 
         String fileUrl = uploadFileToS3(file);
 
@@ -97,7 +97,7 @@ public class CoverLetterService {
      *      - filename: 검증할 파일의 원본 이름.
      * 4. return: 없음 (조건 미충족 시 예외 발생).
      */
-    private void validatePdfFileExtension(String filename) {
+    private void validatePdfFileExtension(String filename, String contentType) {
         int lastDotIndex = filename.lastIndexOf(".");
         if (lastDotIndex == -1) {
             throw new FileExtensionException("File extension not supported");
@@ -105,6 +105,9 @@ public class CoverLetterService {
         String extension = filename.substring(lastDotIndex + 1).toLowerCase();
         if (!"pdf".equals(extension)) {
             throw new FileExtensionException("File extension not supported: " + extension);
+        }
+        if (!"application/pdf".equalsIgnoreCase(contentType)) {
+            throw new FileExtensionException("File extension not supported: " + contentType);
         }
     }
 
