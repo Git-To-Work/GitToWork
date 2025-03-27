@@ -1,24 +1,48 @@
 import 'package:flutter/material.dart';
+import '../../layouts/appbar_bottom_nav_layout.dart';
+import '../../services/api_service.dart';
 import '../../widgets/app_bar.dart';
 
-// 실제 DB에서 받아올 때, id/name/imageUrl 형태의 모델
+// 실제 DB에서 받아올 때, id/name/logoUrl 형태의 모델
 class BusinessField {
   final int fieldId;
   final String fieldName;
-  final String logoUrl;
+  final String? logoUrl; // nullable로 변경
   bool isSelected;
 
   BusinessField({
     required this.fieldId,
     required this.fieldName,
-    required this.logoUrl,
+    this.logoUrl, // 필수 아니도록 변경
     this.isSelected = false,
   });
 }
 
 class BusinessInterestScreen extends StatefulWidget {
-  final Map signupParams;
-  const BusinessInterestScreen({super.key, required this.signupParams});
+  /// 회원가입 시나리오 여부
+  final bool isSignUp;
+
+  /// 회원가입 시, 이전 화면에서 넘겨받은 회원가입 파라미터
+  final Map? signupParams;
+
+  /// 회원정보 수정 시, 이미 선택되어 있는 분야들 (분야명 리스트)
+  final List<String> initialSelectedFields;
+
+  /// 회원가입 시나리오용 생성자
+  const BusinessInterestScreen({
+    super.key,
+    required Map signupParams,
+  })  : isSignUp = true,
+        signupParams = signupParams,
+        initialSelectedFields = const [];
+
+  /// 회원정보 수정 시나리오용 named constructor
+  const BusinessInterestScreen.edit({
+    super.key,
+    required List<String> initialSelectedFields,
+  })  : isSignUp = false,
+        signupParams = null,
+        initialSelectedFields = initialSelectedFields;
 
   @override
   State<BusinessInterestScreen> createState() => _BusinessInterestScreenState();
@@ -32,34 +56,24 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
   void initState() {
     super.initState();
     _fetchBusinessFields();
-
-    // 전달받은 회원가입 파라미터 확인 (디버그용)
-    debugPrint("이전 회원가입 파라미터: ${widget.signupParams}");
   }
 
-  // 백엔드에서 비즈니스 분야 리스트를 가져오는 로직 (가짜 예시)
   Future<void> _fetchBusinessFields() async {
-    // TODO: 실제 ApiService 등을 사용하여 백엔드에서 받아오세요.
-    // 여기서는 예시로 6개만 넣었지만, 실제로는 13개 이상이 될 것입니다.
-    final fetchedFields = [
-      BusinessField(fieldId: 1, fieldName: "솔루션 SI", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 2, fieldName: "game", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 3, fieldName: "클라우드", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 4, fieldName: "인프라", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 5, fieldName: "빅데이터", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 6, fieldName: "AI", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 7, fieldName: "솔루션 SI", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 8, fieldName: "game", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 9, fieldName: "클라우드", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 10, fieldName: "인프라", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 11, fieldName: "빅데이터", logoUrl: "https://picsum.photos/200/120"),
-      BusinessField(fieldId: 12, fieldName: "AI", logoUrl: "https://picsum.photos/200/120"),
-      // ... 실제 데이터 더 추가
-    ];
+    final fetchedFields = await ApiService.fetchInterestFields();
+
+    for (final field in fetchedFields) {
+      if (widget.initialSelectedFields.contains(field.fieldName)) {
+        field.isSelected = true;
+      }
+    }
 
     setState(() {
       businessFields = fetchedFields;
     });
+
+    if (widget.isSignUp) {
+      debugPrint("이전 회원가입 파라미터: ${widget.signupParams}");
+    }
   }
 
   // 아이템을 탭했을 때 선택/해제 로직
@@ -80,20 +94,37 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
     });
   }
 
-  // 선택 완료 버튼 누르면 호출
-  void _onComplete() {
-    // 선택된 항목들만 추려내기
-    final selectedFields = businessFields.where((field) => field.isSelected).toList();
+  Future<void> _onComplete() async {
+    final selectedFields = businessFields
+        .where((field) => field.isSelected)
+        .map((f) => f.fieldId)
+        .toList();
 
-    // signupParams에 interestsFields 추가 (최대 5개)
-    widget.signupParams['interestsFields'] = selectedFields;
+    if (widget.isSignUp) {
+      widget.signupParams?['interestsFields'] = selectedFields;
+      final isSignupSuccess = await ApiService.sendSignupData(widget.signupParams!);
 
-    debugPrint("최종 회원가입 정보: ${widget.signupParams}");
-
-    // TODO: 백엔드로 회원가입 정보 전송
-    // 예: ApiService.sendSignupData(widget.signupParams);
-
-    // 전송 후 다음 화면으로 이동하거나 완료 처리를 진행
+      if (isSignupSuccess) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
+              (route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원가입에 실패했습니다.')),
+        );
+      }
+    } else {
+      final isUpdated = await ApiService.updateInterestFields(selectedFields);
+      if (isUpdated) {
+        Navigator.pop(context, selectedFields);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('관심 분야 업데이트 실패')),
+        );
+      }
+    }
   }
 
   @override
@@ -129,6 +160,11 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
                       runSpacing: 30, // 세로 간격
                       children: List.generate(businessFields.length, (index) {
                         final field = businessFields[index];
+
+                        // logoUrl이 없을 경우에 대한 예외 처리
+                        final imageUrl = field.logoUrl;
+                        final hasLogo = imageUrl != null && imageUrl.isNotEmpty;
+
                         return InkWell(
                           onTap: () => _toggleSelect(index),
                           child: Column(
@@ -137,20 +173,36 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
                               // 이미지와 선택 체크 아이콘은 Stack으로 구현
                               Stack(
                                 children: [
-                                  ClipRRect(
+                                  // logoUrl이 null이거나 빈 문자열이면 기본 Placeholder 처리
+                                  hasLogo
+                                      ? ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
                                     child: Image.network(
-                                      field.logoUrl,
+                                      imageUrl!,
                                       width: 180,
                                       height: 100,
                                       fit: BoxFit.cover,
                                     ),
+                                  )
+                                      : Container(
+                                    width: 180,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade300,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Text('No Image'),
                                   ),
                                   if (field.isSelected)
                                     const Positioned(
                                       top: 8,
                                       right: 8,
-                                      child: Icon(Icons.check_circle, color: Colors.green, size: 24),
+                                      child: Icon(
+                                        Icons.check_circle,
+                                        color: Colors.green,
+                                        size: 24,
+                                      ),
                                     ),
                                 ],
                               ),
@@ -175,7 +227,7 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
               ),
             ),
           ),
-          // 하단 버튼: Expanded를 사용해 스크롤 영역과 구분하여 고정
+          // 하단 버튼
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30.0),
             child: Container(
@@ -186,19 +238,18 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
                 child: GestureDetector(
                   onTap: _onComplete,
                   child: const Text(
-
-                  '선택 완료',
-                  style: TextStyle(
-                    color: Color(0xFFD6D6D6),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
+                    '선택 완료',
+                    style: TextStyle(
+                      color: Color(0xFFD6D6D6),
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ),
-              ),
             ),
           ),
-          const SizedBox(height: 100), // 네비게이션 바 위로 50px 위치하도록 추가 여백
+          const SizedBox(height: 100), // 네비게이션 바 위로 여백
         ],
       ),
     );
