@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../models/user_profile.dart';
+import '../../../../models/user_profile.dart';
 
 class MyPageHeader extends StatelessWidget {
   final UserProfile userProfile;

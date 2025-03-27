@@ -7,10 +7,10 @@ import '../../../widgets/app_bar.dart';
 import '../../../models/user_profile.dart';
 
 // 나머지 컴포넌트 위젯들
-import 'my_page_header.dart';
-import 'my_page_button_row.dart';
-import 'my_page_list.dart';
-import 'my_page_footer.dart';
+import 'my_page_components/my_page_header.dart';
+import 'my_page_components/my_page_button_row.dart';
+import 'my_page_components/my_page_list.dart';
+import 'my_page_components/my_page_footer.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});

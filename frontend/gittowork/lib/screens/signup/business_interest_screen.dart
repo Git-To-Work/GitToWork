@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:gittowork/screens/my_page/my_page_screen.dart';
 import '../../layouts/appbar_bottom_nav_layout.dart';
 import '../../services/user_api.dart'; // 수정: user_api.dart 사용
 import '../../widgets/app_bar.dart';
+import '../my_page/my_info_edit_screen.dart';
 
 // 실제 DB에서 받아올 때, id/name/logoUrl 형태의 모델
 class BusinessField {
@@ -125,7 +127,13 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
     } else {
       final isUpdated = await UserApi.updateInterestFields(selectedFields);
       if (isUpdated) {
-        Navigator.pop(context, selectedFields);
+        // Navigator.pop(context); // 수정 전: 관심분야 편집 완료 후, 이전 화면(MyInfoEditScreen)을 닫음
+        // 수정 후: 이전 화면(MyInfoEditScreen)을 닫지 않고, 다시 불러옴
+        Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const MyPageScreen()),
+              (route) => false,
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('관심 분야 업데이트 실패')),
