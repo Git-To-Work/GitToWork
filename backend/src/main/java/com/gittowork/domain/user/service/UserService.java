@@ -144,6 +144,7 @@ public class UserService {
                 .experience(user.getExperience())
                 .avatarUrl(user.getUserGitInfo().getAvatarUrl())
                 .interestFields(fieldsNames)
+                .notificationAgreed(user.getNotificationAgreeDttm() != null)
                 .build();
     }
 
@@ -168,6 +169,16 @@ public class UserService {
         user.setInterestFields(
                 Arrays.toString(updateProfileRequest.getInterestsFields()).replaceAll(" ", "")
         );
+
+        if (user.getNotificationAgreeDttm() != null) {
+            if (!updateProfileRequest.isNotificationAgreed()) {
+                user.setNotificationAgreeDttm(null);
+            }
+        } else {
+            if (updateProfileRequest.isNotificationAgreed()) {
+                user.setNotificationAgreeDttm(LocalDateTime.now());
+            }
+        }
 
         userRepository.save(user);
 
