@@ -343,12 +343,11 @@ public class GithubService {
         SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndSelectedRepositoryId(userId, selectedGithubRepositoryIds)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository combination not found"));
 
-        GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
-                .findBySelectedRepositoriesId(selectedGithubRepositoryIds)
-                .orElseThrow(() -> new GithubAnalysisNotFoundException("Github analysis result not found"));
+        Optional<GithubAnalysisResult> githubAnalysisResult = githubAnalysisResultRepository
+                .findBySelectedRepositoriesId(selectedGithubRepositoryIds);
 
         selectedRepoRepository.delete(selectedRepository);
-        githubAnalysisResultRepository.delete(githubAnalysisResult);
+        githubAnalysisResult.ifPresent(githubAnalysisResultRepository::delete);
 
         return MessageOnlyResponse.builder()
                 .message("레포지토리 조합과 분석 결과가 삭제되었습니다.")
