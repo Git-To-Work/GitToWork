@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../utils/phone_number_formatter.dart';
+import '../../../../widgets/build_ios_like_row.dart';
 
 class UserInfoForm extends StatelessWidget {
   final TextEditingController nameController;
@@ -21,55 +22,47 @@ class UserInfoForm extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildReadOnlyField('이름', nameController),
-        _buildReadOnlyField('생년월일', birthController),
+        // 이름 (수정 불가)
+        AbsorbPointer(
+          child: buildIosLikeRow(
+            label: '이름',
+            hintText: '홍길동',
+            controller: nameController,
+          ),
+        ),
+
+        // 생년월일 (수정 불가)
+        AbsorbPointer(
+          child: buildIosLikeRow(
+            label: '생년월일',
+            hintText: 'YYYYMMDD',
+            controller: birthController,
+          ),
+        ),
+
+        // 경력 (탭하면 picker 호출)
         GestureDetector(
           onTap: onExperienceTap,
-          child: AbsorbPointer(child: _buildEditableField('경력', experienceController)),
+          child: AbsorbPointer(
+            child: buildIosLikeRow(
+              label: '경력 (년)',
+              hintText: '0년',
+              controller: experienceController,
+            ),
+          ),
         ),
-        _buildEditableField('핸드폰', phoneController, keyboardType: TextInputType.phone),
+
+        // 핸드폰 (수정 가능)
+        buildIosLikeRow(
+          label: '핸드폰',
+          hintText: '010-0000-0000',
+          controller: phoneController,
+          keyboardType: TextInputType.phone,
+          inputFormatters: [PhoneNumberFormatter()],
+        ),
+
         const SizedBox(height: 16),
       ],
     );
   }
-
-  Widget _buildReadOnlyField(String label, TextEditingController controller) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label),
-      const SizedBox(height: 6),
-      TextField(
-        controller: controller,
-        readOnly: true,
-        decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          filled: true,
-          fillColor: Color(0xFFF0F0F0),
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        ),
-        style: const TextStyle(color: Colors.grey),
-      ),
-      const SizedBox(height: 16),
-    ],
-  );
-
-  Widget _buildEditableField(String label, TextEditingController controller,
-      {TextInputType? keyboardType}) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label),
-          const SizedBox(height: 6),
-          TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            inputFormatters: keyboardType == TextInputType.phone ? [PhoneNumberFormatter()] : null,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-      );
 }

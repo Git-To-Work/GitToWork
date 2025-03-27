@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gittowork/widgets/app_bar.dart';
+import 'package:provider/provider.dart';
 import '../../../models/user_profile.dart';
 import '../../services/user_api.dart';
 import '../signup/business_interest_screen.dart';
@@ -8,6 +9,8 @@ import 'edit_components/interest_fields_section.dart';
 import 'edit_components/user_info_form.dart';
 import 'edit_components/notification_switch.dart';
 import 'package:bottom_picker/bottom_picker.dart';
+import '../../../providers/auth_provider.dart';
+
 
 class MyInfoEditScreen extends StatefulWidget {
   final UserProfile userProfile;
@@ -30,48 +33,52 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
 
   bool _serviceNotification = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _nicknameController.text = widget.userProfile.nickname;
-    _nameController.text = widget.userProfile.name;
-    _birthController.text = widget.userProfile.birthDt;
-    _experienceController.text = widget.userProfile.experience >= 10
-        ? '10년 이상'
-        : '${widget.userProfile.experience}년';
-    _phoneController.text = widget.userProfile.phone;
+  // 추가: 화면용, 전송용 각각 관리
+  List<String> _interestFieldsNames = [];
+  List<int> _interestFieldIds = [];
+
+  Future<void> _refreshUserProfile() async {
+    try {
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.fetchUserProfile(); // 내부에서 상태 갱신됨
+
+      final updatedProfile = authProvider.userProfile;
+
+      if (updatedProfile == null) throw Exception('프로필 정보를 가져오지 못했습니다.');
+
+      setState(() {
+        widget.userProfile.interestFields
+          ..clear()
+          ..addAll(updatedProfile.interestFields);
+
+        _nicknameController.text = updatedProfile.nickname;
+        _phoneController.text = updatedProfile.phone;
+        _experienceController.text = updatedProfile.experience >= 10
+            ? '10년 이상'
+            : '${updatedProfile.experience}년';
+      });
+    } catch (e) {
+      debugPrint('Error refreshing profile: $e');
+    }
   }
 
-  @override
-  void dispose() {
-    _nicknameController.dispose();
-    _nameController.dispose();
-    _birthController.dispose();
-    _experienceController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
 
   Future<void> _goToBusinessInterestScreen() async {
-    final currentFields = widget.userProfile.interestFields;
-
-    final updatedFields = await Navigator.push<List<String>>(
+    final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (_) => BusinessInterestScreen.edit(
-          initialSelectedFields: currentFields,
+          initialSelectedFields: widget.userProfile.interestFields,
         ),
       ),
     );
 
-    if (updatedFields != null) {
-      setState(() {
-        widget.userProfile.interestFields
-          ..clear()
-          ..addAll(updatedFields);
-      });
+    if (result != null) {
+      // 관심 분야 수정 후, API로 다시 최신 프로필 불러오기
+      await _refreshUserProfile();
     }
   }
+
 
   void _pickCareer() {
     final careerItems = List<Widget>.generate(
@@ -116,14 +123,15 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
 
     final updateParams = {
       'userId': widget.userProfile.userId,
-      'interestFields': widget.userProfile.interestFields,
+      'interestsFields': _interestFieldIds, // 정확한 이름 (interestsFields)
       'name': widget.userProfile.name,
       'birthDt': widget.userProfile.birthDt,
       'experience': updatedExperience,
       'phone': _phoneController.text,
+      'notificationAgreed': _serviceNotification,
     };
 
-    debugPrint(updateParams['interestFields'].toString());
+    debugPrint('전송할 관심 분야 ID: $_interestFieldIds');
 
     final success = await UserApi.updateUserProfile(updateParams);
 
@@ -141,7 +149,7 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
     return Scaffold(
       appBar: const CustomAppBar(),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 24),
         child: Column(
           children: [
             AvatarNicknameSection(

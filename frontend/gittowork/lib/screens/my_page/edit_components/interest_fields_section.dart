@@ -16,7 +16,7 @@ class InterestFieldsSection extends StatelessWidget {
     return Column(
       children: [
         SizedBox(
-          width: 360,
+          width: double.infinity,
           height: 60,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
