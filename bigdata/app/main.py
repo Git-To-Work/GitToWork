@@ -13,8 +13,8 @@ app = FastAPI()
 
 setup_exception_handlers(app)
 
-app.include_router(company_router, prefix="/api", tags=["companies"])
-app.include_router(company_detail_router, prefix="/api", tags=["companies"])
+app.include_router(company_router, tags=["companies"])
+app.include_router(company_detail_router, tags=["companies"])
 
 print("Registered routes:")
 for route in app.routes:
