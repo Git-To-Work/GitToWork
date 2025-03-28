@@ -50,10 +50,12 @@ pipeline {
             steps {
                 echo '서비스 배포: docker-compose up -d'
                 sh '''
+                    docker stop nginx
                     docker rm -f fastapi
                     docker rm -f backend
                     docker-compose -f CI-CD/docker-compose.yml up -d
                     sleep 10
+                    docker start nginx
                 '''
             }
         }
