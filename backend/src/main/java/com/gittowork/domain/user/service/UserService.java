@@ -2,7 +2,7 @@ package com.gittowork.domain.user.service;
 
 import com.gittowork.domain.field.entity.Field;
 import com.gittowork.domain.field.repository.FieldRepository;
-import com.gittowork.domain.github.service.GithubService;
+import com.gittowork.domain.github.service.GithubAnalysisService;
 import com.gittowork.domain.user.dto.request.InsertProfileRequest;
 import com.gittowork.domain.user.dto.request.UpdateInterestsFieldsRequest;
 import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
@@ -41,7 +41,7 @@ public class UserService {
     private final UserGitInfoRepository userGitInfoRepository;
     private final RedisService redisService;
     private final FieldRepository fieldRepository;
-    private final GithubService githubService;
+    private final GithubAnalysisService githubAnalysisService;
 
     /**
      * 1. 메서드 설명: 프로필 추가 정보를 저장하는 API.
@@ -107,7 +107,7 @@ public class UserService {
         redisService.deleteKey("user:" + username);
         redisService.deleteKey("userGitInfo:" + username);
 
-        githubService.saveUserGithubRepositoryInfo(user.getGithubAccessToken(), username, user.getId());
+        githubAnalysisService.saveUserGithubRepositoryInfo(user.getGithubAccessToken(), username, user.getId());
 
         return MessageOnlyResponse.builder()
                 .message("추가 정보가 성공적으로 업데이트되었습니다.")
