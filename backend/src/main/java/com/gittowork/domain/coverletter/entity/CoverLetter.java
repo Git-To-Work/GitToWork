@@ -21,6 +21,7 @@ public class CoverLetter {
 
     @Id
     @Column(name = "file_id", nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @NotNull
