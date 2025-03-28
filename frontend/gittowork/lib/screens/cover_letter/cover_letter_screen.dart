@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'cover_letter_create_screen.dart';
 import 'package:gittowork/widgets/app_bar.dart';
-import 'cover_letter_list.dart';
+import 'components/cover_letter_list.dart';
 
 class CoverLetterScreen extends StatelessWidget {
   const CoverLetterScreen({super.key});
@@ -62,7 +63,12 @@ class CoverLetterScreen extends StatelessWidget {
             // 2) 자기소개서 등록 버튼
             InkWell(
               onTap: () {
-                // TODO: 자기소개서 등록 페이지 이동 로직
+                // 자기소개서 등록 페이지 이동 로직
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const CoverLetterCreateScreen()),
+                );
               },
               child: Container(
                 width: double.infinity,
