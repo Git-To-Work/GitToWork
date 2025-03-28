@@ -7,10 +7,10 @@ import '../../../widgets/app_bar.dart';
 import '../../../models/user_profile.dart';
 
 // 나머지 컴포넌트 위젯들
-import 'my_page_header.dart';
-import 'my_page_button_row.dart';
-import 'my_page_list.dart';
-import 'my_page_footer.dart';
+import 'my_page_components/my_page_header.dart';
+import 'my_page_components/my_page_button_row.dart';
+import 'my_page_components/my_page_list.dart';
+import 'my_page_components/my_page_footer.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -39,6 +39,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     try {
       await authProvider.fetchUserProfile();
     } catch (e) {
+      debugPrint('Error fetching user profile: $e');
       setState(() {
         _errorMessage = '사용자 정보를 불러오는 데 실패했습니다.';
       });
@@ -55,7 +56,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final UserProfile? userProfile = authProvider.userProfile;
 
     return Scaffold(
-      appBar: CustomAppBar(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
@@ -80,7 +80,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
           children: [
             // 1) 상단 검정 배경 영역
             Container(
-              color: Colors.black,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF2C2C2C), Color(0xFF464646)
+                  ]
+                )),
               padding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 24,
@@ -88,9 +95,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 90),
                   MyPageHeader(userProfile: userProfile),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 30),
                   const MyPageButtonRow(),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),

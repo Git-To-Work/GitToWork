@@ -20,7 +20,7 @@ public class GithubAnalysisController {
     private final GithubService githubService;
 
     @GetMapping("/select/analysis-by-repository")
-    public ApiResponse<?> getGithubAnalysisByRepository(@NotNull @RequestParam int selectedRepositoryId) {
+    public ApiResponse<?> getGithubAnalysisByRepository(@NotNull @RequestParam String selectedRepositoryId) {
         return ApiResponse.success(githubService.getGithubAnalysisByRepository(selectedRepositoryId));
     }
 
@@ -45,7 +45,7 @@ public class GithubAnalysisController {
     }
 
     @DeleteMapping("/delete/my-repository-combination")
-    public ApiResponse<?> deleteGithubAnalysisByRepository(@NotNull @RequestParam int selectedRepositoryId) {
+    public ApiResponse<?> deleteGithubAnalysisByRepository(@NotNull @RequestParam String selectedRepositoryId) {
         return ApiResponse.success(HttpStatus.OK, githubService.deleteSelectedGithubRepository(selectedRepositoryId));
     }
 

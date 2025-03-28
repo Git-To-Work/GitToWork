@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../services/github_api.dart'; // GitHub API 호출용 파일
+import '../../models/repository.dart'; // Repository 모델
+import 'my_repo.dart'; // 조합 레포지토리 선택 화면
 
 class SelectRepoDialog extends StatefulWidget {
   const SelectRepoDialog({super.key});
@@ -8,15 +11,68 @@ class SelectRepoDialog extends StatefulWidget {
 }
 
 class _SelectRepoDialogState extends State<SelectRepoDialog> {
-  final List<bool> _selectedList = [false, false, false, false, false];
+  List<Repository> _repositories = [];
+  List<bool> _selectedList = [];
+  bool _isLoading = true;
 
-  final List<String> _repoNames = [
-    'First Repository',
-    'Second Repository',
-    'Repository 3',
-    'Repository 4',
-    'Seongwon'
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadRepositories();
+  }
+
+  Future<void> _loadRepositories() async {
+    try {
+      final repos = await GitHubApi.fetchMyRepositories();
+      setState(() {
+        _repositories = repos;
+        _selectedList = List<bool>.filled(repos.length, false);
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('레포지토리 불러오기 실패: $e')),
+      );
+    }
+  }
+
+  Future<void> _saveSelectedRepositories() async {
+    // 선택된 레포지토리들의 repoId 추출
+    List<int> selectedRepoIds = [];
+    for (int i = 0; i < _repositories.length; i++) {
+      if (_selectedList[i]) {
+        selectedRepoIds.add(_repositories[i].repoId);
+      }
+    }
+    try {
+      // 레포지토리 선택 저장 API 호출
+      await GitHubApi.saveSelectedRepository(selectedRepoIds);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('레포지토리 선택 저장 실패: $e')),
+      );
+    }
+
+    try {
+      // 레포지토리 분석 요청 API 호출
+      await GitHubApi.requestRepositoryAnalysis(selectedRepoIds);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('레포지토리 분석 요청 실패: $e')),
+      );
+    }
+
+    Navigator.of(context).pop();
+    showDialog(
+      context: context,
+      builder: (context) =>
+      const MyRepo(),
+    );
+
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,15 +81,19 @@ class _SelectRepoDialogState extends State<SelectRepoDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: SizedBox(
         width: 350,
-        child: Column(
+        height: 467,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // 컨텐츠 영역
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
                     'Select Repo',
@@ -42,16 +102,18 @@ class _SelectRepoDialogState extends State<SelectRepoDialog> {
                   ),
                   const SizedBox(height: 10),
                   const Divider(thickness: 1, height: 20, color: Colors.black54),
-                  Flexible(
+                  // 고정 높이 영역 (항목 수와 상관없이 300픽셀 유지)
+                  SizedBox(
+                    height: 300,
                     child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: _repoNames.length,
+                      itemCount: _repositories.length,
                       itemBuilder: (context, index) {
                         final bool isSelected = _selectedList[index];
+                        final repo = _repositories[index];
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(
-                            _repoNames[index],
+                            repo.repoName,
                             style: const TextStyle(color: Colors.grey, fontSize: 18),
                           ),
                           trailing: GestureDetector(
@@ -80,7 +142,7 @@ class _SelectRepoDialogState extends State<SelectRepoDialog> {
                 ],
               ),
             ),
-
+            // 버튼 영역
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -98,9 +160,7 @@ class _SelectRepoDialogState extends State<SelectRepoDialog> {
                   '분석하기',
                   style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
+                onPressed: _saveSelectedRepositories,
               ),
             ),
           ],

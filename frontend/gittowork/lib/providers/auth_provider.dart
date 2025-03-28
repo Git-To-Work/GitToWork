@@ -80,6 +80,7 @@ class AuthProvider with ChangeNotifier {
       return;
     }
     try {
+      debugPrint("회원정보 조회 성공 : $_accessToken");
       final profile = await UserApi.fetchUserProfile(_accessToken!);
       _userProfile = profile;
       notifyListeners();

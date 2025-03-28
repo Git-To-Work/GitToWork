@@ -102,9 +102,9 @@ public class GithubService {
      * 4. return: GetGithubAnalysisByRepositoryResponse - 분석 결과 정보를 담은 DTO.
      */
     @Transactional(readOnly = true)
-    public GetGithubAnalysisByRepositoryResponse getGithubAnalysisByRepository(int selectedRepositoryId) {
+    public GetGithubAnalysisByRepositoryResponse getGithubAnalysisByRepository(String selectedRepositoryId) {
         GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
-                .findBySelectedRepositoriesId(String.valueOf(selectedRepositoryId))
+                .findBySelectedRepositoriesId(selectedRepositoryId)
                 .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Result not found"));
 
         int overallScoreValue = githubAnalysisResult.getOverallScore();
@@ -335,22 +335,19 @@ public class GithubService {
      * 4. return: 삭제 완료 메시지를 담은 MessageOnlyResponse 객체.
      */
     @Transactional
-    public MessageOnlyResponse deleteSelectedGithubRepository(int selectedGithubRepositoryIds) {
+    public MessageOnlyResponse deleteSelectedGithubRepository(String selectedGithubRepositoryIds) {
         int userId = userRepository.findByGithubName(getUserName())
                 .orElseThrow(() -> new UserNotFoundException("User not found"))
                 .getId();
 
-        String selectedRepoIdStr = String.valueOf(selectedGithubRepositoryIds);
-
-        SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndSelectedRepositoryId(userId, selectedRepoIdStr)
+        SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndSelectedRepositoryId(userId, selectedGithubRepositoryIds)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository combination not found"));
 
-        GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
-                .findBySelectedRepositoriesId(selectedRepoIdStr)
-                .orElseThrow(() -> new GithubAnalysisNotFoundException("Github analysis result not found"));
+        Optional<GithubAnalysisResult> githubAnalysisResult = githubAnalysisResultRepository
+                .findBySelectedRepositoriesId(selectedGithubRepositoryIds);
 
         selectedRepoRepository.delete(selectedRepository);
-        githubAnalysisResultRepository.delete(githubAnalysisResult);
+        githubAnalysisResult.ifPresent(githubAnalysisResultRepository::delete);
 
         return MessageOnlyResponse.builder()
                 .message("레포지토리 조합과 분석 결과가 삭제되었습니다.")
@@ -465,14 +462,14 @@ public class GithubService {
                 .aiAnalysis(null)
                 .build();
 
-        String prompt = gptService.generateGithubAnalysisPrompt(githubAnalysisResult);
-        String gptAnalysisResult;
         try {
-            gptAnalysisResult = gptService.githubDataAnalysis(prompt, 500);
+            GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
+            githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
+            githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
+            githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
         } catch (JsonProcessingException e) {
             throw new GithubAnalysisException("Github analysis failed" + e.getMessage());
         }
-        githubAnalysisResult = gptService.githubAnalysisResultParser(gptAnalysisResult);
         githubAnalysisResultRepository.save(githubAnalysisResult);
     }
 

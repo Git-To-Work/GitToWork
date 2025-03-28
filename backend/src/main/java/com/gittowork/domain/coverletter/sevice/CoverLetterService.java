@@ -1,63 +1,67 @@
 package com.gittowork.domain.coverletter.sevice;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.CannedAccessControlList;
-import com.amazonaws.services.s3.model.DeleteObjectRequest;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.*;
+import com.gittowork.domain.coverletter.dto.response.CoverLetterAnalysisStat;
+import com.gittowork.domain.coverletter.dto.response.GetCoverLetterAnalysisResponse;
 import com.gittowork.domain.coverletter.dto.response.GetMyCoverLetterListResponse.FileInfo;
 import com.gittowork.domain.coverletter.dto.response.GetMyCoverLetterListResponse;
 import com.gittowork.domain.coverletter.dto.response.UploadCoverLetterResponse;
 import com.gittowork.domain.coverletter.entity.CoverLetter;
+import com.gittowork.domain.coverletter.entity.CoverLetterAnalysis;
 import com.gittowork.domain.coverletter.repository.CoverLetterAnalysisRepository;
 import com.gittowork.domain.coverletter.repository.CoverLetterRepository;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.*;
 import com.gittowork.global.response.MessageOnlyResponse;
+import com.gittowork.global.service.GptService;
 import lombok.RequiredArgsConstructor;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class CoverLetterService {
+
     private final CoverLetterRepository coverLetterRepository;
     private final CoverLetterAnalysisRepository coverLetterAnalysisRepository;
     private final UserRepository userRepository;
-
     private final AmazonS3 amazonS3;
+    private final GptService gptService;
 
     @Value("${cloud.aws.s3.bucketName}")
     private String bucketName;
 
     /**
-     * 1. 메서드 설명: 전달받은 MultipartFile과 제목 정보를 기반으로 현재 인증된 사용자의 커버레터를 업로드하는 서비스 메서드.
-     *    업로드된 파일은 Amazon S3에 저장되며, 저장 후 DB에 CoverLetter 엔티티로 기록하고 업로드 결과 DTO를 반환한다.
+     * 1. 메서드 설명: 전달받은 MultipartFile과 제목 정보를 기반으로 현재 인증된 사용자의 커버레터를 업로드합니다.
+     *    업로드된 파일은 Amazon S3에 저장되며, 저장 후 DB에 CoverLetter 엔티티로 기록됩니다.
+     *    또한, 비동기로 자기소개서 분석을 수행합니다.
      * 2. 로직:
-     *    - SecurityContext에서 현재 인증된 사용자의 username을 조회한다.
-     *    - username으로 User 엔티티를 검색하여 사용자 정보를 확보한다.
-     *    - 파일이 비어 있거나 원본 파일명이 없는 경우 예외를 발생시킨다.
-     *    - 파일 확장자가 "pdf"인지 검증한다.
-     *    - S3에 파일을 업로드하고 파일 URL을 획득한다.
-     *    - CoverLetter 엔티티를 DB에 저장한다.
-     *    - 업로드 결과 메시지와 저장된 CoverLetter의 식별자를 포함한 DTO를 반환한다.
+     *    - SecurityContext에서 현재 인증된 사용자의 username을 조회하여 User 엔티티를 획득합니다.
+     *    - 파일 유효성을 검사하고, 파일 확장자 및 Content-Type이 "pdf"인지 검증합니다.
+     *    - S3에 파일을 업로드한 후 URL을 획득합니다.
+     *    - CoverLetter 엔티티를 DB에 저장하고, 비동기로 coverLetterAnalysis()를 호출합니다.
      * 3. param:
      *      - file: 업로드할 MultipartFile 객체.
      *      - title: 커버레터와 연관된 제목.
-     * 4. return: 업로드 결과 메시지와 저장된 CoverLetter 식별자를 담은 UploadCoverLetterResponse DTO.
+     * 4. return: 업로드 결과 메시지와 저장된 CoverLetter의 식별자를 담은 UploadCoverLetterResponse DTO.
      */
     @Transactional
     public UploadCoverLetterResponse uploadCoverLetter(MultipartFile file, String title) {
@@ -82,23 +86,16 @@ public class CoverLetterService {
                         .build()
         );
 
+        coverLetterAnalysis(file, coverLetter, user);
+
         return UploadCoverLetterResponse.builder()
-                .message("파일 업로드가 성공적으로 완료되었습니다.")
+                .message("파일 업로드가 성공적으로 완료되었으며, 분석을 시작했습니다.")
                 .coverLetterId(coverLetter.getId())
                 .build();
     }
 
-    /**
-     * 1. 메서드 설명: 전달받은 파일 이름의 확장자가 pdf인지 검증하는 메서드.
-     * 2. 로직:
-     *    - 파일 이름에서 마지막 점(.) 이후의 문자열을 추출하여 소문자로 변환한다.
-     *    - 추출된 확장자가 "pdf"와 일치하지 않으면 예외를 발생시킨다.
-     * 3. param:
-     *      - filename: 검증할 파일의 원본 이름.
-     * 4. return: 없음 (조건 미충족 시 예외 발생).
-     */
     private void validatePdfFileExtension(String filename, String contentType) {
-        int lastDotIndex = filename.lastIndexOf(".");
+        int lastDotIndex = filename.lastIndexOf('.');
         if (lastDotIndex == -1) {
             throw new FileExtensionException("File extension not supported");
         }
@@ -107,27 +104,15 @@ public class CoverLetterService {
             throw new FileExtensionException("File extension not supported: " + extension);
         }
         if (!"application/pdf".equalsIgnoreCase(contentType)) {
-            throw new FileExtensionException("File extension not supported: " + contentType);
+            throw new FileExtensionException("Content type not supported: " + contentType);
         }
     }
 
-    /**
-     * 1. 메서드 설명: 전달받은 MultipartFile을 Amazon S3에 업로드하고, 업로드된 파일의 URL을 반환하는 메서드.
-     * 2. 로직:
-     *    - 원본 파일명으로부터 파일 확장자를 추출하여 고유한 S3 파일 이름을 생성한다.
-     *    - 파일 메타데이터(Content-Type, Content-Length 등)를 설정한다.
-     *    - S3 PutObjectRequest를 통해 파일을 업로드하고 PublicRead 권한을 부여한다.
-     *    - 업로드된 파일의 URL을 획득하여 반환한다.
-     * 3. param:
-     *      - file: 업로드할 MultipartFile 객체.
-     * 4. return: 업로드된 파일의 URL (String).
-     */
     private String uploadFileToS3(MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
-        String fileExtension = Optional.ofNullable(originalFilename)
-                .filter(name -> name.contains("."))
-                .map(name -> name.substring(name.lastIndexOf(".")))
-                .orElse("");
+        String fileExtension = (originalFilename != null && originalFilename.contains("."))
+                ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                : "";
         String s3FileName = UUID.randomUUID().toString().substring(0, 10) + fileExtension;
 
         ObjectMetadata metadata = new ObjectMetadata();
@@ -135,9 +120,9 @@ public class CoverLetterService {
         metadata.setContentLength(file.getSize());
 
         try {
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, s3FileName, file.getInputStream(), metadata)
+            PutObjectRequest request = new PutObjectRequest(bucketName, s3FileName, file.getInputStream(), metadata)
                     .withCannedAcl(CannedAccessControlList.PublicRead);
-            amazonS3.putObject(putObjectRequest);
+            amazonS3.putObject(request);
         } catch (IOException e) {
             throw new S3UploadException("S3 upload failed");
         }
@@ -145,37 +130,71 @@ public class CoverLetterService {
     }
 
     /**
+     * 1. 메서드 설명: 비동기적으로 전달받은 자기소개서 PDF 파일을 분석하여,
+     *    PDFBox를 사용해 텍스트를 추출한 후, GPT 서비스를 호출하여 분석 결과를 도출하고,
+     *    해당 결과를 CoverLetterAnalysis 엔티티에 저장합니다.
+     * 2. 로직:
+     *    - 파일 유효성을 검사하고, MultipartFile을 임시 파일로 저장합니다.
+     *    - try-with-resources 구문을 사용해 PDDocument를 로드하고 PDFTextStripper로 텍스트를 추출합니다.
+     *    - 추출한 텍스트를 기반으로 GPT 서비스를 호출하여 분석 결과를 생성합니다.
+     *    - 생성된 분석 결과에 CoverLetter와 User 정보를 설정하고 DB에 저장합니다.
+     * 3. param:
+     *      - file: 사용자가 업로드한 자기소개서 PDF 파일.
+     *      - coverLetter: 파일과 연결된 CoverLetter 엔티티.
+     *      - user: 분석 요청을 수행하는 사용자 엔티티.
+     * 4. return: 없음 (비동기 작업으로 처리되며, 분석 결과는 DB에 저장됩니다).
+     */
+    @Async
+    @Transactional
+    public void coverLetterAnalysis(MultipartFile file, CoverLetter coverLetter, User user) {
+        if (file == null || file.isEmpty() || file.getOriginalFilename() == null) {
+            throw new EmptyFileException("Empty file input");
+        }
+        try {
+            File tempFile = new File(file.getOriginalFilename());
+            file.transferTo(tempFile);
+
+            String content;
+            try (PDDocument document = PDDocument.load(tempFile)) {
+                content = new PDFTextStripper().getText(document);
+            }
+
+            CoverLetterAnalysis analysisResult = gptService.coverLetterAnalysis(content, 500);
+            analysisResult.setFile(coverLetter);
+            analysisResult.setUser(user);
+            coverLetterAnalysisRepository.save(analysisResult);
+        } catch (IOException e) {
+            throw new EmptyFileException("Empty file input");
+        }
+    }
+
+    /**
      * 1. 메서드 설명: 현재 인증된 사용자의 CoverLetter 목록을 조회하여,
      *    각 CoverLetter 엔티티를 FileInfo DTO로 변환한 후,
-     *    이를 포함하는 GetMyCoverLetterListResponse DTO를 반환하는 API.
+     *    이를 포함하는 GetMyCoverLetterListResponse DTO를 반환합니다.
      * 2. 로직:
-     *    - SecurityContext에서 현재 인증된 사용자의 username을 조회한다.
-     *    - username을 기반으로 User 엔티티를 검색하여 userId를 확보한다.
-     *    - userId를 이용해 CoverLetter 목록을 조회한다.
-     *    - 조회된 CoverLetter 목록을 FileInfo DTO로 매핑한 후, 리스트로 수집한다.
-     *    - FileInfo 리스트를 포함하는 GetMyCoverLetterListResponse DTO를 빌더 패턴으로 생성하여 반환한다.
+     *    - SecurityContext에서 현재 인증된 사용자의 username을 조회하고,
+     *      이를 기반으로 User 엔티티를 조회합니다.
+     *    - User의 ID를 이용해 CoverLetter 목록을 조회한 후, 스트림을 사용해 FileInfo DTO 리스트로 매핑합니다.
+     *    - FileInfo 리스트를 포함하는 GetMyCoverLetterListResponse DTO를 반환합니다.
      * 3. param: 없음.
      * 4. return: 사용자의 CoverLetter 정보를 담은 GetMyCoverLetterListResponse DTO.
      */
     @Transactional(readOnly = true)
     public GetMyCoverLetterListResponse getMyCoverLetterList() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String username = auth.getName();
-
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         int userId = user.getId();
 
-        List<CoverLetter> coverLetters = coverLetterRepository.findAllByUser_Id(userId);
-
-        List<FileInfo> fileInfos = coverLetters.stream()
-                .map(coverLetter -> FileInfo.builder()
-                        .fileId(coverLetter.getId())
-                        .fileName(coverLetter.getOriginName())
-                        .fileUrl(coverLetter.getFileUrl())
-                        .title(coverLetter.getTitle())
-                        .build()
-                )
+        List<FileInfo> fileInfos = coverLetterRepository.findAllByUser_Id(userId)
+                .stream()
+                .map(cl -> FileInfo.builder()
+                        .fileId(cl.getId())
+                        .fileName(cl.getOriginName())
+                        .fileUrl(cl.getFileUrl())
+                        .title(cl.getTitle())
+                        .build())
                 .toList();
 
         return GetMyCoverLetterListResponse.builder()
@@ -185,39 +204,37 @@ public class CoverLetterService {
 
     /**
      * 1. 메서드 설명: 전달받은 CoverLetter ID를 기반으로 DB에서 CoverLetter 엔티티를 삭제하고,
-     *    해당 CoverLetter에 연결된 파일을 Amazon S3에서 삭제한 후, 삭제 결과 메시지를 반환하는 API.
+     *    해당 CoverLetter에 연결된 파일을 Amazon S3에서 삭제한 후, 삭제 결과 메시지를 반환합니다.
      * 2. 로직:
-     *    - coverLetterId로 CoverLetter 엔티티를 조회하고, 존재하지 않으면 예외를 발생시킨다.
-     *    - 조회된 CoverLetter 엔티티를 DB에서 삭제한다.
-     *    - CoverLetter의 파일 URL에서 S3 키를 추출한 후, 해당 파일을 S3에서 삭제한다.
-     *    - 삭제 완료 메시지를 포함하는 MessageOnlyResponse DTO를 빌더 패턴으로 생성하여 반환한다.
-     * 3. param: int coverLetterId - 삭제할 CoverLetter의 식별자.
+     *    - coverLetterId로 CoverLetter 엔티티를 조회하고 존재하지 않으면 예외를 발생시킵니다.
+     *    - 조회된 CoverLetter 엔티티를 DB에서 삭제한 후, S3에 저장된 파일을 삭제합니다.
+     *    - 삭제 완료 메시지를 포함하는 MessageOnlyResponse DTO를 반환합니다.
+     * 3. param:
+     *      - coverLetterId: 삭제할 CoverLetter의 식별자.
      * 4. return: 삭제 완료 메시지를 담은 MessageOnlyResponse DTO.
      */
     @Transactional
     public MessageOnlyResponse deleteCoverLetter(int coverLetterId) {
         CoverLetter coverLetter = coverLetterRepository.findById(coverLetterId)
                 .orElseThrow(() -> new CoverLetterNotFoundException("CoverLetter not found"));
-
         coverLetterRepository.delete(coverLetter);
-
         deleteCoverLetterFromS3(coverLetter.getFileUrl());
-
         return MessageOnlyResponse.builder()
                 .message("파일 삭제 요청 처리 완료")
                 .build();
     }
 
     /**
-     * 1. 메서드 설명: 주어진 파일 URL로부터 S3 객체 키를 추출하여 해당 파일을 S3에서 삭제하는 메서드.
+     * 1. 메서드 설명: 주어진 파일 URL에서 S3 객체 키를 추출한 후,
+     *    해당 파일을 Amazon S3에서 삭제합니다.
      * 2. 로직:
-     *    - 파일 URL에서 S3 객체 키를 추출한다.
-     *    - 추출된 키를 기반으로 S3에서 파일을 삭제한다.
-     *    - 삭제 과정 중 오류 발생 시 S3DeleteException 예외를 발생시킨다.
-     * 3. param: String fileUrl - 삭제할 파일의 URL.
+     *    - 파일 URL을 파싱하여 경로 정보를 디코딩하고, 선행 슬래시를 제거하여 S3 객체 키를 생성합니다.
+     *    - 생성된 키를 사용해 S3에서 파일을 삭제하며, 삭제 실패 시 S3DeleteException을 발생시킵니다.
+     * 3. param:
+     *      - fileUrl: 삭제할 파일의 URL.
      * 4. return: 없음.
      */
-    private void deleteCoverLetterFromS3(String fileUrl){
+    private void deleteCoverLetterFromS3(String fileUrl) {
         String key = getKeyFromCoverLetterAddress(fileUrl);
         try {
             amazonS3.deleteObject(new DeleteObjectRequest(bucketName, key));
@@ -227,15 +244,15 @@ public class CoverLetterService {
     }
 
     /**
-     * 1. 메서드 설명: 주어진 파일 URL에서 S3 객체 키를 추출하는 메서드.
+     * 1. 메서드 설명: 파일 URL에서 S3 객체 키를 추출합니다.
      * 2. 로직:
-     *    - URL을 파싱하여 경로 정보를 추출한 후, UTF-8로 디코딩한다.
-     *    - 경로의 선행 슬래시('/')를 제거하여 S3 객체 키를 반환한다.
-     *    - URL 파싱에 실패하면 S3DeleteException 예외를 발생시킨다.
-     * 3. param: String fileUrl - 파일 URL.
-     * 4. return: 추출된 S3 객체 키 (String).
+     *    - URL을 파싱하여 경로 정보를 UTF-8로 디코딩한 후, 선행 슬래시('/')가 있으면 제거한 S3 객체 키를 반환합니다.
+     *    - URL 파싱 실패 시 S3DeleteException을 발생시킵니다.
+     * 3. param:
+     *      - fileUrl: 파일 URL.
+     * 4. return: S3 객체 키 (String).
      */
-    private String getKeyFromCoverLetterAddress(String fileUrl){
+    private String getKeyFromCoverLetterAddress(String fileUrl) {
         try {
             URL url = new URL(fileUrl);
             String decodedPath = URLDecoder.decode(url.getPath(), StandardCharsets.UTF_8);
@@ -243,5 +260,46 @@ public class CoverLetterService {
         } catch (MalformedURLException e) {
             throw new S3DeleteException("S3 delete failed");
         }
+    }
+
+    /**
+     * 1. 메서드 설명: 전달받은 coverLetterId에 해당하는 CoverLetterAnalysis 엔티티를 조회하고,
+     *    해당 엔티티의 분석 정보를 CoverLetterAnalysisStat DTO로 매핑한 후,
+     *    파일 URL과 함께 최종 GetCoverLetterAnalysisResponse DTO를 반환하는 읽기 전용 서비스 메서드입니다.
+     * 2. 로직:
+     *    - coverLetterAnalysisRepository를 통해 coverLetterId에 해당하는 CoverLetterAnalysis 엔티티를 조회합니다.
+     *      (존재하지 않을 경우 CoverLetterNotFoundException을 발생시킵니다.)
+     *    - 현재 시간을 "yyyy-MM-dd HH:mm:ss" 형식으로 포맷한 후, 이를 analysisDttm 필드에 설정합니다.
+     *    - 조회된 CoverLetterAnalysis의 평가 항목들을 CoverLetterAnalysisStat DTO에 매핑하고,
+     *      파일 URL도 함께 포함하여 GetCoverLetterAnalysisResponse DTO를 빌더 패턴으로 생성하여 반환합니다.
+     * 3. param:
+     *      - coverLetterId: 분석 결과를 조회할 CoverLetter의 식별자.
+     * 4. return:
+     *      - GetCoverLetterAnalysisResponse DTO: CoverLetter의 식별자, 분석 통계, 파일 URL, 분석 일시 정보를 포함합니다.
+     */
+    @Transactional(readOnly = true)
+    public GetCoverLetterAnalysisResponse getCoverLetterAnalysis(int coverLetterId) {
+        CoverLetterAnalysis coverLetterAnalysis = coverLetterAnalysisRepository.findByFile_Id(coverLetterId)
+                .orElseThrow(() -> new CoverLetterNotFoundException("CoverLetter not found"));
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        CoverLetterAnalysisStat analysisStat = CoverLetterAnalysisStat.builder()
+                .globalCapability(coverLetterAnalysis.getGlobalCapability())
+                .challengeSpirit(coverLetterAnalysis.getChallengeSpirit())
+                .sincerity(coverLetterAnalysis.getSincerity())
+                .communicationSkill(coverLetterAnalysis.getCommunicationSkill())
+                .achievementOrientation(coverLetterAnalysis.getAchievementOrientation())
+                .responsibility(coverLetterAnalysis.getResponsibility())
+                .honesty(coverLetterAnalysis.getHonesty())
+                .creativity(coverLetterAnalysis.getCreativity())
+                .build();
+
+        return GetCoverLetterAnalysisResponse.builder()
+                .coverLetterId(coverLetterId)
+                .stat(analysisStat)
+                .analysisDttm(LocalDateTime.now().format(formatter))
+                .fileUrl(coverLetterAnalysis.getFile().getFileUrl())
+                .build();
     }
 }

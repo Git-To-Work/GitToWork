@@ -2,8 +2,10 @@ package com.gittowork.global.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gittowork.domain.coverletter.entity.CoverLetterAnalysis;
 import com.gittowork.domain.github.entity.GithubAnalysisResult;
 import com.gittowork.global.config.GptConfig;
+import com.gittowork.global.exception.JsonParsingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -31,17 +33,59 @@ public class GptService {
     }
 
     /**
-     * 1. 메서드 설명: OpenAI의 ChatGPT API를 호출하여 주어진 프롬프트에 대해 GitHub 데이터를 분석하는 결과를 JSON 문자열로 반환하는 메서드.
+     * 1. 메서드 설명: OpenAI의 ChatGPT API를 호출하여 GitHub 데이터를 분석하는 결과를 JSON 문자열로 받고,
+     *    이를 GithubAnalysisResult 객체로 파싱하여 반환하는 메서드.
      * 2. 로직:
-     *    - HTTP 요청 헤더에 인증 및 콘텐츠 타입 정보를 설정한다.
-     *    - 프롬프트와 관련된 메시지를 포함한 요청 본문을 구성한 후 API 호출을 수행한다.
-     *    - API 호출 결과로 받은 응답의 본문을 반환한다.
+     *    - GitHub 분석에 필요한 프롬프트를 generateGithubAnalysisPrompt()를 통해 생성한다.
+     *    - 시스템 메시지와 사용자 메시지를 포함하여 GPT API 요청을 구성한 후 callGptApi()를 호출한다.
+     *    - GPT API 응답 JSON 문자열을 githubAnalysisResultParser()를 이용해 역직렬화한다.
      * 3. param:
-     *      prompt - GitHub 데이터를 분석하기 위한 사용자 프롬프트.
+     *      githubAnalysisResult - 분석할 GitHub 데이터가 담긴 객체 (분석 지침 참조).
      *      maxToken - API 호출 시 사용할 최대 토큰 수.
-     * 4. return: OpenAI API로부터 받은 응답 JSON 문자열.
+     * 4. return: 분석 결과를 담은 GithubAnalysisResult 객체.
      */
-    public String githubDataAnalysis(String prompt, int maxToken) throws JsonProcessingException {
+    public GithubAnalysisResult githubDataAnalysis(GithubAnalysisResult githubAnalysisResult, int maxToken) throws JsonProcessingException {
+        String prompt = generateGithubAnalysisPrompt(githubAnalysisResult);
+        String systemMsg = "아래 프롬프트의 지침에 따라 GitHub 데이터를 분석하고, 결과를 JSON 형식으로 출력 예시에 맞게 출력해 주세요.";
+        String responseBody = callGptApi(systemMsg, prompt, maxToken);
+        return githubAnalysisResultParser(responseBody);
+    }
+
+    /**
+     * 1. 메서드 설명: GPT API에 커버레터 분석 요청을 보내고, 응답 JSON을 CoverLetterAnalysis 객체로 파싱하여 반환하는 메서드.
+     * 2. 로직:
+     *    - 분석에 사용할 커버레터 텍스트와 분석 지침을 포함한 프롬프트를 generateCoverLetterAnalysisPrompt()로 생성한다.
+     *    - 시스템 메시지와 사용자 메시지를 포함한 GPT API 요청을 callGptApi()를 통해 전송한다.
+     *    - 응답 JSON 문자열을 coverLetterAnalysisResultParser()를 사용해 CoverLetterAnalysis 객체로 역직렬화한다.
+     * 3. param:
+     *      content - 분석에 사용할 커버레터 텍스트.
+     *      maxToken - API 호출 시 사용할 최대 토큰 수.
+     * 4. return: 분석 결과를 담은 CoverLetterAnalysis 객체.
+     */
+    public CoverLetterAnalysis coverLetterAnalysis(String content, int maxToken) {
+        String prompt = generateCoverLetterAnalysisPrompt(content);
+        String systemMsg = "당신은 자기소개서 분석 전문가입니다. 아래에 PDF에서 추출된 자기소개서 텍스트가 제공될 것입니다. "
+                + "단, PDF 추출 과정에서 일부 내용이 누락되거나 불완전할 수 있습니다. 이런 경우, 문맥에 맞게 누락된 부분을 보완하여 "
+                + "전체 자기소개서의 내용을 분석해 주세요. 분석 시에는 출력 예시의 8가지 역량에 대한 점수와 전반적인 강점 및 약점을 포괄적으로 평가해 주시기 바랍니다.";
+        String responseBody = callGptApi(systemMsg, prompt, maxToken);
+        return coverLetterAnalysisResultParser(responseBody);
+    }
+
+    /**
+     * 1. 메서드 설명: 시스템 메시지와 사용자 메시지를 포함한 GPT API 요청을 구성하여 호출하고,
+     *    응답 JSON 문자열을 반환하는 공통 메서드.
+     * 2. 로직:
+     *    - HTTP 헤더에 Content-Type과 Bearer 인증 정보를 설정한다.
+     *    - 모델, 온도, 최대 토큰 수 등의 정보를 포함하여 요청 본문(Map<String, Object>)을 구성한다.
+     *    - messages 필드에는 시스템 메시지와 사용자 메시지를 순서대로 배열로 포함시킨다.
+     *    - restTemplate을 사용하여 GPT API에 POST 요청을 전송하고, 응답 본문을 반환한다.
+     * 3. param:
+     *      systemMessageContent - 시스템 메시지 내용.
+     *      prompt - 사용자 메시지 내용 (분석에 사용할 텍스트와 지침 포함).
+     *      maxToken - API 호출 시 사용할 최대 토큰 수.
+     * 4. return: GPT API 응답으로 받은 JSON 문자열.
+     */
+    private String callGptApi(String systemMessageContent, String prompt, int maxToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(gptConfig.getApiKey());
@@ -51,7 +95,7 @@ public class GptService {
 
         Map<String, String> systemMessage = new HashMap<>();
         systemMessage.put("role", "system");
-        systemMessage.put("content", "아래 프롬프트의 지침에 따라 GitHub 데이터를 분석하고, 결과를 JSON 형식으로 출력 예시에 맞게 출력해 주세요.");
+        systemMessage.put("content", systemMessageContent);
 
         Map<String, String> userMessage = new HashMap<>();
         userMessage.put("role", "user");
@@ -66,24 +110,24 @@ public class GptService {
             ResponseEntity<String> response = restTemplate.exchange(API_URL, HttpMethod.POST, entity, String.class);
             return response.getBody();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error calling GPT API", e);
         }
     }
 
     /**
-     * 1. 메서드 설명: GitHub 분석 결과 객체를 기반으로 OpenAI에게 보낼 프롬프트를 생성하는 메서드.
+     * 1. 메서드 설명: GitHub 분석 결과 객체를 기반으로 GPT API에 보낼 프롬프트를 생성하는 메서드.
      * 2. 로직:
-     *    - 분석 결과 데이터와 분석 지침, JSON 출력 예시를 포함한 프롬프트 문자열을 생성한다.
+     *    - GitHub 데이터 분석에 필요한 지침과 출력 예시를 포함한 프롬프트 문자열을 구성한다.
      * 3. param:
-     *      githubAnalysisResult - GitHub 분석 결과 객체.
+     *      githubAnalysisResult - 분석에 사용할 GitHub 데이터가 담긴 객체.
      * 4. return: 생성된 프롬프트 문자열.
      */
-    public String generateGithubAnalysisPrompt(GithubAnalysisResult githubAnalysisResult) {
+    private String generateGithubAnalysisPrompt(GithubAnalysisResult githubAnalysisResult) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("## 다음 GitHub 분석 결과 데이터를 바탕으로, 사용자가 선택한 저장소들의 정보를 종합하여 아래 항목들에 대해 분석해주세요.\n\n");
         prompt.append("1. primaryRole: 저장소 데이터를 분석하여 사용자가 가장 적합한 IT 직무(예: Backend, Frontend, Devops Engineer 등)를 도출해주세요.\n");
         prompt.append("2. roleScores: 도출된 primaryRole을 수행할 수 있는 능력을 0에서 100점 사이로 산정해주세요.\n");
-        prompt.append("3. aiAnalysis: \n");
+        prompt.append("3. aiAnalysis:\n");
         prompt.append("   - analysis_summary: 전체 저장소 분석 결과에 대한 요약을 한글로 작성해주세요.\n");
         prompt.append("   - improvement_suggestions: 개선방안을 한글로 작성해주세요.\n\n");
         prompt.append("### 출력 예시는 다음과 같이 JSON 형태로 작성해주세요.\n\n");
@@ -109,18 +153,78 @@ public class GptService {
     }
 
     /**
+     * 1. 메서드 설명: 커버레터 분석에 사용할 프롬프트를 생성하는 메서드.
+     * 2. 로직:
+     *    - 자기소개서 텍스트를 기반으로 분석 지침과 출력 예시를 포함한 프롬프트 문자열을 구성한다.
+     * 3. param:
+     *      content - 분석에 사용할 커버레터 텍스트.
+     * 4. return: 생성된 프롬프트 문자열.
+     */
+    private String generateCoverLetterAnalysisPrompt(String content) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("\n");
+        prompt.append("분석 결과는 다음 두 가지 부분으로 구성되어야 합니다:\n");
+        prompt.append("1. 8가지 역량의 각 항목(globalCapability, challengeSpirit, sincerity, communicationSkill, ");
+        prompt.append("achievementOrientation, responsibility, honesty, creativity)은 1부터 10까지의 정수로 평가합니다.\n");
+        prompt.append("2. 전반적인 분석은 'aiAnalysisResult' 필드 안에 배열 형식으로 포함되어야 하며, ");
+        prompt.append("강점, 약점 및 개선방안을 포함한 분석 결과를 2개 이상의 문장으로 요약해 주세요.\n");
+        prompt.append("\n");
+        prompt.append("출력 형식은 아래 JSON 예시와 정확히 일치해야 하며, 추가적인 설명이나 텍스트는 포함하지 않아야 합니다.\n");
+        prompt.append("\n");
+        prompt.append("## 출력 예시\n");
+        prompt.append("{\n");
+        prompt.append("    \"coverLetterAnalysisId\": null,\n");
+        prompt.append("    \"fileId\": null,\n");
+        prompt.append("    \"userId\": null,\n");
+        prompt.append("    \"aiAnalysisResult\": [\n");
+        prompt.append("      \"분석 결과 요약 1\",\n");
+        prompt.append("      \"분석 결과 요약 2\"\n");
+        prompt.append("    ],\n");
+        prompt.append("    \"globalCapability\": 8,\n");
+        prompt.append("    \"challengeSpirit\": 9,\n");
+        prompt.append("    \"sincerity\": 7,\n");
+        prompt.append("    \"communicationSkill\": 8,\n");
+        prompt.append("    \"achievementOrientation\": 6,\n");
+        prompt.append("    \"responsibility\": 9,\n");
+        prompt.append("    \"honesty\": 8,\n");
+        prompt.append("    \"creativity\": 9,\n");
+        prompt.append("    \"createDttm\": \"null\"\n");
+        prompt.append("}\n");
+        prompt.append("\n");
+        prompt.append("## 분석에 사용할 자기소개서 텍스트:\n");
+        prompt.append(content);
+        return prompt.toString();
+    }
+
+    /**
      * 1. 메서드 설명: JSON 문자열을 파싱하여 GithubAnalysisResult 객체로 변환하는 메서드.
      * 2. 로직:
-     *    - ObjectMapper를 사용하여 입력 JSON 문자열을 GithubAnalysisResult 객체로 역직렬화한다.
+     *    - ObjectMapper를 사용하여 입력받은 JSON 문자열을 GithubAnalysisResult 객체로 역직렬화한다.
      * 3. param:
      *      jsonString - 분석 결과를 담은 JSON 문자열.
      * 4. return: 역직렬화된 GithubAnalysisResult 객체.
      */
-    public GithubAnalysisResult githubAnalysisResultParser(String jsonString) {
+    private GithubAnalysisResult githubAnalysisResultParser(String jsonString) {
         try {
             return objectMapper.readValue(jsonString, GithubAnalysisResult.class);
         } catch (IOException e) {
-            throw new RuntimeException("GithubAnalysisResult JSON 파싱 중 오류 발생", e);
+            throw new JsonParsingException("GithubAnalysisResult JSON 파싱 중 오류 발생");
+        }
+    }
+
+    /**
+     * 1. 메서드 설명: JSON 문자열을 파싱하여 CoverLetterAnalysis 객체로 변환하는 메서드.
+     * 2. 로직:
+     *    - ObjectMapper를 사용하여 입력받은 JSON 문자열을 CoverLetterAnalysis 객체로 역직렬화한다.
+     * 3. param:
+     *      jsonString - 분석 결과를 담은 JSON 문자열.
+     * 4. return: 역직렬화된 CoverLetterAnalysis 객체.
+     */
+    private CoverLetterAnalysis coverLetterAnalysisResultParser(String jsonString) {
+        try {
+            return objectMapper.readValue(jsonString, CoverLetterAnalysis.class);
+        } catch (IOException e) {
+            throw new JsonParsingException("CoverLetterAnalysis JSON 파싱 중 오류 발생");
         }
     }
 }
