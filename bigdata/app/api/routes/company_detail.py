@@ -11,6 +11,37 @@ from app.utils.mongo_logger import log_user_search_detail  # 추가
 
 router = APIRouter()
 
+
+"""
+/**
+ * 1. 메서드 설명: 회사 ID를 기반으로 해당 회사의 상세 정보를 조회하고, 사용자와의 관계(스크랩, 좋아요, 블랙리스트 여부) 및
+ *    관련 채용 공고, 기술 스택 등 부가 정보를 포함한 응답 객체를 반환한다.
+ *
+ * 2. 로직:
+ *    - 현재 로그인된 사용자의 user_id를 추출한다.
+ *    - MongoDB에 해당 회사 상세 조회 로그를 저장한다.
+ *    - 회사 ID를 기준으로 회사 정보를 조회한다.
+ *    - 회사가 존재하지 않으면 예외(CompanyNotFoundException)를 발생시킨다.
+ *    - 회사 정보에 포함된 분야명, 카테고리 리스트, 기술 스택 리스트, 채용공고 존재 여부 등을 추출한다.
+ *    - 사용자와의 연결 정보(스크랩 여부, 좋아요 여부, 블랙리스트 여부)를 판별한다.
+ *    - 회사에 연결된 채용 공고 목록을 추출한다.
+ *    - 위 정보를 기반으로 company_data 객체를 구성하여 응답 객체로 반환한다.
+ *
+ * 3. param:
+ *    - company_id: 조회할 회사의 고유 ID
+ *    - current_user: 인증된 사용자 객체 (Depends로 주입)
+ *    - db: SQLAlchemy 세션 객체
+ *
+ * 4. return: 회사 상세 정보가 포함된 응답 객체
+ *    - company_id, company_name, logo, likes, head_count, 평균 연봉, 매출액 등 회사 기본 정보
+ *    - 분야명(field_name), 카테고리 리스트(categories)
+ *    - 사용자 기준 scraped/liked/blacklisted 여부
+ *    - 관련 기술 스택 리스트, 유효한 채용공고 존재 여부(has_job_notice)
+ *    - job_notices: 회사에 연결된 채용공고 리스트
+ */
+"""
+
+
 @router.get("/select/company/{company_id}", response_model=dict)
 def read_company_detail(
     company_id: int,

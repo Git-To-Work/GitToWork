@@ -11,7 +11,40 @@ from app.utils.mongo_logger import log_user_search
 
 router = APIRouter()
 
-
+"""
+/**
+ * 1. 메서드 설명: 사용자가 입력한 필터 조건(회사명, 기술 스택, 분야, 경력, 지역, 키워드 등)을 기반으로
+ *    회사 목록을 조회하고, 응답 객체를 생성하여 반환한다.
+ *
+ * 2. 로직:
+ *    - 현재 로그인된 사용자 정보를 기반으로 user_id를 추출한다.
+ *    - 검색 필터(company_name, tech_stacks, business_field 등)를 구성하여 MongoDB에 검색 기록을 저장한다.
+ *    - 검색 조건에 해당하는 회사 목록과 총 개수를 search_companies 함수를 통해 조회한다.
+ *    - 조회된 각 회사에 대해 다음 정보를 구성:
+ *        - 분야명(field_name) 및 카테고리 목록(categories)
+ *        - 사용자가 스크랩한 여부(scraped)
+ *        - 채용공고에 포함된 기술 스택 리스트(tech_stacks)
+ *        - 유효한 채용공고가 존재하는지 여부(has_job_notice)
+ *    - 구성된 회사 리스트와 페이징 정보를 포함한 응답 객체 반환
+ *
+ * 3. param:
+ *    - current_user: 인증된 사용자 객체 (Depends로 주입)
+ *    - db: SQLAlchemy 세션 객체
+ *    - company_name: 검색할 회사 이름
+ *    - tech_stacks: 필터링할 기술 스택 리스트
+ *    - business_field: 비즈니스 분야명
+ *    - career: 사용자의 경력 (채용공고 경력 조건에 활용)
+ *    - location: 채용공고 지역
+ *    - keyword: 회사명 또는 채용공고 제목에 대한 키워드 검색
+ *    - page: 페이지 번호 (기본값 1)
+ *    - size: 페이지당 항목 수 (기본값 20)
+ *
+ * 4. return: 페이징 처리된 회사 리스트 및 관련 정보가 담긴 응답 객체
+ *    - companies: 필터 조건에 부합하는 회사 리스트
+ *    - total: 전체 회사 수
+ *    - page, size, total_page: 페이징 관련 정보
+ */
+"""
 @router.get("/select/companies", response_model=dict)
 def get_companies(
         current_user=Depends(get_current_user),
@@ -120,7 +153,42 @@ from app.utils.mongo_logger import log_user_search, get_user_search_history
 from app.utils.get_git_stat import aggregate_selected_repo_stats
 from app.utils.recommend_companies import run_hybrid_recommendation
 
-
+"""
+/**
+ * 1. 메서드 설명: 사용자의 GitHub 저장소 분석 정보 및 검색 히스토리를 기반으로 하이브리드 추천 알고리즘을 실행하고,
+ *    검색 조건에 해당하는 회사를 조회한다.
+ *
+ * 2. 로직:
+ *    - 현재 로그인된 사용자 정보를 통해 user_id 및 GitHub 사용자명을 추출한다.
+ *    - 검색 필터(company_name, tech_stacks, business_field 등)를 구성하여 MongoDB에 검색 기록을 저장한다.
+ *    - 검색 필터에 해당하는 회사 목록을 search_companies 함수를 통해 조회한다.
+ *    - 현재 사용자가 좋아요, 스크랩, 블랙리스트한 회사 목록을 set으로 구성한다.
+ *    - MongoDB에서 사용자 검색 히스토리 및 상세 검색 히스토리를 불러온다.
+ *    - 선택된 GitHub 저장소의 커밋 및 복잡도 분석 정보를 수집한다.
+ *    - SonarQube 데이터를 대체할 임시 데이터를 구성한다.
+ *    - 위의 모든 사용자 관련 데이터(좋아요, 검색 기록, GitHub 분석 데이터 등)를 기반으로 run_hybrid_recommendation 함수 호출.
+ *    - (현재 회사 응답 구성은 주석 처리되어 있음)
+ *
+ * 3. param:
+ *    - selected_repositories_id: 사용자가 선택한 GitHub 저장소의 식별자
+ *    - current_user: 인증된 사용자 객체 (Depends로 주입)
+ *    - db: SQLAlchemy 세션 객체
+ *    - company_name: 검색할 회사 이름
+ *    - tech_stacks: 필터링할 기술 스택 리스트
+ *    - business_field: 비즈니스 분야명
+ *    - career: 사용자의 경력 (채용공고 경력 조건에 활용)
+ *    - location: 채용공고 지역
+ *    - keyword: 회사명 또는 채용공고 제목에 대한 키워드 검색
+ *    - page: 페이지 번호 (기본값 1)
+ *    - size: 페이지당 항목 수 (기본값 20)
+ *
+ * 4. return: 현재 주석 처리되어 있으나, 최종적으로는 추천 알고리즘 기반 회사 목록을 응답할 예정
+ *    - companies: 추천된 회사 리스트
+ *    - total: 전체 검색 결과 수
+ *    - page, size, total_page: 페이징 정보
+ *    - user_search_history: 사용자의 검색 히스토리 (추후 포함 가능)
+ */
+"""
 @router.get("/select/companies_with_algorithm", response_model=dict)
 def get_companies_with_algorithm(
         selected_repositories_id: str,
