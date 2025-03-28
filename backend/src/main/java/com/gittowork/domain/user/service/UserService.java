@@ -3,7 +3,6 @@ package com.gittowork.domain.user.service;
 import com.gittowork.domain.field.entity.Field;
 import com.gittowork.domain.field.repository.FieldRepository;
 import com.gittowork.domain.github.service.GithubAnalysisService;
-import com.gittowork.domain.github.service.GithubService;
 import com.gittowork.domain.user.dto.request.InsertProfileRequest;
 import com.gittowork.domain.user.dto.request.UpdateInterestsFieldsRequest;
 import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
