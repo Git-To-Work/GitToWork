@@ -7,6 +7,7 @@ import com.gittowork.domain.user.entity.User;
 import com.gittowork.global.exception.EmptyFileException;
 import com.gittowork.global.service.GptService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.scheduling.annotation.Async;
@@ -17,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CoverLetterAnalysisService {
@@ -55,6 +57,9 @@ public class CoverLetterAnalysisService {
             }
 
             CoverLetterAnalysis analysisResult = gptService.coverLetterAnalysis(content, 500);
+
+            log.info(analysisResult.toString());
+
             analysisResult.setFile(coverLetter);
             analysisResult.setUser(user);
             coverLetterAnalysisRepository.save(analysisResult);

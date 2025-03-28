@@ -3,7 +3,6 @@ package com.gittowork.domain.coverletter.entity;
 import com.gittowork.domain.user.entity.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -18,9 +17,9 @@ import java.time.LocalDateTime;
 public class CoverLetterAnalysis {
 
     @Id
-    @Size(max = 255)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "cover_letter_analysis_id", nullable = false)
-    private String coverLetterAnalysisId;
+    private Integer coverLetterAnalysisId;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
