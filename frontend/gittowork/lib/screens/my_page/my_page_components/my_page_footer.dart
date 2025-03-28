@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_api.dart';
+import '../../../services/auth_api.dart';
 
 class MyPageFooter extends StatelessWidget {
   const MyPageFooter({Key? key}) : super(key: key);

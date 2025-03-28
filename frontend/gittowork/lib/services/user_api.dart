@@ -68,12 +68,13 @@ class UserApi {
 
   static Future<bool> updateInterestFields(List<int> interestFields) async {
     try {
-      final response = await ApiService.dio.post(
+      final response = await ApiService.dio.put(
         '/api/user/update/interest-field',
-        data: {'interestFields': interestFields},
+        data: {"interestsFields": interestFields},
       );
+      debugPrint('관심 분야 업데이트 요청 data : $interestFields');
       if (response.statusCode == 200) {
-        debugPrint('관심 분야 업데이트 성공: ${response.data}');
+        debugPrint('관심 분야 업데이트 성공: ${response.statusCode}');
         return true;
       } else {
         debugPrint('관심 분야 업데이트 실패: ${response.statusCode}');
@@ -81,6 +82,25 @@ class UserApi {
       }
     } catch (e) {
       debugPrint('관심 분야 업데이트 에러: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> updateUserProfile(Map<dynamic, dynamic> updateParams) async {
+    try {
+      final response = await ApiService.dio.put(
+        '/api/user/update/profile',
+        data: updateParams,
+      );
+      if (response.statusCode == 200) {
+        debugPrint('회원 정보 수정 성공: ${response.data}');
+        return true;
+      } else {
+        debugPrint('회원 정보 수정 실패(서버 에러): ${response.statusCode}');
+        return false;
+      }
+    } catch (error) {
+      debugPrint('회원 정보 수정 실패(예외 발생): $error');
       return false;
     }
   }

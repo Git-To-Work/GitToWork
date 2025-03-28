@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:gittowork/screens/my_page/my_page_screen.dart';
 import '../../layouts/appbar_bottom_nav_layout.dart';
 import '../../services/user_api.dart'; // 수정: user_api.dart 사용
 import '../../widgets/app_bar.dart';
+import '../my_page/my_info_edit_screen.dart';
 
 // 실제 DB에서 받아올 때, id/name/logoUrl 형태의 모델
 class BusinessField {
@@ -95,18 +97,24 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
   }
 
   Future<void> _onComplete() async {
-    final selectedFields = businessFields
+    final selectedFieldIds = businessFields
         .where((field) => field.isSelected)
         .map((f) => f.fieldId)
         .toList();
 
+    final selectedFieldNames = businessFields
+        .where((field) => field.isSelected)
+        .map((f) => f.fieldName)
+        .toList();
+
+
     if (widget.isSignUp) {
-      widget.signupParams?['interestsFields'] = selectedFields;
+      widget.signupParams?['interestsFields'] = selectedFieldIds;
       final isSignupSuccess = await UserApi.sendSignupData(widget.signupParams!);
       if (isSignupSuccess) {
-        final isUpdated = await UserApi.updateInterestFields(selectedFields);
+        final isUpdated = await UserApi.updateInterestFields(selectedFieldIds);
         if (isUpdated) {
-          Navigator.pop(context, selectedFields);
+          Navigator.pop(context, selectedFieldIds);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('관심 분야 업데이트 실패')),
@@ -123,9 +131,13 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
         );
       }
     } else {
-      final isUpdated = await UserApi.updateInterestFields(selectedFields);
+      final isUpdated = await UserApi.updateInterestFields(selectedFieldIds);
+
       if (isUpdated) {
-        Navigator.pop(context, selectedFields);
+        Navigator.pop(context, {
+          'fieldNames': selectedFieldNames,
+          'fieldIds': selectedFieldIds,
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('관심 분야 업데이트 실패')),
