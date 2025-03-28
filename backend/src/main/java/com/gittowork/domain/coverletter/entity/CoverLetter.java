@@ -21,7 +21,8 @@ public class CoverLetter {
 
     @Id
     @Column(name = "file_id", nullable = false)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer fileId;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
