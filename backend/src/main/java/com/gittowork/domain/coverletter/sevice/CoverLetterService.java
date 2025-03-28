@@ -120,8 +120,7 @@ public class CoverLetterService {
         metadata.setContentLength(file.getSize());
 
         try {
-            PutObjectRequest request = new PutObjectRequest(bucketName, s3FileName, file.getInputStream(), metadata)
-                    .withCannedAcl(CannedAccessControlList.PublicRead);
+            PutObjectRequest request = new PutObjectRequest(bucketName, s3FileName, file.getInputStream(), metadata);
             amazonS3.putObject(request);
         } catch (IOException e) {
             throw new S3UploadException("S3 upload failed");
