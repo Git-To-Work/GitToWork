@@ -31,7 +31,6 @@ public class CoverLetterAnalysis {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Lob
     @Column(name = "analysis_result")
     private String analysisResult;
 
