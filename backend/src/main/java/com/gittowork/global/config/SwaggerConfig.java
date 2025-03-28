@@ -64,4 +64,12 @@ public class SwaggerConfig {
                 .build();
     }
 
+    @Bean
+    public GroupedOpenApi coverLetterApi() {
+        return GroupedOpenApi.builder()
+                .group("CoverLetter API")
+                .pathsToMatch("/cover-letter/**")
+                .build();
+    }
+
 }
