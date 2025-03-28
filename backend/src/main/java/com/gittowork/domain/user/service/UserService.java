@@ -42,7 +42,6 @@ public class UserService {
     private final UserGitInfoRepository userGitInfoRepository;
     private final RedisService redisService;
     private final FieldRepository fieldRepository;
-    private final GithubService githubService;
     private final GithubAnalysisService githubAnalysisService;
 
     /**
