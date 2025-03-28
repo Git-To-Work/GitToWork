@@ -48,7 +48,6 @@ def run_hybrid_recommendation(db,
     ######################################
     # 3. 공고 & 기업 정보 로딩
     ######################################
-    jobs = db.query(JobNotice).all()
 
     # company 테이블에서 기업 정보 가져오기
     company_rows = db.query(Company).all()
@@ -58,6 +57,8 @@ def run_hybrid_recommendation(db,
         c_name = getattr(comp, "company_name", None) or getattr(comp, "companyName", None)
         if c_name:
             companies[c_name] = comp.__dict__
+
+    jobs = db.query(JobNotice).all()
 
     ######################################
     # 4. 기업별 공고 텍스트(콘텐츠) 만들기

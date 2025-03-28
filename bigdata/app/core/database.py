@@ -5,7 +5,8 @@ from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
 load_dotenv()
-
+print("mysql_url from .env ")
+print(os.getenv("MYSQL_URL"))
 DATABASE_URL = os.getenv("MYSQL_URL")
 
 engine = create_engine(DATABASE_URL)
