@@ -1,6 +1,5 @@
 import os
 import json
-from glob import glob
 from datetime import datetime
 import pandas as pd
 
@@ -9,21 +8,21 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from surprise import SVD, Dataset, Reader
 
+from app.models import JobNotice, Company
 
-def run_hybrid_recommendation(username,
+def run_hybrid_recommendation(db,
+                              username,
                               liked_companies_set,
                               blacklisted_companies_set,
                               scraped_companies_set,
                               user_search_history,
                               user_search_detail_history,
-                              aggregate_selected_repo_stats_data
+                              aggregate_selected_repo_stats_data,
+                              sonarqube_data
                               ):
     #############################################
     # 1. 설정 (사용자, 가중치, 좋아요/싫어요 등)
     #############################################
-    # 좋아요 / 싫어요 기업 (예시)
-    liked_companies = {"현대자동차"}
-    blacklist_companies = {"에프엘이에스"}
 
     # 하이브리드 가중치
     ALPHA = 0.9  # 콘텐츠 기반 점수 비중
@@ -37,16 +36,7 @@ def run_hybrid_recommendation(username,
     # 2. 사용자 GitHub 분석 JSON 로딩
     ######################################
 
-    user_folder = f"../user/{username}"
-    print(f"사용자 폴더 경로: {user_folder}")
-    print("경로 존재 여부:", os.path.exists(user_folder))
-
-    json_files = glob(os.path.join(user_folder, "*.json"))
-    if not json_files:
-        raise FileNotFoundError(f"{user_folder} 내에 사용자 분석 JSON이 없습니다.")
-
-    with open(json_files[0], "r", encoding="utf-8") as f:
-        user_data = json.load(f)
+    user_data = {**aggregate_selected_repo_stats_data, **sonarqube_data}
 
     # GitHub 언어별 커밋 수 -> 사용자 프로필 텍스트
     user_profile_list = []
@@ -58,18 +48,16 @@ def run_hybrid_recommendation(username,
     ######################################
     # 3. 공고 & 기업 정보 로딩
     ######################################
-    jobs = []
-    for job_file in glob("../data/jobs/*.json"):
-        with open(job_file, "r", encoding="utf-8") as f:
-            jobs.append(json.load(f))
+    jobs = db.query(JobNotice).all()
 
+    # company 테이블에서 기업 정보 가져오기
+    company_rows = db.query(Company).all()
     companies = {}
-    for comp_file in glob("../data/crawling/*.json"):
-        with open(comp_file, "r", encoding="utf-8") as f:
-            comp_data = json.load(f)
-            c_name = comp_data.get("companyName")
-            if c_name:
-                companies[c_name] = comp_data
+    for comp in company_rows:
+        # 회사명 컬럼은 모델의 속성에 따라 company_name 또는 companyName으로 접근 (실제 모델에 맞게 수정)
+        c_name = getattr(comp, "company_name", None) or getattr(comp, "companyName", None)
+        if c_name:
+            companies[c_name] = comp.__dict__
 
     ######################################
     # 4. 기업별 공고 텍스트(콘텐츠) 만들기
@@ -98,8 +86,8 @@ def run_hybrid_recommendation(username,
         return sum(values) / len(values) if values else 0.0
 
     # 좋아요/싫어요 기업 프로필
-    liked_profiles = [company_profiles[c] for c in liked_companies if c in company_profiles]
-    blacklist_profiles = [company_profiles[c] for c in blacklist_companies if c in company_profiles]
+    liked_profiles = [company_profiles[c] for c in liked_companies_set if c in company_profiles]
+    blacklist_profiles = [company_profiles[c] for c in blacklisted_companies_set if c in company_profiles]
 
     content_scores = {}  # {회사명: 콘텐츠 기반 점수}
     for c_name in companies.keys():
@@ -147,9 +135,9 @@ def run_hybrid_recommendation(username,
     for c_name in companies.keys():
         base_sim = interaction_by_company.get(c_name, 0.0)
 
-        if c_name in liked_companies:
+        if c_name in liked_companies_set:
             rating = 5.0
-        elif c_name in blacklist_companies:
+        elif c_name in blacklisted_companies_set:
             rating = 1.0
         else:
             # 0~max_sim -> 1~5 스케일링
@@ -222,8 +210,3 @@ def run_hybrid_recommendation(username,
 
     print(f"[하이브리드 추천] 결과가 {result_file} 에 저장되었습니다.")
 
-
-# 예시: 다른 코드에서 이 함수를 호출할 때
-if __name__ == "__main__":
-    user_input = input("사용자 이름을 입력하세요: ")
-    run_hybrid_recommendation(user_input)

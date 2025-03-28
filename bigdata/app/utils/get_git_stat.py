@@ -119,11 +119,3 @@ def aggregate_selected_repo_stats(selected_repositories_id: str, user_id: int) -
         "commit_activity": aggregated_commit_activity
     }
 
-#
-# # 사용 예시:
-# if __name__ == "__main__":
-#     try:
-#         aggregated_stats = aggregate_selected_repo_stats("1", 12345)
-#         print(json.dumps(aggregated_stats, ensure_ascii=False, indent=4))
-#     except Exception as e:
-#         print("Error:", e)
