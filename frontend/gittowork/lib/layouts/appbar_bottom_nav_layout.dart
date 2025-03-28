@@ -4,7 +4,8 @@ import 'package:gittowork/screens/github_analysis/github.dart';
 import 'package:gittowork/screens/company_recommendation/company.dart';
 import 'package:gittowork/screens/cover_letter/cover_letter_screen.dart';
 import 'package:gittowork/screens/entertainment/entertainment.dart';
-import 'package:gittowork/screens/my_page/myPage.dart';
+
+import '../screens/my_page/my_page_screen.dart';
 
 class AppBarBottomNavLayout extends StatefulWidget {
   const AppBarBottomNavLayout({super.key});

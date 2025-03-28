@@ -47,6 +47,16 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 	implementation 'org.eclipse.jgit:org.eclipse.jgit:6.6.1.202309021850-r'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation ('com.amazonaws:aws-java-sdk-s3:1.12.545') {
+		exclude group: 'software.amazon.ion', module: 'ion-java'
+	}
+	implementation ('com.amazonaws:aws-java-sdk-core:1.12.545') {
+		exclude group: 'software.amazon.ion', module: 'ion-java'
+	}
+	implementation ('com.amazonaws:aws-java-sdk-kms:1.12.545') {
+		exclude group: 'software.amazon.ion', module: 'ion-java'
+	}
+	implementation 'com.amazon.ion:ion-java:1.10.5'
 }
 
 dependencyManagement {

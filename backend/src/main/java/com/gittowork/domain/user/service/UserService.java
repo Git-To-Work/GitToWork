@@ -17,8 +17,8 @@ import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.DataNotFoundException;
 import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.service.RedisService;
-import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -32,8 +32,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
-@AllArgsConstructor(onConstructor = @__(@Autowired))
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
@@ -56,7 +57,7 @@ public class UserService {
     public MessageOnlyResponse insertProfile(InsertProfileRequest insertProfileRequest) {
         String username = getUserName();
 
-        Map<String, Object> userCaching = redisService.getUser("user:" + username);
+        Map<Object, Object> userCaching = redisService.getUser("user: " + username);
 
         if (userCaching == null || userCaching.isEmpty()) {
             throw new DataNotFoundException("캐싱된 사용자 기본 정보가 없습니다.");
@@ -68,7 +69,7 @@ public class UserService {
                 .githubId(githubId)
                 .githubName(userCaching.get("githubName").toString())
                 .name(insertProfileRequest.getName())
-                .githubEmail(userCaching.get("githubEmail").toString())
+                .githubEmail(userCaching.get("githubEmail") == null ? null : userCaching.get("githubEmail").toString())
                 .phone(insertProfileRequest.getPhone())
                 .birthDt(LocalDate.parse(insertProfileRequest.getBirthDt()))
                 .experience(insertProfileRequest.getExperience())
@@ -81,7 +82,9 @@ public class UserService {
 
         user = userRepository.save(user);
 
-        Map<String, Object> userGitInfoCaching = redisService.getUserGitInfo("userGitInfo:" + username);
+        log.info(user.toString());
+
+        Map<Object, Object> userGitInfoCaching = redisService.getUserGitInfo("userGitInfo: " + username);
 
         if (userGitInfoCaching == null || userGitInfoCaching.isEmpty()) {
             throw new DataNotFoundException("캐싱된 깃허브 사용자 기본 정보가 없습니다.");
@@ -181,6 +184,7 @@ public class UserService {
      * 3. param: 없음.
      * 4. return: 모든 관심 분야 목록을 포함하는 GetInterestFieldsResponse 객체.
      */
+    @Transactional(readOnly = true)
     public GetInterestFieldsResponse getInterestFields() {
         List<Field> interestFields = fieldRepository.findAll();
 
@@ -198,6 +202,7 @@ public class UserService {
      * 3. param: updateInterestsFieldsRequest - 관심 분야 정보를 담은 DTO.
      * 4. return: 성공 메시지를 포함한 MessageOnlyResponse 객체.
      */
+    @Transactional
     public MessageOnlyResponse updateInterestFields(UpdateInterestsFieldsRequest updateInterestsFieldsRequest) {
         String username = getUserName();
 

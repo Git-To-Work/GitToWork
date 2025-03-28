@@ -163,9 +163,9 @@ public class GithubRestApiService {
                             .language(map.get("language") != null ? map.get("language").toString() : null)
                             .stargazersCount((Integer) map.get("stargazers_count"))
                             .forksCount((Integer) map.get("forks_count"))
-                            .createdAt(LocalDateTime.parse(map.get("created_at").toString()))
-                            .updatedAt(LocalDateTime.parse(map.get("updated_at").toString()))
-                            .pushedAt(LocalDateTime.parse(map.get("pushed_at").toString()))
+                            .createdAt(OffsetDateTime.parse(map.get("created_at").toString()).toLocalDateTime())
+                            .updatedAt(OffsetDateTime.parse(map.get("updated_at").toString()).toLocalDateTime())
+                            .pushedAt(OffsetDateTime.parse(map.get("pushed_at").toString()).toLocalDateTime())
                             .description(map.get("description") != null ? map.get("description").toString() : "")
                             .build();
                 })
@@ -399,24 +399,36 @@ public class GithubRestApiService {
      *      accessToken - GitHub API 접근에 사용되는 access token.
      * 4. return: 없음.
      */
-    public void saveGithubIssues(String accessToken) {
+    public void saveGithubIssues(String accessToken, String userName, int userId) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.valueOf("application/vnd.github.v3+json")));
-        String url = "https://api.github.com/repos/chanhoan/chanhoan_Github/issues?state=all";
-        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                request,
-                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
-        );
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new GithubRepositoryNotFoundException("Failed to fetch issues - HTTP " + response.getStatusCode());
+        List<Repository> repositories = githubRepoRepository.findByUserId(userId)
+                .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"))
+                .getRepositories();
+
+        for (Repository repository : repositories) {
+            String repositoryName = repository.getRepoName();
+            int repoId = repository.getRepoId();
+
+            String url = "https://api.github.com/repos/{userName}/{repositoryName}/issues?state=all";
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    request,
+                    new ParameterizedTypeReference<List<Map<String, Object>>>() {},
+                    userName,
+                    repositoryName
+            );
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new GithubRepositoryNotFoundException("Failed to fetch issues - HTTP " + response.getStatusCode());
+            }
+            List<Map<String, Object>> issuesData = response.getBody();
+            issuesData = issuesData == null ? Collections.emptyList() : issuesData;
+            List<GithubIssue> issues = issuesData.stream()
+                    .map(this::parseIssue)
+                    .collect(Collectors.toList());
+            githubIssueRepository.saveAll(issues);
         }
-        List<Map<String, Object>> issuesData = response.getBody();
-        issuesData = issuesData == null ? Collections.emptyList() : issuesData;
-        List<GithubIssue> issues = issuesData.stream()
-                .map(this::parseIssue)
-                .collect(Collectors.toList());
-        githubIssueRepository.saveAll(issues);
+
     }
 
     /**
@@ -527,24 +539,35 @@ public class GithubRestApiService {
      *      accessToken - GitHub API 접근에 사용되는 access token.
      * 4. return: 없음.
      */
-    public void saveGithubPullRequests(String accessToken) {
+    public void saveGithubPullRequests(String accessToken, String userName, int userId) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.valueOf("application/vnd.github.v3+json")));
-        String url = "https://api.github.com/repos/kobenlys/K6Weaver/pulls?state=all";
-        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                request,
-                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
-        );
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new GithubRepositoryNotFoundException("Failed to fetch pull requests - HTTP " + response.getStatusCode());
+
+        List<Repository> repositories = githubRepoRepository.findByUserId(userId)
+                .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"))
+                .getRepositories();
+
+        for (Repository repository : repositories) {
+            String repositoryName = repository.getRepoName();
+
+            String url = "https://api.github.com/repos/{userName}/{repositoryName}/pulls?state=all";
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    request,
+                    new ParameterizedTypeReference<List<Map<String, Object>>>() {},
+                    userName,
+                    repositoryName
+            );
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new GithubRepositoryNotFoundException("Failed to fetch pull requests - HTTP " + response.getStatusCode());
+            }
+            List<Map<String, Object>> prList = response.getBody();
+            prList = prList == null ? Collections.emptyList() : prList;
+            List<GithubPullRequest> pullRequests = prList.stream()
+                    .map(this::parsePullRequest)
+                    .collect(Collectors.toList());
+            githubPullRequestRepository.saveAll(pullRequests);
         }
-        List<Map<String, Object>> prList = response.getBody();
-        prList = prList == null ? Collections.emptyList() : prList;
-        List<GithubPullRequest> pullRequests = prList.stream()
-                .map(this::parsePullRequest)
-                .collect(Collectors.toList());
-        githubPullRequestRepository.saveAll(pullRequests);
     }
 
     /**

@@ -15,7 +15,7 @@ import com.gittowork.global.service.GithubRestApiService;
 import com.gittowork.global.service.RedisService;
 import com.gittowork.global.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,10 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -71,7 +68,7 @@ public class GithubAuthenticationService {
 
         log.info(responseBody.toString());
 
-        if (Objects.isNull(responseBody) || !responseBody.containsKey("access_token")) {
+        if (!responseBody.containsKey("access_token")) {
             throw new GithubSignInException("Unauthorized or Invalid Code.");
         }
 
@@ -107,51 +104,53 @@ public class GithubAuthenticationService {
      * 3. param: code - GitHub OAuth 인증 후 받은 코드
      * 4. return: SignInGithubResponse 객체 (nickname, privacyPolicyAgreed, avatarUrl, accessToken 포함)
      */
+    @Transactional
     public SignInGithubResponse signInGithub(String code) {
         String githubAccessToken = getAccessToken(code);
         Map<String, Object> githubUserInfo = getUserInfo(githubAccessToken);
 
-        // GitHub 로그인명 (username)
         final String username = (String) githubUserInfo.get("login");
 
-        // GitHub 추가 정보 구성
+        Optional<User> loginUser = userRepository.findByGithubName(username);
+
+        if (loginUser.isPresent()) {
+            setAuthentication(username);
+            String accessToken = getAccessTokenAndStoreRefreshToken(code);
+
+            loginUser.get().setGithubAccessToken(githubAccessToken);
+
+            userRepository.save(loginUser.get());
+
+            return SignInGithubResponse.builder()
+                    .nickname(loginUser.get().getGithubName())
+                    .privacyPolicyAgreed(loginUser.get().getPrivacyConsentDttm() != null)
+                    .avatarUrl(loginUser.get().getUserGitInfo().getAvatarUrl())
+                    .accessToken(accessToken)
+                    .build();
+        }
+
         Map<String, Object> userGitInfo = new HashMap<>();
         userGitInfo.put("githubAvatarUrl", githubUserInfo.get("avatar_url"));
         userGitInfo.put("publicRepositories", githubUserInfo.get("public_repos"));
         userGitInfo.put("followers", githubUserInfo.get("followers"));
         userGitInfo.put("following", githubUserInfo.get("following"));
 
-        // 사용자 기본 정보 구성
         Map<String, Object> user = new HashMap<>();
         user.put("githubId", githubUserInfo.get("id"));
         user.put("githubName", username);
         user.put("githubEmail", githubUserInfo.get("email"));
         user.put("githubAccessToken", githubAccessToken);
 
-        // Redis에 저장할 키 생성
         String userKey = "user: " + username;
         String userGitInfoKey = "userGitInfo: " + username;
 
-        // Redis에 사용자 정보 저장 및 만료 시간 설정
         redisService.saveUser(userKey, user);
         redisService.saveUserGitInfo(userGitInfoKey, userGitInfo);
         redisService.setExpire(userKey, 1, TimeUnit.HOURS);
         redisService.setExpire(userGitInfoKey, 1, TimeUnit.HOURS);
 
-        // Spring Security의 Authentication 객체 생성 후 SecurityContext에 등록 (OAuth 방식이므로 password는 null)
-        UsernamePasswordAuthenticationToken authenticationToken =
-                new UsernamePasswordAuthenticationToken(
-                        username,
-                        null,
-                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
-                );
-        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-
-        // JWT 토큰 발급 및 refresh token 저장
-        String accessToken = jwtUtil.generateAccessToken(username);
-        String refreshToken = jwtUtil.generateRefreshToken(username);
-        String refreshTokenKey = username + "_refresh_token";
-        redisService.saveRefreshToken(refreshTokenKey, refreshToken, 366, TimeUnit.DAYS);
+        setAuthentication(username);
+        String accessToken = getAccessTokenAndStoreRefreshToken(code);
 
         return SignInGithubResponse.builder()
                 .nickname(username)
@@ -159,6 +158,47 @@ public class GithubAuthenticationService {
                 .avatarUrl((String) githubUserInfo.get("avatar_url"))
                 .accessToken(accessToken)
                 .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 제공된 username을 기반으로 ROLE_USER 권한을 가진 UsernamePasswordAuthenticationToken을 생성하여
+     *    Spring SecurityContext에 설정하는 메서드.
+     * 2. 로직:
+     *    - 주어진 username과 ROLE_USER 권한으로 UsernamePasswordAuthenticationToken 객체를 생성한다.
+     *    - 생성된 토큰을 SecurityContextHolder에 설정하여 현재 인증 정보를 업데이트한다.
+     * 3. param:
+     *      - username: 인증할 사용자의 이름.
+     * 4. return: 없음.
+     */
+    private void setAuthentication(String username) {
+        UsernamePasswordAuthenticationToken authenticationToken =
+                new UsernamePasswordAuthenticationToken(
+                        username,
+                        null,
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                );
+        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+    }
+
+    /**
+     * 1. 메서드 설명: 제공된 username에 대해 JWT 액세스 토큰과 리프레시 토큰을 생성하고, 생성된 리프레시 토큰을 Redis에 저장한 후,
+     *    생성된 액세스 토큰을 반환하는 메서드.
+     * 2. 로직:
+     *    - jwtUtil.generateAccessToken()을 사용하여 JWT 액세스 토큰을 생성한다.
+     *    - jwtUtil.generateRefreshToken()을 사용하여 JWT 리프레시 토큰을 생성한다.
+     *    - username을 기반으로 리프레시 토큰을 저장할 Redis 키를 생성한다.
+     *    - redisService를 사용하여 생성된 리프레시 토큰을 366일 동안 저장한다.
+     *    - 생성된 액세스 토큰을 반환한다.
+     * 3. param:
+     *      - username: 토큰을 생성할 사용자의 이름.
+     * 4. return: 생성된 JWT 액세스 토큰 (String).
+     */
+    private String getAccessTokenAndStoreRefreshToken(String username) {
+        String accessToken = jwtUtil.generateAccessToken(username);
+        String refreshToken = jwtUtil.generateRefreshToken(username);
+        String refreshTokenKey = username + "_refresh_token";
+        redisService.saveRefreshToken(refreshTokenKey, refreshToken, 366, TimeUnit.DAYS);
+        return accessToken;
     }
 
     /**

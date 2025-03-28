@@ -12,4 +12,6 @@ public interface SelectedRepoRepository extends MongoRepository<SelectedReposito
     List<SelectedRepository> findAllByUserId(int userId);
 
     Optional<SelectedRepository> findByUserIdAndRepositories(int userId, List<com.gittowork.domain.github.model.repository.Repository> repositories);
+
+    Optional<SelectedRepository> findByUserIdAndSelectedRepositoryId(int userId, String selectedRepoIdStr);
 }

@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/github_analysis_provider.dart';
 import '../../widgets/my_repo.dart';
-
 
 class RepoScreen extends StatelessWidget {
   const RepoScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final githubProvider = Provider.of<GitHubAnalysisProvider>(context);
+
     return GestureDetector(
       onTap: () {
-        // 영역 클릭 시 팝업 위젯 열기
         showDialog(
           context: context,
-          barrierDismissible: true, // 배경 클릭시 닫힘
+          barrierDismissible: true,
           builder: (BuildContext context) {
             return const MyRepo();
           },
@@ -40,18 +42,18 @@ class RepoScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Text(
-                    'Repo : mkos47635',
-                    style: TextStyle(
+                    'Repo : ${githubProvider.repoName}',
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    'Last Analysis : 2025/03/11 13:03:13',
-                    style: TextStyle(
+                    'Last Analysis : ${githubProvider.lastAnalysis}',
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
