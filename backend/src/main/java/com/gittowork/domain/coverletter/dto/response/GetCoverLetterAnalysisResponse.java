@@ -2,8 +2,6 @@ package com.gittowork.domain.coverletter.dto.response;
 
 import lombok.*;
 
-import java.util.List;
-
 @Getter
 @Setter
 @NoArgsConstructor
