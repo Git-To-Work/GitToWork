@@ -1,11 +1,21 @@
+# app/main.py
+
+import logging
 from fastapi import FastAPI
+from app.core.exception_handlers import setup_exception_handlers  # 추가
+from app.api.routes.company import router as company_router
+from app.api.routes.company_detail import router as company_detail_router
+
+logging.basicConfig(level=logging.WARNING)
+print(">>> app/main.py loaded")
 
 app = FastAPI()
 
-@app.get('/')
-async def read_root():
-    return {'message': 'Hello, FastAPI!'}
+setup_exception_handlers(app)
 
-if __name__ == '__main__':
-    import uvicorn
-    uvicorn.run(app, host='0.0.0.0', port=8000, reload=True)
+app.include_router(company_router, tags=["companies"])
+app.include_router(company_detail_router, tags=["companies"])
+
+print("Registered routes:")
+for route in app.routes:
+    print(route.path, route.name)

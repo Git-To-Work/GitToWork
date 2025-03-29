@@ -20,8 +20,8 @@ import java.util.Set;
 public class CoverLetter {
 
     @Id
-    @Column(name = "file_id", nullable = false)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "file_id", nullable = false)
     private Integer id;
 
     @NotNull
@@ -49,6 +49,6 @@ public class CoverLetter {
     private String title;
 
     @OneToMany(mappedBy = "file")
-    private Set<CoverLetterAnalysis> coverLetterAnalyses = new LinkedHashSet<>();
+    private Set<CoverLetterAnalysis> coverLetterAnalysis = new LinkedHashSet<>();
 
 }
