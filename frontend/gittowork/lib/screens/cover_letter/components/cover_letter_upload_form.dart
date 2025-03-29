@@ -42,14 +42,15 @@ class _CoverLetterUploadFormState extends State<CoverLetterUploadForm> {
 
     try {
       await CoverLetterApi.createCoverLetter(
-        file: selectedFile!,
         title: titleController.text,
+        file: selectedFile!,
       );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('자기소개서가 성공적으로 업로드되었습니다.')),
       );
       Navigator.pop(context);
     } catch (e) {
+      print(e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('업로드 실패: $e')),
       );
@@ -79,8 +80,8 @@ class _CoverLetterUploadFormState extends State<CoverLetterUploadForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('자기소개서 파일 업로드 (PDF만 가능)',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text('자기소개서 파일 업로드',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 22)),
         const SizedBox(height: 10),
         GestureDetector(
           onTap: pickFile,
@@ -106,8 +107,12 @@ class _CoverLetterUploadFormState extends State<CoverLetterUploadForm> {
             ),
           ),
         ),
+        const SizedBox(height: 5),
+        const Text('PDF 파일을 업로드해주세요',
+            style: TextStyle(fontWeight: FontWeight.w300, fontSize: 15)),
         const SizedBox(height: 30),
-        const Text('자기소개서 제목', style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text('자기소개서 제목',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 22)),
         const SizedBox(height: 10),
         TextField(
           controller: titleController,

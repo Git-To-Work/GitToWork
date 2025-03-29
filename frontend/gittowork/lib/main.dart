@@ -108,6 +108,11 @@ class _SplashScreenState extends State<SplashScreen> {
     if (_authProvider.accessToken != null) {
       final success = await _authProvider.autoLoginWithToken();
       if (success) {
+        try {
+          await _authProvider.fetchUserProfile();
+        } catch (e) {
+          const SnackBar(content: Text("로그인에 실패했습니다."));
+    }
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
         );
