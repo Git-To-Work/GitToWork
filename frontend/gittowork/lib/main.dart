@@ -98,8 +98,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigateAfterDelay() async {
-    // 3초 스플래시 대기
-    await Future.delayed(const Duration(seconds: 3));
+    // 2초 스플래시 대기
+    await Future.delayed(const Duration(seconds: 2));
 
     // 위젯이 여전히 마운트 되어 있는지 확인
     if (!mounted) return;
