@@ -257,6 +257,7 @@ public class CoverLetterService {
 
         return GetCoverLetterAnalysisResponse.builder()
                 .coverLetterId(coverLetterId)
+                .aiAnalysisResult(coverLetterAnalysis.getAnalysisResult())
                 .stat(analysisStat)
                 .analysisDttm(LocalDateTime.now().format(formatter))
                 .fileUrl(coverLetterAnalysis.getFile().getFileUrl())

@@ -11,7 +11,7 @@ import java.util.List;
 @Builder
 public class GetCoverLetterAnalysisResponse {
     private int coverLetterId;
-    private List<String> aiAnalysisResult;
+    private String aiAnalysisResult;
     private CoverLetterAnalysisStat stat;
     private String analysisDttm;
     private String fileUrl;
