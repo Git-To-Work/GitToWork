@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/cover_letter_api.dart';
+import '../cover_letter_detail_screen.dart';
 import 'cover_letter_card.dart';
 
 class CoverLetterData {
@@ -87,18 +88,28 @@ class _CoverLetterListState extends State<CoverLetterList> {
       const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final coverLetter = coverLetters[index];
-        return Padding(
-          padding: EdgeInsets.zero,
-          child: CoverLetterCard(
-            // date가 아직 API에서 없으니, 임시로 fileName을 표시하거나
-            // 혹은 date를 ''로 넘겨주면 "표시 안 함" 처리해도 됩니다.
-            date: coverLetter.date.isNotEmpty
-                ? coverLetter.date
-                : '',
-            title: coverLetter.title,
-            onDelete: () {
-              _deleteCoverLetter(coverLetter.fileId);
-            },
+        return InkWell(
+          // ▼ 이 부분이 핵심: 탭하면 상세보기 화면으로 이동
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (ctx) => CoverLetterDetailScreen(
+                  coverLetterId: coverLetter.fileId,
+                ),
+              ),
+            );
+          },
+          child: Padding(
+            padding: EdgeInsets.zero,
+            child: CoverLetterCard(
+              // card 위젯으로 제목, 날짜, 삭제 버튼 등을 표시한다고 가정
+              date: coverLetter.date.isNotEmpty ? coverLetter.date : '',
+              title: coverLetter.title,
+              onDelete: () {
+                _deleteCoverLetter(coverLetter.fileId);
+              },
+            ),
           ),
         );
       },
