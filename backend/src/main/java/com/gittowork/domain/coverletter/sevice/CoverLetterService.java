@@ -154,6 +154,7 @@ public class CoverLetterService {
                         .fileName(cl.getOriginName())
                         .fileUrl(cl.getFileUrl())
                         .title(cl.getTitle())
+                        .createDttm(cl.getCreateDttm().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                         .build())
                 .toList();
 

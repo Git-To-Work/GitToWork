@@ -22,5 +22,6 @@ public class GetMyCoverLetterListResponse {
         private String fileName;
         private String title;
         private String fileUrl;
+        private String createDttm;
     }
 }
