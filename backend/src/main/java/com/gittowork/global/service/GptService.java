@@ -1,11 +1,14 @@
 package com.gittowork.global.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gittowork.domain.coverletter.entity.CoverLetterAnalysis;
 import com.gittowork.domain.github.entity.GithubAnalysisResult;
 import com.gittowork.global.config.GptConfig;
+import com.gittowork.global.exception.CoverLetterAnalysisException;
 import com.gittowork.global.exception.JsonParsingException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 public class GptService {
 
@@ -108,9 +112,19 @@ public class GptService {
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
         try {
             ResponseEntity<String> response = restTemplate.exchange(API_URL, HttpMethod.POST, entity, String.class);
-            return response.getBody();
+            String responseBody = response.getBody();
+            log.info("GPT API response: {}", responseBody);
+
+            // JSON 파싱하여 choices -> message -> content 추출
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode rootNode = objectMapper.readTree(responseBody);
+            JsonNode contentNode = rootNode.path("choices").get(0).path("message").path("content");
+            String content = contentNode.asText();
+            log.info("Extracted GPT Content: {}", content);
+
+            return content;
         } catch (Exception e) {
-            throw new RuntimeException("Error calling GPT API", e);
+            throw new CoverLetterAnalysisException("Error calling GPT API");
         }
     }
 
@@ -166,20 +180,15 @@ public class GptService {
         prompt.append("분석 결과는 다음 두 가지 부분으로 구성되어야 합니다:\n");
         prompt.append("1. 8가지 역량의 각 항목(globalCapability, challengeSpirit, sincerity, communicationSkill, ");
         prompt.append("achievementOrientation, responsibility, honesty, creativity)은 1부터 10까지의 정수로 평가합니다.\n");
-        prompt.append("2. 전반적인 분석은 'aiAnalysisResult' 필드 안에 배열 형식으로 포함되어야 하며, ");
-        prompt.append("강점, 약점 및 개선방안을 포함한 분석 결과를 2개 이상의 문장으로 요약해 주세요.\n");
+        prompt.append("2. 전반적인 분석은 'analysisResult' 문자열으로 작성되어야 하며, ");
+        prompt.append("강점, 약점 및 개선방안을 포함한 분석 결과를 문장으로 요약해 주세요.\n");
         prompt.append("\n");
         prompt.append("출력 형식은 아래 JSON 예시와 정확히 일치해야 하며, 추가적인 설명이나 텍스트는 포함하지 않아야 합니다.\n");
         prompt.append("\n");
         prompt.append("## 출력 예시\n");
         prompt.append("{\n");
-        prompt.append("    \"coverLetterAnalysisId\": null,\n");
-        prompt.append("    \"fileId\": null,\n");
-        prompt.append("    \"userId\": null,\n");
-        prompt.append("    \"aiAnalysisResult\": [\n");
+        prompt.append("    \"analysisResult\": ");
         prompt.append("      \"분석 결과 요약 1\",\n");
-        prompt.append("      \"분석 결과 요약 2\"\n");
-        prompt.append("    ],\n");
         prompt.append("    \"globalCapability\": 8,\n");
         prompt.append("    \"challengeSpirit\": 9,\n");
         prompt.append("    \"sincerity\": 7,\n");
@@ -188,7 +197,6 @@ public class GptService {
         prompt.append("    \"responsibility\": 9,\n");
         prompt.append("    \"honesty\": 8,\n");
         prompt.append("    \"creativity\": 9,\n");
-        prompt.append("    \"createDttm\": \"null\"\n");
         prompt.append("}\n");
         prompt.append("\n");
         prompt.append("## 분석에 사용할 자기소개서 텍스트:\n");
