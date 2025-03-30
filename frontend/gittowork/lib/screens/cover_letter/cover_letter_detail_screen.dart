@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gittowork/widgets/app_bar.dart';
 import '../../services/cover_letter_api.dart';
 
 // 컴포넌트 위젯
@@ -72,65 +71,74 @@ class _CoverLetterDetailScreenState extends State<CoverLetterDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomAppBar(),
+      appBar: AppBar(
+        title: const Text('자기소개서 상세보기'),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 상단 타이틀
-            Row(
-              children: const [
-                Text(
-                  '자기소개서 분석',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+          : Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'AI 자기소개서 분석',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                ),
-                SizedBox(width: 8),
-                // 원하면 로고 등 추가
-              ],
-            ),
-            const SizedBox(height: 16),
+                  const SizedBox(height: 16),
+                  roseData.isEmpty
+                      ? const Text('분석 데이터가 없습니다.')
+                      : CoverLetterRoseChart(roseData: roseData),
+                  const SizedBox(height: 20),
+                  CoverLetterAiAnalysisBox(aiAnalysisResult: aiAnalysisResult),
+                  const SizedBox(height: 20),
+                  const Text(
+                    '자기소개서 (PDF)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  if (pdfUrl == null || pdfUrl!.isEmpty)
+                    const Text('PDF 파일이 없습니다.'),
+                  if (pdfUrl != null && pdfUrl!.isNotEmpty)
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.6,
+                      child: CoverLetterPdfViewer(pdfUrl: pdfUrl!),
+                    ),
+                  // cover_letter_detail_screen.dart의 PDF 뷰어 하단에 추가
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.fullscreen),
+                    label: const Text('PDF 전체 화면 보기'),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          fullscreenDialog: true,
+                          builder: (_) => Scaffold(
+                            appBar: AppBar(title: const Text('PDF 전체 보기')),
+                            body: CoverLetterPdfViewer(pdfUrl: pdfUrl!),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
 
-            // 차트
-            const Text(
-              'AI 자기소개서 분석',
-              style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            if (roseData.isEmpty)
-              const Text('분석 데이터가 없습니다.')
-            else
-              CoverLetterRoseChart(roseData: roseData),
-
-            const SizedBox(height: 20),
-
-            // AI 분석 컴포넌트
-            CoverLetterAiAnalysisBox(aiAnalysisResult: aiAnalysisResult),
-
-            const SizedBox(height: 20),
-
-            // PDF 뷰어
-            const Text(
-              '자기소개서 (PDF)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            if (pdfUrl == null || pdfUrl!.isEmpty)
-              const Text('PDF 파일이 없습니다.')
-            else
-            // PDF 컴포넌트 - flutter_pdfview 사용
-              SizedBox(
-                height: 500, // 원하는 높이
-                child: CoverLetterPdfViewer(pdfUrl: pdfUrl!),
+                ],
               ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }

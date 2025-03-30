@@ -28,7 +28,7 @@ class CoverLetterRoseChart extends StatelessWidget {
         marks: [
           IntervalMark(
             label: LabelEncode(
-              encoder: (tuple) => Label(tuple['name'].toString()),
+              encoder: (tuple) => Label(tuple['name'].toString(),),
             ),
             shape: ShapeEncode(
               value: RectShape(

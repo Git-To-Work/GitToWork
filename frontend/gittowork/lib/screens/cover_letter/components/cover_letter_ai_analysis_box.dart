@@ -4,9 +4,9 @@ class CoverLetterAiAnalysisBox extends StatelessWidget {
   final String? aiAnalysisResult;
 
   const CoverLetterAiAnalysisBox({
-    Key? key,
+    super.key,
     required this.aiAnalysisResult,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
