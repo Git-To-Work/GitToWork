@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gittowork/screens/my_page/my_page_components/terms_service_screen.dart';
 import '../../../models/user_profile.dart';
+import '../company_interaction_screen.dart';
 import '../my_info_edit_screen.dart';
 
 class MyPageList extends StatelessWidget {
@@ -29,7 +30,10 @@ class MyPageList extends StatelessWidget {
       _MyPageListTile(
         title: '내가 차단한 기업',
         onTap: () {
-          // TODO: 이동 or 액션
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BlockedCompanyScreen()),
+          );
         },
       ),
       _MyPageListTile(

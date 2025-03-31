@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import '../models/company.dart';
 import '../models/user_profile.dart';
 import '../screens/signup/business_interest_screen.dart';
 import 'api_service.dart';
@@ -102,6 +103,51 @@ class UserApi {
     } catch (error) {
       debugPrint('회원 정보 수정 실패(예외 발생): $error');
       return false;
+    }
+  }
+
+  // 스크랩 기업 조회
+  static Future<List<Company>> fetchScrapCompanies() async {
+    final response = await ApiService.dio.get(
+      '/api/company-interaction/select/scrap',
+      data: {"page": 0, "size": 20},
+    );
+    if (response.statusCode == 200) {
+      final results = response.data['results'];
+      final companiesJson = results['companies'] as List<dynamic>;
+      return companiesJson.map((json) => Company.fromJson(json)).toList();
+    } else {
+      throw Exception('스크랩 기업 불러오기 실패: ${response.statusCode}');
+    }
+  }
+
+  // 좋아요 기업 조회
+  static Future<List<Company>> fetchLikedCompanies() async {
+    final response = await ApiService.dio.get(
+      '/api/company-interaction/select/like',
+      data: {"page": 0, "size": 20},
+    );
+    if (response.statusCode == 200) {
+      final results = response.data['results'];
+      final companiesJson = results['companies'] as List<dynamic>;
+      return companiesJson.map((json) => Company.fromJson(json)).toList();
+    } else {
+      throw Exception('좋아요 기업 불러오기 실패: ${response.statusCode}');
+    }
+  }
+
+  // 차단한 기업 조회
+  static Future<List<Company>> fetchBlockedCompanies() async {
+    final response = await ApiService.dio.get(
+      '/api/company-interaction/select/blacklist',
+      data: {"page": 0, "size": 20},
+    );
+    if (response.statusCode == 200) {
+      final results = response.data['results'];
+      final companiesJson = results['companies'] as List<dynamic>;
+      return companiesJson.map((json) => Company.fromJson(json)).toList();
+    } else {
+      throw Exception('차단한 기업 불러오기 실패: ${response.statusCode}');
     }
   }
 }
