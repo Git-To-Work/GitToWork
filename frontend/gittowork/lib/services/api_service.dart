@@ -10,7 +10,7 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
-      connectTimeout: const Duration(milliseconds: 3000),
+      connectTimeout: const Duration(milliseconds: 10000),
     ),
   )..interceptors.add(
     InterceptorsWrapper(
