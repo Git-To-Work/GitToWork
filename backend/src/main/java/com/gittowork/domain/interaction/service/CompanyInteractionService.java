@@ -284,6 +284,9 @@ public class CompanyInteractionService {
                 .build();
 
         userBlacklistRepository.save(userBlacklist);
+        userScrapsRepository.deleteById(new UserScrapsId(user.getId(), company.getId()));
+        userLikesRepository.deleteById(new UserLikesId(user.getId(), company.getId()));
+
         return MessageOnlyResponse.builder().message("차단 기업 추가 완료").build();
     }
 
