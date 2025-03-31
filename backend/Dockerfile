@@ -25,8 +25,10 @@ ENV SONAR_SCANNER_OPTS="-Djava.home=$JAVA_HOME"
 RUN mkdir -p /tmp/repositories && chmod -R 777 /tmp/repositories
 
 # 필요한 패키지 설치 (curl, unzip, bash 등)
-RUN apt-get update && apt-get install -y curl unzip bash && rm -rf /var/lib/apt/lists/*
+# 필요한 패키지 설치 (curl, unzip, bash, python3 등)
+RUN apt-get update && apt-get install -y curl unzip bash python3 && rm -rf /var/lib/apt/lists/*
 
+# sonar-scanner 설치 및 압축 해제
 # sonar-scanner 설치 및 압축 해제
 RUN curl -Lo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip && \
     unzip sonar-scanner.zip && \
@@ -38,6 +40,19 @@ RUN sed -i 's/use_embedded_jre=true/use_embedded_jre=false/' /opt/sonar-scanner/
 
 # PATH 에 sonar-scanner 실행 파일이 포함된 디렉토리 추가
 ENV PATH=$PATH:/opt/sonar-scanner/bin
+
+# PMD CLI 설치
+RUN curl -Lo pmd.zip https://github.com/pmd/pmd/releases/download/pmd_releases/7.12.0/pmd-dist-7.12.0-bin.zip && \
+    unzip pmd.zip && \
+    mv pmd-bin-7.12.0 /opt/pmd && \
+    rm pmd.zip
+
+# PMD CLI의 bin 디렉토리를 PATH에 추가
+ENV PATH=$PATH:/opt/pmd/bin
+
+# PMD result xml to json
+COPY scripts/pmd_to_sonar.py /app/scripts/pmd_to_sonar.py
+RUN chmod +x /app/scripts/pmd_to_sonar.py
 
 # 빌드 단계에서 생성된 jar 파일 복사 (필요에 따라 파일명을 조정)
 COPY --from=builder /home/app/build/libs/*.jar app.jar
