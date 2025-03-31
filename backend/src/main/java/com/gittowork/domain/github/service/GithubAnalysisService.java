@@ -34,10 +34,12 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -66,6 +68,7 @@ public class GithubAnalysisService {
     private final GithubPullRequestRepository githubPullRequestRepository;
     private final GithubIssueRepository githubIssueRepository;
     private final RestTemplate restTemplate;
+
 
     /**
      * 1. 메서드 설명: 비동기로 선택된 repository에 대해 GitHub 분석을 수행하는 API.
@@ -229,6 +232,15 @@ public class GithubAnalysisService {
             ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", command);
             processBuilder.directory(localRepo);
             Process process = processBuilder.start();
+            BufferedReader stdOut = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader stdErr = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String s;
+            while ((s = stdOut.readLine()) != null) {
+                log.info(s);
+            }
+            while ((s = stdErr.readLine()) != null) {
+                log.error(s);
+            }
             int exitCode = process.waitFor();
             if (exitCode != 0) {
                 throw new SonarAnalysisException("SonarQube analysis failed for project: " + repositoryPathUrl);
