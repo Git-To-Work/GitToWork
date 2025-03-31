@@ -214,6 +214,7 @@ public class GithubAnalysisService {
 
             ProcessBuilder processBuilder = new ProcessBuilder(
                     "sonar-scanner",
+                    "-X",
                     "-Dsonar.projectKey=" + projectKey,
                     "-Dsonar.sources=" + localRepo.getAbsolutePath(),
                     "-Dsonar.host.url=" + sonarHostUrl,
