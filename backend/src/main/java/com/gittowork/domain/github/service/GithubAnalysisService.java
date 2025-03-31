@@ -290,7 +290,7 @@ public class GithubAnalysisService {
      */
     private File cloneRepository(String repoUrl) {
         String projectKey = extractProjectKey(repoUrl);
-        File repoDir = new File("tmp/repositories/" + projectKey);
+        File repoDir = new File("/tmp/repositories/" + projectKey);
         if (!repoDir.exists()) {
             try {
                 Git.cloneRepository()
