@@ -6,15 +6,18 @@ COPY . .
 # Gradle 빌드 실행 (빌드 산출물은 build/libs 아래에 생성됨)
 RUN chmod +x gradlew && ./gradlew clean build --no-daemon --refresh-dependencies
 
-# 2단계: 실행 단계 (Liberica JDK 17 사용, non-Alpine)
-FROM openjdk:17-slim
+# 2단계: 실행 단계 (Debian 기반 OpenJDK 17 사용)
+FROM openjdk:17-bullseye
 WORKDIR /app
 
-# JAVA_HOME 및 PATH 설정 (Full JDK layout)
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+# JAVA_HOME 및 PATH 설정 (openjdk:17-bullseye의 기본 JAVA_HOME는 /usr/local/openjdk-17)
+ENV JAVA_HOME=/usr/local/openjdk-17
 ENV PATH=$JAVA_HOME/bin:$PATH
 
-# SONAR_JAVA_CMD 및 SONAR_SCANNER_OPTS 설정 (Java 17 사용 강제)
+# 심볼릭 링크 생성: sonar-scanner가 /usr/lib/jvm/java-17-openjdk 경로를 사용하도록 함
+RUN mkdir -p /usr/lib/jvm && ln -s $JAVA_HOME /usr/lib/jvm/java-17-openjdk
+
+# SONAR_JAVA_CMD 및 SONAR_SCANNER_OPTS 설정 (SonarScanner가 Java 17을 사용하도록 강제)
 ENV SONAR_JAVA_CMD=$JAVA_HOME/bin/java
 ENV SONAR_SCANNER_OPTS="-Djava.home=$JAVA_HOME"
 
@@ -29,6 +32,9 @@ RUN curl -Lo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/son
     unzip sonar-scanner.zip && \
     mv sonar-scanner-4.8.0.2856-linux /opt/sonar-scanner && \
     rm sonar-scanner.zip
+
+# 내장 JRE 사용 비활성화: sonar-scanner 스크립트 수정
+RUN sed -i 's/use_embedded_jre=true/use_embedded_jre=false/' /opt/sonar-scanner/bin/sonar-scanner
 
 # PATH 에 sonar-scanner 실행 파일이 포함된 디렉토리 추가
 ENV PATH=$PATH:/opt/sonar-scanner/bin
