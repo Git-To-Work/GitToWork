@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 // 경로는 실제 프로젝트 구조에 맞춰 조정
 import '../../../providers/auth_provider.dart';
-import '../../../widgets/app_bar.dart';
 import '../../../models/user_profile.dart';
 
 // 나머지 컴포넌트 위젯들

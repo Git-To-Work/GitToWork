@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../services/auth_api.dart';
 
 class MyPageFooter extends StatelessWidget {
-  const MyPageFooter({Key? key}) : super(key: key);
+  const MyPageFooter({super.key});
 
   Future<void> _confirmLogout(BuildContext context) async {
     final bool? confirmResult = await showDialog<bool>(

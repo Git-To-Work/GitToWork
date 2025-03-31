@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:gittowork/widgets/app_bar.dart';
-import 'package:provider/provider.dart';
 import '../../../models/user_profile.dart';
 import '../../services/user_api.dart';
 import '../signup/business_interest_screen.dart';
@@ -9,8 +8,6 @@ import 'edit_components/interest_fields_section.dart';
 import 'edit_components/user_info_form.dart';
 import 'edit_components/notification_switch.dart';
 import 'package:bottom_picker/bottom_picker.dart';
-import '../../../providers/auth_provider.dart';
-
 
 class MyInfoEditScreen extends StatefulWidget {
   final UserProfile userProfile;
@@ -34,8 +31,7 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
   bool _serviceNotification = false;
 
   // 추가: 화면용, 전송용 각각 관리
-  List<String> _interestFieldsNames = [];
-  List<int> _interestFieldIds = [];
+  final List<int> _interestFieldIds = [];
 
   @override
   void initState() {
@@ -49,33 +45,6 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
     _phoneController.text = widget.userProfile.phone;
     _serviceNotification = widget.userProfile.notificationAgreed;
   }
-
-  Future<void> _refreshUserProfile() async {
-    try {
-      final authProvider = context.read<AuthProvider>();
-      await authProvider.fetchUserProfile();
-
-      final updatedProfile = authProvider.userProfile;
-
-      if (updatedProfile == null) throw Exception('프로필 정보를 가져오지 못했습니다.');
-
-      setState(() {
-        widget.userProfile.interestFields
-          ..clear()
-          ..addAll(updatedProfile.interestFields);
-
-        _nicknameController.text = updatedProfile.nickname;
-        _phoneController.text = updatedProfile.phone;
-        _experienceController.text = updatedProfile.experience >= 10
-            ? '10년 이상'
-            : '${updatedProfile.experience}년';
-        _serviceNotification = updatedProfile.notificationAgreed; // 👈 추가
-      });
-    } catch (e) {
-      debugPrint('Error refreshing profile: $e');
-    }
-  }
-
 
   Future<void> _goToBusinessInterestScreen() async {
     final result = await Navigator.push<Map<String, dynamic>>(
