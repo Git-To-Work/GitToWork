@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:gittowork/screens/entertainment/quiz/answer_view.dart';
 import 'package:gittowork/screens/entertainment/quiz/category_selector.dart';
 import 'package:gittowork/screens/entertainment/quiz/question_view.dart';
-
 import '../../services/quiz_api.dart';
 import '../../widgets/app_bar.dart';
-
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
@@ -16,6 +14,8 @@ class QuizScreen extends StatefulWidget {
 }
 
 class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateMixin {
+  // 초기 category는 빈 문자열
+  String _selectedCategory = "";
   late Future<QuizQuestion> _quizFuture;
   int? _selectedIndex;
   bool _showAnswer = false;
@@ -25,7 +25,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _quizFuture = QuizApi.fetchQuiz();
+    _quizFuture = QuizApi.fetchQuiz(_selectedCategory);
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -41,6 +41,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  // 사용자가 답안을 선택했을 때
   void _onSelectAnswer(int index) async {
     setState(() {
       _selectedIndex = index;
@@ -51,13 +52,23 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     });
   }
 
+  // 다음 질문 버튼 클릭 시 API 재요청
   void _onNextQuestion() async {
     setState(() {
       _showAnswer = false;
       _selectedIndex = null;
-      _quizFuture = QuizApi.fetchQuiz();
+      _quizFuture = QuizApi.fetchQuiz(_selectedCategory);
     });
     _animationController.reset();
+  }
+
+  // 카테고리 선택 시 호출되는 콜백
+  void _onCategoryChanged(String category) {
+    setState(() {
+      _selectedCategory = category;
+      // 새로운 카테고리에 맞춰 API 호출
+      _quizFuture = QuizApi.fetchQuiz(_selectedCategory);
+    });
   }
 
   @override
@@ -83,8 +94,11 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
             child: Column(
               children: [
                 const SizedBox(height: 16),
-                // 분리된 카테고리 선택 위젯
-                CategorySelector(currentCategory: quiz.category.toUpperCase()),
+                // 카테고리 선택 위젯 (선택 시 _onCategoryChanged 호출)
+                CategorySelector(
+                  currentCategory: _selectedCategory,
+                  onCategoryChanged: _onCategoryChanged,
+                ),
                 const SizedBox(height: 20),
                 Expanded(
                   child: Container(

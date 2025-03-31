@@ -33,21 +33,24 @@ class QuizQuestion {
   }
 }
 
-/// 퀴즈 API
 class QuizApi {
-  /// GET /api/quiz/select
-  static Future<QuizQuestion> fetchQuiz() async {
+  /// GET /quiz/select?category={category}
+  /// category 값이 없으면 빈 문자열을 보내도록 호출부에서 관리
+  static Future<QuizQuestion> fetchQuiz(String category) async {
     try {
-      final response = await ApiService.dio.get('/api/quiz/select');
+      final response = await ApiService.dio.get(
+        '/quiz/select',
+        queryParameters: {'category': category},
+      );
       if (response.statusCode == 200) {
         final data = response.data;
         if (data['status'] == 200 && data['code'] == 'SU') {
           return QuizQuestion.fromJson(data['result']);
         } else {
-          throw Exception('퀴즈 데이터를 불러오는 중 오류가 발생했습니다. code: ${data['code']}');
+          throw Exception('퀴즈 데이터를 불러오는 중 오류 발생. code: ${data['code']}');
         }
       } else {
-        throw Exception('퀴즈 데이터를 불러오는 중 오류가 발생했습니다. status: ${response.statusCode}');
+        throw Exception('퀴즈 데이터를 불러오는 중 오류 발생. status: ${response.statusCode}');
       }
     } catch (e) {
       rethrow;
