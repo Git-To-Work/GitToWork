@@ -15,6 +15,8 @@ import java.util.List;
 public class Quiz {
 
     @Id
+    private String id;
+
     private int questionId;
 
     private String type;
