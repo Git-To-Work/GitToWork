@@ -208,4 +208,11 @@ public class GlobalExceptionHandler {
         String message = e.getMessage() == null ? ErrorCode.DUPLICATE.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.DUPLICATE.getCode(), message);
     }
+
+    @ExceptionHandler(WrongQuizTypeException.class)
+    public ResponseEntity<?> exceptionHandler(WrongQuizTypeException e) {
+        log.warn("Wrong quiz type: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.INVALID_ARGUMENT.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ARGUMENT.getCode(), message);
+    }
 }
