@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:gittowork/providers/company_data.dart';
+import 'package:provider/provider.dart';
+import 'package:gittowork/providers/company_provider.dart';
 import 'detail/company_detail.dart';
 
-class CompanyList extends StatefulWidget {
+class CompanyList extends StatelessWidget {
   const CompanyList({super.key});
 
   @override
-  State<CompanyList> createState() => _CompanyListState();
-}
-
-class _CompanyListState extends State<CompanyList> {
-  final List<bool> savedList =
-  List.generate(CompanyData.companies.length, (index) => false);
-
-  @override
   Widget build(BuildContext context) {
-    return Expanded(
+    // Provider에서 저장된 추천 기업 데이터를 가져옵니다.
+    final companies = Provider.of<CompanyProvider>(context).companies;
+
+    if (companies.isEmpty) {
+      return const Center(child: Text('추천 기업 데이터가 없습니다.'));
+    }
+
+    return SizedBox(
+      height: 570,
       child: ListView.builder(
-        itemCount: CompanyData.companies.length,
+        itemCount: companies.length,
         itemBuilder: (context, index) {
-          final company = CompanyData.companies[index];
+          final company = companies[index];
           return _buildCompanyCard(company, context, index);
         },
       ),
@@ -43,7 +44,8 @@ class _CompanyListState extends State<CompanyList> {
               const begin = Offset(0, 1);
               const end = Offset(0, 0);
               const curve = Curves.ease;
-              final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+              final tween = Tween(begin: begin, end: end)
+                  .chain(CurveTween(curve: curve));
               return SlideTransition(
                 position: animation.drive(tween),
                 child: child,
@@ -82,7 +84,8 @@ class _CompanyListState extends State<CompanyList> {
                       height: 60,
                       color: Colors.white,
                       child: Image.asset(
-                        company["logo"],
+                        // company["logo"] ?? 'assets/images/default_logo.png',
+                        'assets/images/samsung.png',
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -97,20 +100,22 @@ class _CompanyListState extends State<CompanyList> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              company["name"],
+                              company["company_name"] ?? "",
                               style: const TextStyle(
                                   fontSize: 24, fontWeight: FontWeight.w600),
                             ),
-                            if (company.containsKey("status")) ...[
+                            if (company["has_job_notice"] &&
+                                company["status"] != null) ...[
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: company["statusColor"],
+                                  color: company["statusColor"] ?? Colors.blue,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  company["status"],
+                                  company["status"] ?? "",
                                   style: const TextStyle(
                                       color: Colors.white, fontSize: 14),
                                 ),
@@ -120,22 +125,19 @@ class _CompanyListState extends State<CompanyList> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          company["position"],
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                          company["field_name"] ?? "",
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
                   ),
                   GestureDetector(
                     onTap: () {
-                      setState(() {
-                        savedList[index] = !savedList[index];
-                      });
+                      // 스크랩 토글 처리 (실제 적용 시 Provider 등으로 관리)
                     },
                     child: Image.asset(
-                      savedList[index]
-                          ? 'assets/icons/Saved.png'
-                          : 'assets/icons/Un_Saved.png',
+                      'assets/icons/Un_Saved.png',
                       width: 24,
                       height: 24,
                     ),
@@ -144,9 +146,10 @@ class _CompanyListState extends State<CompanyList> {
               ),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                padding:
+                const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                 child: Text(
-                  company["skills"].join(", "),
+                  (company["tech_stacks"] as List<dynamic>?)?.join(", ") ?? "",
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ),

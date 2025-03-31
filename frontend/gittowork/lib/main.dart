@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:gittowork/providers/auth_provider.dart';
+import 'package:gittowork/providers/company_provider.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 
@@ -30,6 +31,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
+        ChangeNotifierProvider(create: (_) => CompanyProvider()),
       ],
       child: MyApp(initialToken: token),
     ),
