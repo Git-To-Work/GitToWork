@@ -74,4 +74,22 @@ class CoverLetterApi {
       rethrow;
     }
   }
+
+  /// GET api/cover-letter/select/analysis
+  static Future<Map<String, dynamic>> getCoverLetterAnalysis(int coverLetterId) async {
+    try {
+      final response = await ApiService.dio.get(
+        '/api/cover-letter/select/analysis',
+        queryParameters: {
+          'coverLetterId': coverLetterId,
+        },
+      );
+      if (response.statusCode != 200) {
+        throw Exception('자기소개서 분석 조회 실패: ${response.statusCode}');
+      }
+      return response.data;
+    } catch (e) {
+      rethrow; // 필요한 형태로 에러 처리
+    }
+  }
 }

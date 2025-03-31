@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/cover_letter_api.dart';
+import '../cover_letter_detail_screen.dart';
 import 'cover_letter_card.dart';
 
 class CoverLetterData {
@@ -31,7 +32,7 @@ class CoverLetterData {
 }
 
 class CoverLetterList extends StatefulWidget {
-  const CoverLetterList({Key? key}) : super(key: key);
+  const CoverLetterList({super.key});
 
   @override
   State<CoverLetterList> createState() => _CoverLetterListState();
@@ -87,18 +88,51 @@ class _CoverLetterListState extends State<CoverLetterList> {
       const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final coverLetter = coverLetters[index];
-        return Padding(
-          padding: EdgeInsets.zero,
-          child: CoverLetterCard(
-            // date가 아직 API에서 없으니, 임시로 fileName을 표시하거나
-            // 혹은 date를 ''로 넘겨주면 "표시 안 함" 처리해도 됩니다.
-            date: coverLetter.date.isNotEmpty
-                ? coverLetter.date
-                : '',
-            title: coverLetter.title,
-            onDelete: () {
-              _deleteCoverLetter(coverLetter.fileId);
-            },
+        return InkWell(
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              builder: (ctx) {
+                return SizedBox(
+                  height: MediaQuery.of(ctx).size.height * 0.95, // 화면 거의 전체 차지
+                  child: CoverLetterDetailScreen(
+                    coverLetterId: coverLetter.fileId,
+                  ),
+                );
+              },
+            );
+          },
+          child: Padding(
+            padding: EdgeInsets.zero,
+            child: CoverLetterCard(
+              // card 위젯으로 제목, 날짜, 삭제 버튼 등을 표시한다고 가정
+              date: coverLetter.date.isNotEmpty ? coverLetter.date : '',
+              title: coverLetter.title,
+              onDelete: () async {
+                final confirmDelete = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('삭제 확인'),
+                    content: const Text('정말 이 자기소개서를 삭제하시겠습니까?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('취소'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('삭제'),
+                      ),
+                    ],
+                  ),
+                );
+                // 사용자가 "삭제"를 눌렀을 때만 실제 삭제
+                if (confirmDelete == true) {
+                  _deleteCoverLetter(coverLetter.fileId);
+                }
+              },
+            ),
           ),
         );
       },
