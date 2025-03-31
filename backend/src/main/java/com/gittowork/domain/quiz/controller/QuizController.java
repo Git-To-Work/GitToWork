@@ -16,9 +16,9 @@ public class QuizController {
     private final QuizService quizService;
 
     @GetMapping("/select")
-    @Operation(summary = "퀴즈 랜덤 반환", description = "지정한 타입(type)의 퀴즈 중 하나를 랜덤으로 반환합니다.")
-    public ApiResponse<?> getDeveloperQuiz(@Parameter(description = "퀴즈 형식 (ox 또는 2choice)", example = "ox") @ModelAttribute String type) {
-        return ApiResponse.success(quizService.getDeveloperQuiz(type));
+    @Operation(summary = "퀴즈 랜덤 반환", description = "지정한 카테고리(category)의 퀴즈 중 하나를 랜덤으로 반환합니다.")
+    public ApiResponse<?> getDeveloperQuiz(@Parameter(description = "퀴즈 형식 (cover-letter:CL, computer-science:CS, fit-interview:FI, skill-stack:SS)", example = "ox") @RequestParam String category) {
+        return ApiResponse.success(quizService.getDeveloperQuiz(category));
     }
 
 }

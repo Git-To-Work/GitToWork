@@ -6,6 +6,7 @@ import com.gittowork.domain.quiz.repository.QuizRepository;
 import com.gittowork.global.exception.WrongQuizTypeException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -31,14 +32,19 @@ public class QuizService {
      * 5. 예외:
      *    - WrongQuizTypeException: 주어진 타입에 해당하는 퀴즈가 없을 경우
      */
-    public QuizResponse getDeveloperQuiz(String type){
-        List<Quiz> quiz = quizRepository.findByType(type);
-
-        if(quiz.isEmpty()){
-            throw new WrongQuizTypeException("Wrong quiz type");
+    public QuizResponse getDeveloperQuiz(String category){
+        List<Quiz> quizzes;
+        if(!StringUtils.hasText(category)){
+            quizzes = quizRepository.findAll();
+        }else {
+            quizzes = quizRepository.findByCategory(category);
         }
 
-        Quiz selected = quiz.get(ThreadLocalRandom.current().nextInt(quiz.size()));
+        if(quizzes.isEmpty()){
+            throw new WrongQuizTypeException("Wrong quiz category" + category);
+        }
+
+        Quiz selected = quizzes.get(ThreadLocalRandom.current().nextInt(quizzes.size()));
 
         return QuizResponse.builder()
                 .questionId(selected.getQuestionId())
