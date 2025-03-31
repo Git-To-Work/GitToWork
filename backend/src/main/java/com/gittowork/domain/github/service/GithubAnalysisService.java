@@ -34,7 +34,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -219,6 +221,15 @@ public class GithubAnalysisService {
             );
             processBuilder.directory(localRepo);
             Process process = processBuilder.start();
+            BufferedReader stdOut = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader stdErr = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String s;
+            while ((s = stdOut.readLine()) != null) {
+                log.info(s);
+            }
+            while ((s = stdErr.readLine()) != null) {
+                log.error(s);
+            }
             int exitCode = process.waitFor();
             if (exitCode != 0) {
                 throw new SonarAnalysisException("SonarQube analysis failed for project: " + repositoryPathUrl);
@@ -278,7 +289,7 @@ public class GithubAnalysisService {
      */
     private File cloneRepository(String repoUrl) {
         String projectKey = extractProjectKey(repoUrl);
-        File repoDir = new File("/tmp/repositories/" + projectKey);
+        File repoDir = new File("tmp/repositories/" + projectKey);
         if (!repoDir.exists()) {
             try {
                 Git.cloneRepository()
