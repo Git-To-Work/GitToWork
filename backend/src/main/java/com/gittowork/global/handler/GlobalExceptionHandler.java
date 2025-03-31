@@ -201,4 +201,11 @@ public class GlobalExceptionHandler {
         String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
+
+    @ExceptionHandler(SelectedRepositoryDuplicatedException.class)
+    public ResponseEntity<?> exceptionHandler(SelectedRepositoryDuplicatedException e) {
+        log.warn("Selected repository duplicated: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.DUPLICATE.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.DUPLICATE.getCode(), message);
+    }
 }

@@ -144,7 +144,10 @@ public class GithubService {
      *    - username을 이용해 User 엔티티를 검색하여 사용자 정보를 가져온다.
      *    - 조회된 User 엔티티의 id를 사용해 GithubRepository 엔티티를 조회한다.
      *    - 전달받은 repository ID 배열을 Set으로 변환한 후, GithubRepository에 저장된 repository 목록 중 선택된 항목을 필터링한다.
-     *    - 필터링된 repository 리스트와 userId를 바탕으로 SelectedRepository 엔티티를 생성 또는 갱신하고 저장한다.
+     *    - findByUserIdAndRepositories를 통해 userId와 선택된 repository 조합이 이미 존재하는지 확인한다.
+     *      - 이미 존재하면 SelectedRepositoryDuplicatedException 예외를 발생시킨다.
+     *      - 존재하지 않으면, findMatchingSelectedRepository를 통해 기존 SelectedRepository 엔티티가 있으면 업데이트하지 않고
+     *        새로 저장하는 방식으로 신규 SelectedRepository 엔티티를 생성하여 저장한다.
      * 3. param: selectedGithubRepositoryIds - 사용자가 선택한 repository의 ID 배열.
      * 4. return: 성공 시 "레포지토리 선택 저장 요청 처리 완료" 메시지를 포함한 MessageOnlyResponse 객체.
      */
@@ -163,6 +166,12 @@ public class GithubService {
         List<Repository> selectedRepositories = githubRepository.getRepositories().stream()
                 .filter(repo -> selectedIds.contains(repo.getRepoId()))
                 .collect(Collectors.toList());
+
+        Optional<SelectedRepository> existSelectedRepository = selectedRepoRepository.findByUserIdAndRepositories(userId, selectedRepositories);
+
+        if (existSelectedRepository.isPresent()) {
+            throw new SelectedRepositoryDuplicatedException("Selected repository already exists");
+        }
 
         SelectedRepository selectedRepository = findMatchingSelectedRepository(userId, selectedRepositories)
                 .map(existing -> {
