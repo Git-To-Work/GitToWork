@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -38,11 +38,12 @@ public class QuizService {
             throw new WrongQuizTypeException("Wrong quiz type");
         }
 
-        Quiz selected = quiz.get(new Random().nextInt(quiz.size()));
+        Quiz selected = quiz.get(ThreadLocalRandom.current().nextInt(quiz.size()));
 
         return QuizResponse.builder()
-                .type(selected.getType())
                 .questionId(selected.getQuestionId())
+                .type(selected.getType())
+                .category(selected.getCategory())
                 .questionText(selected.getQuestionText())
                 .choices(selected.getChoices())
                 .correctAnswerIndex(selected.getCorrectAnswerIndex())

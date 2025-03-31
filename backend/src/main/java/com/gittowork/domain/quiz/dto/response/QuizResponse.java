@@ -15,6 +15,8 @@ public class QuizResponse {
 
     private String type;
 
+    private String category;
+
     private String questionText;
 
     private List<String> choices;

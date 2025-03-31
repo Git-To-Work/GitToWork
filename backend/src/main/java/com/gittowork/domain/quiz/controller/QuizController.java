@@ -6,10 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,9 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class QuizController {
     private final QuizService quizService;
 
-    @GetMapping("/{type}")
+    @GetMapping("/select")
     @Operation(summary = "퀴즈 랜덤 반환", description = "지정한 타입(type)의 퀴즈 중 하나를 랜덤으로 반환합니다.")
-    public ApiResponse<?> getDeveloperQuiz(@Parameter(description = "퀴즈 형식 (ox 또는 2choice)", example = "ox")  @PathVariable String type) {
+    public ApiResponse<?> getDeveloperQuiz(@Parameter(description = "퀴즈 형식 (ox 또는 2choice)", example = "ox") @ModelAttribute String type) {
         return ApiResponse.success(quizService.getDeveloperQuiz(type));
     }
 
