@@ -219,17 +219,16 @@ public class GithubAnalysisService {
             String command = "mkdir -p /pmd_result/" + projectKey + " && " +
                     "whoami && " +
                     "pmd check -d \"" + localRepo.getAbsolutePath() + "\" -R rulesets/java/quickstart.xml -f xml -r /pmd_result/" + projectKey + "/pmd-report.xml && " +
-                    "python3 --version";
-//                    "python3 /app/scripts/pmd_to_sonar.py /pmd_result/" + projectKey + "/pmd-report.xml /pmd_result/" + projectKey + "/pmd-report.json";
-//                    "sonar-scanner -X -Dsonar.log.level=TRACE " +
-//                    "-Dsonar.projectBaseDir=\"" + localRepo.getAbsolutePath() + "\" " +
-//                    "-Dsonar.projectKey=" + projectKey + " " +
-//                    "-Dsonar.projectName=\"" + repository.getFullName() + "\" " +
-//                    "-Dsonar.sources=. " +
-//                    "-Dsonar.host.url=" + sonarHostUrl + " " +
-//                    "-Dsonar.login=" + sonarLoginToken + " " +
-//                    "-Dsonar.exclusions=**/*.java " +
-//                    "-Dsonar.externalIssuesReportPaths=/pmd_result/" + projectKey + "/pmd-report.json";
+                    "python3 /app/scripts/pmd_to_sonar.py /pmd_result/" + projectKey + "/pmd-report.xml /pmd_result/" + projectKey + "/pmd-report.json && " +
+                    "sonar-scanner -X -Dsonar.log.level=TRACE " +
+                    "-Dsonar.projectBaseDir=\"" + localRepo.getAbsolutePath() + "\" " +
+                    "-Dsonar.projectKey=" + projectKey + " " +
+                    "-Dsonar.projectName=\"" + repository.getFullName() + "\" " +
+                    "-Dsonar.sources=. " +
+                    "-Dsonar.host.url=" + sonarHostUrl + " " +
+                    "-Dsonar.login=" + sonarLoginToken + " " +
+                    "-Dsonar.exclusions=**/*.java " +
+                    "-Dsonar.externalIssuesReportPaths=/pmd_result/" + projectKey + "/pmd-report.json";
 
             ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", command);
 
@@ -272,6 +271,7 @@ public class GithubAnalysisService {
             stderrThread.join();
 
             if (exitCode != 0) {
+                log.info("Github analysis exited with exit code: " + exitCode);
                 throw new SonarAnalysisException("SonarQube analysis failed for project: " + repositoryPathUrl);
             }
 
