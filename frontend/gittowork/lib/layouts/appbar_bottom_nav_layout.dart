@@ -49,26 +49,6 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
-    if (index == 1) {
-      Provider.of<CompanyProvider>(context, listen: false)
-          .loadCompaniesFromApi(
-        selectedRepositoriesId: "1",
-        techStacks: [],
-        field: [],
-        career: "",
-        location: "",
-        keword: "",
-        page: "1",
-        size: "10",
-      )
-          .then((_) {
-        final companies =
-            Provider.of<CompanyProvider>(context, listen: false).companies;
-        debugPrint("API Result stored in Provider: $companies");
-      }).catchError((error) {
-        debugPrint("API Error: $error");
-      });
-    }
   }
 
   @override
@@ -95,9 +75,7 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
               size: "10",
             )
                 .then((_) {
-              final companies =
-                  Provider.of<CompanyProvider>(context, listen: false).companies;
-              debugPrint("API Result stored in Provider: $companies");
+              Provider.of<CompanyProvider>(context, listen: false).companies;
             }).catchError((error) {
               debugPrint("API Error: $error");
             });

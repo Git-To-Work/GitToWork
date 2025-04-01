@@ -29,7 +29,6 @@ class CompanyProvider extends ChangeNotifier {
       companies = (result['companies'] as List<dynamic>)
           .map((e) => e as Map<String, dynamic>)
           .toList();
-      debugPrint("CompanyData: companies loaded: $companies");
       notifyListeners();
     } catch (error) {
       debugPrint("CompanyData loadCompaniesFromApi error: $error");

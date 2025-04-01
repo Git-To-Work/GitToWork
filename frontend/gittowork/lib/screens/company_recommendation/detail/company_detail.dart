@@ -4,6 +4,8 @@ import 'package:gittowork/screens/company_recommendation/detail/stat_card.dart';
 import 'package:gittowork/screens/company_recommendation/detail/job_card.dart';
 import 'package:gittowork/screens/company_recommendation/detail/other_info.dart';
 import 'package:gittowork/screens/company_recommendation/detail/choose_bar.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/company_detail_provider.dart';
 
 class CompanyDetailScreen extends StatefulWidget {
   const CompanyDetailScreen({super.key});
@@ -17,33 +19,44 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CustomBackAppBar(),
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildCompanyInfo(),
-            const SizedBox(height: 30),
-            const StatCardSection(),
-            const SizedBox(height: 30),
-            const JobCardSection(),
-            const SizedBox(height: 20),
-            const WelfareSection(),
-          ],
-        ),
-      ),
-      bottomNavigationBar: const ChooseView(),
+    return Consumer<CompanyDetailProvider>(
+      builder: (context, provider, child) {
+        final company = provider.companyDetail?['result'];
+        if (company == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return Scaffold(
+          appBar: const CustomBackAppBar(),
+          backgroundColor: Colors.white,
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildCompanyInfo(company),
+                const SizedBox(height: 30),
+                const StatCardSection(),
+                const SizedBox(height: 30),
+                const JobCardSection(),
+                const SizedBox(height: 20),
+                const WelfareSection(),
+              ],
+            ),
+          ),
+          bottomNavigationBar: const ChooseView(),
+        );
+      },
     );
   }
 
-  Widget _buildCompanyInfo() {
+
+  Widget _buildCompanyInfo(Map<String, dynamic> company) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Image.asset(
+          // 'assets/images/${company["logo"] ?? "default_logo.png"}',
           'assets/images/samsung.png',
           width: 60,
           height: 60,
@@ -53,15 +66,15 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
-                '티엔에이치',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                company["company_name"] ?? '',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
-                '제조·기술·서비스',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                company["field_name"] ?? '',
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
             ],
           ),
@@ -81,4 +94,5 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
       ],
     );
   }
+
 }

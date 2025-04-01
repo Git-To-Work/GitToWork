@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gittowork/providers/company_provider.dart';
+import '../../providers/company_detail_provider.dart';
 import 'detail/company_detail.dart';
 
 class CompanyList extends StatelessWidget {
@@ -34,26 +35,36 @@ class CompanyList extends StatelessWidget {
       ) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            opaque: false,
-            pageBuilder: (context, animation, secondaryAnimation) =>
-            const CompanyDetailScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0, 1);
-              const end = Offset(0, 0);
-              const curve = Curves.ease;
-              final tween = Tween(begin: begin, end: end)
-                  .chain(CurveTween(curve: curve));
-              return SlideTransition(
-                position: animation.drive(tween),
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 300),
-          ),
-        );
+        // 선택한 회사의 company_id를 Provider에 저장 및 API 호출
+        debugPrint("======= 선택된 company_id ======= : ${company['company_id']}");
+        final companyId = company["company_id"] as int;
+        Provider.of<CompanyDetailProvider>(context, listen: false)
+            .loadCompanyDetailFromApi(companyId: companyId)
+            .then((_) {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              opaque: false,
+              pageBuilder: (context, animation, secondaryAnimation) =>
+              const CompanyDetailScreen(),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                const begin = Offset(0, 1);
+                const end = Offset(0, 0);
+                const curve = Curves.ease;
+                final tween =
+                Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                return SlideTransition(
+                  position: animation.drive(tween),
+                  child: child,
+                );
+              },
+              transitionDuration: const Duration(milliseconds: 300),
+            ),
+          );
+        }).catchError((error) {
+          debugPrint("회사 상세 API 호출 실패: $error");
+        });
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
