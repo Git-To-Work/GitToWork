@@ -7,40 +7,9 @@ from app.core.deps import get_db, get_current_user
 from app.models.company import Company
 from app.exceptions import CompanyNotFoundException
 from app.utils.response import success_response
-from app.utils.mongo_logger import log_user_search_detail  # 추가
+from app.utils.mongo_logger import log_user_search_detail
 
 router = APIRouter()
-
-
-"""
-/**
- * 1. 메서드 설명: 회사 ID를 기반으로 해당 회사의 상세 정보를 조회하고, 사용자와의 관계(스크랩, 좋아요, 블랙리스트 여부) 및
- *    관련 채용 공고, 기술 스택 등 부가 정보를 포함한 응답 객체를 반환한다.
- *
- * 2. 로직:
- *    - 현재 로그인된 사용자의 user_id를 추출한다.
- *    - MongoDB에 해당 회사 상세 조회 로그를 저장한다.
- *    - 회사 ID를 기준으로 회사 정보를 조회한다.
- *    - 회사가 존재하지 않으면 예외(CompanyNotFoundException)를 발생시킨다.
- *    - 회사 정보에 포함된 분야명, 카테고리 리스트, 기술 스택 리스트, 채용공고 존재 여부 등을 추출한다.
- *    - 사용자와의 연결 정보(스크랩 여부, 좋아요 여부, 블랙리스트 여부)를 판별한다.
- *    - 회사에 연결된 채용 공고 목록을 추출한다.
- *    - 위 정보를 기반으로 company_data 객체를 구성하여 응답 객체로 반환한다.
- *
- * 3. param:
- *    - company_id: 조회할 회사의 고유 ID
- *    - current_user: 인증된 사용자 객체 (Depends로 주입)
- *    - db: SQLAlchemy 세션 객체
- *
- * 4. return: 회사 상세 정보가 포함된 응답 객체
- *    - company_id, company_name, logo, likes, head_count, 평균 연봉, 매출액 등 회사 기본 정보
- *    - 분야명(field_name), 카테고리 리스트(categories)
- *    - 사용자 기준 scraped/liked/blacklisted 여부
- *    - 관련 기술 스택 리스트, 유효한 채용공고 존재 여부(has_job_notice)
- *    - job_notices: 회사에 연결된 채용공고 리스트
- */
-"""
-
 
 @router.get("/select/company/{company_id}", response_model=dict)
 def read_company_detail(
@@ -49,7 +18,7 @@ def read_company_detail(
     db: Session = Depends(get_db)
 ):
     # 인증된 사용자 ID 추출
-    user_id = current_user.user_id if hasattr(current_user, "user_id") else current_user.get("user_id")
+    user_id = current_user.user_id
 
     # MongoDB에 사용자 상세 조회 로그 저장
     log_user_search_detail(user_id, company_id)
@@ -70,15 +39,15 @@ def read_company_detail(
         ]
 
     scraped = False
-    if user_id and hasattr(company, "user_scraps"):
+    if hasattr(company, "user_scraps"):
         scraped = any(us.user_id == user_id for us in company.user_scraps)
 
     liked = False
-    if user_id and hasattr(company, "user_likes"):
+    if hasattr(company, "user_likes"):
         liked = any(ul.user_id == user_id for ul in company.user_likes)
 
     blacklisted = False
-    if user_id and hasattr(company, "user_blacklists"):
+    if hasattr(company, "user_blacklists"):
         blacklisted = any(ub.user_id == user_id for ub in company.user_blacklists)
 
     tech_stack_set = set()
@@ -103,7 +72,6 @@ def read_company_detail(
                     if nts.tech_stack:
                         job_tech_stack_set.add(nts.tech_stack.tech_stack_name)
             job_tech_stack_list = list(job_tech_stack_set)
-
             job_notices.append({
                 "job_notice_id": job.job_notice_id,
                 "job_notice_title": job.job_notice_title,
@@ -111,8 +79,35 @@ def read_company_detail(
                 "location": job.location,
                 "min_career": job.min_career,
                 "max_career": job.max_career,
-                "tech_stacks": job_tech_stack_list  #나중에 사용자에게 맞는 기술 스택 먼저 표시하게끔 + 공고도 사용자에게 맞는 공고먼저 표시되게..
+                "tech_stacks": job_tech_stack_list
             })
+
+    # benefit 정보 처리: m:n 관계 company_benefits를 benefit_category별로 그룹핑
+    benefits_dict = {}
+    if hasattr(company, "company_benefits"):
+        for cb in company.company_benefits:
+            if hasattr(cb, "benefit") and cb.benefit:
+                benefit = cb.benefit
+                # benefit_category가 있는 경우, 카테고리 이름 사용, 없으면 "기타"로 처리
+                if hasattr(benefit, "benefit_category") and benefit.benefit_category:
+                    category_name = benefit.benefit_category.benefit_category_name
+                else:
+                    category_name = "기타"
+                if category_name not in benefits_dict:
+                    benefits_dict[category_name] = []
+                benefits_dict[category_name].append(benefit.benefit_name)
+
+    # benefit 정보를 sections 형식으로 구성
+    benefits_sections = []
+    for category_name, benefit_names in benefits_dict.items():
+        benefits_sections.append({
+            "head": category_name,
+            "body": benefit_names
+        })
+    benefits_data = {
+        "title": "복리후생",
+        "sections": benefits_sections
+    }
 
     company_data = {
         "company_id": company.company_id,
@@ -130,9 +125,10 @@ def read_company_detail(
         "scraped": scraped,
         "liked": liked,
         "blacklisted": blacklisted,
-        #"tech_stacks": tech_stack_list, #나중에 사용자에 맞는 tech_stacks 만 넘기게 수정 필요
+        "tech_stacks": tech_stack_list,
         "has_job_notice": has_job_notice,
-        "job_notices": job_notices
+        "job_notices": job_notices,
+        "benefits": benefits_data  # 추가된 benefit 정보
     }
 
     return success_response({
