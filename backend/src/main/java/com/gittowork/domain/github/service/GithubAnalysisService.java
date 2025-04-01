@@ -175,15 +175,17 @@ public class GithubAnalysisService {
                 .aiAnalysis(null)
                 .build();
 
-        try {
-            GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
-            githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
-            githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
-            githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
-        } catch (JsonProcessingException e) {
-            throw new GithubAnalysisException("Github analysis failed" + e.getMessage());
-        }
-        githubAnalysisResultRepository.save(githubAnalysisResult);
+        log.info("GithubAnalysisResult: {}", githubAnalysisResult);
+
+//        try {
+//            GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
+//            githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
+//            githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
+//            githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
+//        } catch (JsonProcessingException e) {
+//            throw new GithubAnalysisException("Github analysis failed" + e.getMessage());
+//        }
+//        githubAnalysisResultRepository.save(githubAnalysisResult);
     }
 
     /**
