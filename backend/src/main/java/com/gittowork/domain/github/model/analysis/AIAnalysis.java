@@ -9,6 +9,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class AIAnalysis {
     private List<String> analysisSummary;
     private List<String> improvementSuggestions;
