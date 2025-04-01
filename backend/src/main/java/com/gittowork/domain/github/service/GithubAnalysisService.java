@@ -1,8 +1,6 @@
 package com.gittowork.domain.github.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gittowork.domain.github.entity.*;
 import com.gittowork.domain.github.model.analysis.ActivityMetrics;
 import com.gittowork.domain.github.model.analysis.RepositoryResult;
