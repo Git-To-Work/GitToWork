@@ -5,24 +5,97 @@ import 'package:gittowork/providers/company_detail_provider.dart';
 import 'detail/company_detail.dart';
 import 'package:gittowork/services/company_api.dart';
 
-
-class CompanyList extends StatelessWidget {
+class CompanyList extends StatefulWidget {
   const CompanyList({super.key});
 
   @override
+  State<CompanyList> createState() => _CompanyListState();
+}
+
+class _CompanyListState extends State<CompanyList> {
+  final ScrollController _scrollController = ScrollController();
+  int _currentPage = 1;
+  final int _pageSize = 20;
+  bool _isLoading = false;
+  bool _hasMore = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _fetchCompanies();
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 100 &&
+          !_isLoading &&
+          _hasMore) {
+        _currentPage++;
+        _fetchCompanies();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _fetchCompanies() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await Provider.of<CompanyProvider>(context, listen: false)
+          .loadCompaniesFromApi(
+        selectedRepositoriesId: "1",
+        techStacks: [],
+        field: [],
+        career: "",
+        location: "",
+        keword: "",
+        page: _currentPage.toString(),
+        size: _pageSize.toString(),
+      );
+
+      final totalFetched =
+          Provider.of<CompanyProvider>(context, listen: false).companies.length;
+
+      if (totalFetched < _currentPage * _pageSize) {
+        _hasMore = false;
+      }
+    } catch (e) {
+      debugPrint("API Error: $e");
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Provider에서 저장된 추천 기업 데이터를 가져옵니다.
     final companies = Provider.of<CompanyProvider>(context).companies;
 
-    if (companies.isEmpty) {
+    if (companies.isEmpty && !_isLoading) {
       return const Center(child: Text('추천 기업 데이터가 없습니다.'));
     }
 
     return SizedBox(
       height: 570,
       child: ListView.builder(
-        itemCount: companies.length,
+        controller: _scrollController,
+        itemCount: companies.length + (_isLoading ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index == companies.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
           final company = companies[index];
           return _buildCompanyCard(company, context, index);
         },
@@ -30,10 +103,10 @@ class CompanyList extends StatelessWidget {
     );
   }
 
-  Widget _buildCompanyCard(Map<String, dynamic> company, BuildContext context, int index) {
+  Widget _buildCompanyCard(
+      Map<String, dynamic> company, BuildContext context, int index) {
     return StatefulBuilder(
       builder: (context, setState) {
-
         return GestureDetector(
           onTap: () {
             final companyId = company["company_id"] as int;
@@ -44,12 +117,15 @@ class CompanyList extends StatelessWidget {
                 context,
                 PageRouteBuilder(
                   opaque: false,
-                  pageBuilder: (context, animation, secondaryAnimation) => const CompanyDetailScreen(),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                  const CompanyDetailScreen(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
                     const begin = Offset(0, 1);
                     const end = Offset(0, 0);
                     const curve = Curves.ease;
-                    final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                    final tween =
+                    Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
                     return SlideTransition(
                       position: animation.drive(tween),
                       child: child,
@@ -102,26 +178,71 @@ class CompanyList extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  company["company_name"] ?? "",
-                                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
-                                ),
-                                if (company["has_job_notice"] && company["status"] != null) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: company["statusColor"] ?? Colors.blue,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      company["status"] ?? "",
-                                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                                    ),
+                                Expanded(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          company["company_name"] ?? "",
+                                          style: const TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                      if (company["has_job_notice"] && company["status"] != null)
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 8),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: company["statusColor"] ?? Colors.blue,
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              company["status"] ?? "",
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                ],
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () async {
+                                    final companyId = company['company_id'] as int;
+                                    try {
+                                      if (company['scraped'] == true) {
+                                        await CompanyApi.unscrapCompany(companyId);
+                                      } else {
+                                        await CompanyApi.scrapCompany(companyId);
+                                      }
+                                      setState(() {
+                                        company['scraped'] = !(company['scraped'] ?? false);
+                                      });
+                                    } catch (e) {
+                                      debugPrint("❌ 스크랩 토글 실패: $e");
+                                    }
+                                  },
+                                  child: Image.asset(
+                                    (company['scraped'] ?? false)
+                                        ? 'assets/icons/Saved.png'
+                                        : 'assets/icons/Un_Saved.png',
+                                    width: 24,
+                                    height: 24,
+                                  ),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 4),
@@ -132,39 +253,20 @@ class CompanyList extends StatelessWidget {
                           ],
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () async {
-                          final companyId = company['company_id'] as int;
-                          try {
-                            if (company['scraped'] == true) {
-                              await CompanyApi.unscrapCompany(companyId);
-                            } else {
-                              await CompanyApi.scrapCompany(companyId);
-                            }
-                            setState(() {
-                              company['scraped'] = !(company['scraped'] ?? false);
-                            });
-                          } catch (e) {
-                            debugPrint("❌ 스크랩 토글 실패: $e");
-                          }
-                        },
-                        child: Image.asset(
-                          (company['scraped'] ?? false)
-                              ? 'assets/icons/Saved.png'
-                              : 'assets/icons/Un_Saved.png',
-                          width: 24,
-                          height: 24,
-                        ),
-                      ),
-
                     ],
                   ),
+
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    padding:
+                    const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     child: Text(
-                      (company["tech_stacks"] as List<dynamic>?)?.join(", ") ?? "",
+                      (company["tech_stacks"] as List<dynamic>?)
+                          ?.join(", ") ??
+                          "",
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -175,5 +277,4 @@ class CompanyList extends StatelessWidget {
       },
     );
   }
-
 }

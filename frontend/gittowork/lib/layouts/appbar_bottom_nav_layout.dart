@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:gittowork/widgets/bottom_nav_bar.dart';
 import 'package:gittowork/screens/github_analysis/github.dart';
 import 'package:gittowork/screens/company_recommendation/company.dart';
 import 'package:gittowork/screens/cover_letter/cover_letter_screen.dart';
 import 'package:gittowork/screens/entertainment/entertainment.dart';
 import '../screens/my_page/my_page_screen.dart';
-import 'package:gittowork/providers/company_provider.dart';
 
 class AppBarBottomNavLayout extends StatefulWidget {
   const AppBarBottomNavLayout({super.key});
@@ -62,24 +60,6 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
           setState(() {
             _selectedIndex = index;
           });
-          if (index == 1) {
-            Provider.of<CompanyProvider>(context, listen: false)
-                .loadCompaniesFromApi(
-              selectedRepositoriesId: "1",
-              techStacks: [],
-              field: [],
-              career: "",
-              location: "",
-              keword: "",
-              page: "1",
-              size: "10",
-            )
-                .then((_) {
-              Provider.of<CompanyProvider>(context, listen: false).companies;
-            }).catchError((error) {
-              debugPrint("API Error: $error");
-            });
-          }
         },
         children: _screens,
       ),

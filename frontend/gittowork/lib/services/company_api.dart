@@ -30,10 +30,12 @@ class CompanyApi {
       queryParameters: queryParameters,
     );
 
-    debugPrint("Response data: ${response.data}");
+    final results = response.data['result'];
+    debugPrint("=============================추천 기업 리스트 조회=====================================");
+    debugPrint("응답 데이터 : ${response.data}");
+    debugPrint("=============================추천 기업 리스트 조회=====================================");
 
     if (response.statusCode == 200) {
-      final results = response.data['result'];
       if (results == null) {
         throw Exception('응답 데이터에 값이 없습니다.');
       }

@@ -199,9 +199,11 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
 
   Widget _buildTagFilter(StateSetter modalSetState) {
     final options = [
-      '#4.5일제', '#재택근무', '#유연근무제', '#시차출근제', '#인센티브', '#코드리뷰',
-      '#반바지/슬리퍼 OK', '#자유복장', '#맛있는간식냠냠', '#맥북으로개발', '#닉네임사용', '#수평적조직',
-      '#반려동물', '#누적투자금100억이상', '#스톡옵션제공', '#도서구입비지원', '#택시비지원', '#병역특례', '#전공우대'
+      '#빅데이터 엔지니어', '#DBA', '#웹퍼블리셔', '#HW/임베디드', '#게임 클라이언트 개발자',
+      '#VR/AR/3D', '#devops/시스템 엔지니어', '#기술지원', '#iOS 개발자', '#QA 엔지니어',
+      '#블록체인', '#안드로이드 개발자', '#프론트엔드 개발자', '#정보보안 담당자', '#게임 서버 개발자',
+      '#서버/백엔드 개발자', '#크로스플랫폼 앱개발자', '#개발 PM', '#웹 풀스택 개발자',
+      '#SW/솔루션', '#인공지능/머신러닝'
     ];
     return _buildWrapChips(options, selectedTags, modalSetState: modalSetState);
   }

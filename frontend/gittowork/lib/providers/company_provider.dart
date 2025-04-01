@@ -13,6 +13,7 @@ class CompanyProvider extends ChangeNotifier {
     String? keword,
     String? page,
     String? size,
+    bool reset = false, // 필터 변경 등 초기 로딩 시 true로 설정
   }) async {
     try {
       final result = await CompanyApi.fetchRecommendedCompanies(
@@ -25,16 +26,24 @@ class CompanyProvider extends ChangeNotifier {
         page: page,
         size: size,
       );
-      // result['companies']가 List<dynamic>라고 가정합니다.
-      companies = (result['companies'] as List<dynamic>)
+
+      final newCompanies = (result['companies'] as List<dynamic>)
           .map((e) => e as Map<String, dynamic>)
           .toList();
+
+      if (reset) {
+        companies = newCompanies;
+      } else {
+        companies.addAll(newCompanies);
+      }
+
       notifyListeners();
     } catch (error) {
       debugPrint("CompanyData loadCompaniesFromApi error: $error");
       rethrow;
     }
   }
+
 
   /// 스크랩 처리 저장
   void updateScrapStatus(int companyId, bool isScraped) {
