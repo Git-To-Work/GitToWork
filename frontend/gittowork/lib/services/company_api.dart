@@ -95,5 +95,41 @@ class CompanyApi {
     }
   }
 
+  /// 기업 차단 요청
+  static Future<String> addCompanyToBlacklist(int companyId) async {
+    final response = await ApiService.dio.post(
+      '/api/company-interaction/create/blacklist',
+      data: {
+        'companyId': companyId,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final result = response.data['results'];
+      return result['message'] ?? '차단 기업 추가 완료';
+    } else {
+      throw Exception('차단 기업 추가 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 기업 차단 삭제 요청
+  static Future<String> removeCompanyFromBlacklist(int companyId) async {
+    final response = await ApiService.dio.delete(
+      '/api/company-interaction/delete/blacklist',
+      data: {
+        'companyId': companyId,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final result = response.data['results'];
+      return result['message'] ?? '차단 기업 삭제 완료';
+    } else {
+      throw Exception('차단 기업 삭제 실패: ${response.statusCode}');
+    }
+  }
+
+
+
 
 }

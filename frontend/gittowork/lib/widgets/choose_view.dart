@@ -45,35 +45,31 @@ class _ChooseViewState extends State<ChooseView> {
 
   Future<void> _toggleBlacklist() async {
     try {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(isBlacklisted ? '차단 해제 확인' : '차단 확인'),
-          content: Text(
-            isBlacklisted
-                ? '해당 기업의 차단을 해제하시겠습니까?'
-                : '해당 기업을 차단하시겠습니까?',
+      if (isBlacklisted) {
+        await CompanyApi.removeCompanyFromBlacklist(widget.companyId);
+        setState(() {
+          isBlacklisted = false;
+        });
+      } else {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("차단 확인"),
+            content: const Text("해당 기업을 차단하시겠습니까?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text("취소"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text("확인"),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
-      );
+        );
 
-      if (confirm == true) {
-        if (isBlacklisted) {
-          await CompanyApi.removeCompanyFromBlacklist(widget.companyId);
-          setState(() {
-            isBlacklisted = false;
-          });
-        } else {
+        if (confirm == true) {
           await CompanyApi.addCompanyToBlacklist(widget.companyId);
           setState(() {
             isBlacklisted = true;
@@ -81,12 +77,9 @@ class _ChooseViewState extends State<ChooseView> {
         }
       }
     } catch (e) {
-      debugPrint("❌ 차단(해제) 요청 실패: $e");
+      debugPrint("❌ 차단 요청 실패: $e");
     }
   }
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +133,7 @@ class _ChooseViewState extends State<ChooseView> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            isBlacklisted ? Icons.block_flipped : Icons.block,
+                            isBlacklisted ? Icons.block : Icons.block_outlined,
                             color: const Color(0xFFD32F2F),
                           ),
                           const SizedBox(width: 8),
