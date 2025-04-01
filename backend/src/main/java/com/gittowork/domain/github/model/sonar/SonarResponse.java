@@ -14,23 +14,14 @@ import java.util.Map;
 public class SonarResponse {
 
     private ProjectStatus projectStatus;
-
     private Map<String, Double> languageDistribution;
-
     private double coverage;
-
     private int bugCount;
-
     private String primaryRole;
-
     private Map<String, Integer> roleScores;
-
     private ActivityMetrics activityMetrics;
-
     private AIAnalysis aiAnalysis;
-
     private String aiFeedback;
-
     private String errorMessage;
 
     public boolean isSuccessful() {
@@ -46,15 +37,10 @@ public class SonarResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Condition {
-
         private String metricKey;
-
         private String comparator;
-
         private String errorThreshold;
-
         private String actualValue;
-
         private String status;
     }
 
@@ -63,11 +49,8 @@ public class SonarResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Period {
-
         private int index;
-
         private String mode;
-
         private String date;
     }
 }
