@@ -1,8 +1,6 @@
 package com.gittowork.domain.github.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gittowork.domain.github.entity.*;
 import com.gittowork.domain.github.model.analysis.ActivityMetrics;
 import com.gittowork.domain.github.model.analysis.RepositoryResult;
@@ -551,32 +549,37 @@ public class GithubAnalysisService {
      * 4. return: 언어별 라인 수 분포를 나타내는 Map.
      */
     private Map<String, Double> fetchLanguageDistribution(String projectKey) {
-        String url = sonarHostUrl + "/api/measures/component?componentKey=" + projectKey + "&metricKeys=ncloc_language_distribution";
+        String url = sonarHostUrl + "/api/measures/search?projectKeys=" + projectKey + "&metricKeys=ncloc_language_distribution";
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Basic " + Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
         HttpEntity<String> request = new HttpEntity<>(headers);
+
         ResponseEntity<MeasuresResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, MeasuresResponse.class);
         MeasuresResponse measuresResponse = response.getBody();
-        if (measuresResponse != null && measuresResponse.getComponent() != null) {
-            List<Measure> measures = measuresResponse.getComponent().getMeasures();
-            for (Measure measure : measures) {
+
+        if (measuresResponse != null && measuresResponse.getMeasures() != null) {
+            for (Measure measure : measuresResponse.getMeasures()) {
                 if ("ncloc_language_distribution".equals(measure.getMetric())) {
                     String value = measure.getValue();
-                    try {
-                        ObjectMapper mapper = new ObjectMapper();
-                        Map<String, String> tempMap = mapper.readValue(value, new TypeReference<Map<String, String>>() {});
-                        Map<String, Double> languageDistribution = new HashMap<>();
-                        tempMap.forEach((key, val) -> languageDistribution.put(key, Double.parseDouble(val)));
-                        return languageDistribution;
-                    } catch (Exception e) {
-                        log.error("Error parsing language distribution for projectKey {}: {}", projectKey, e.getMessage());
-                        return Collections.emptyMap();
+                    Map<String, Double> languageDistribution = new HashMap<>();
+                    String[] entries = value.split(";");
+                    for (String entry : entries) {
+                        String[] parts = entry.split("=");
+                        if (parts.length == 2) {
+                            try {
+                                languageDistribution.put(parts[0], Double.parseDouble(parts[1]));
+                            } catch (NumberFormatException e) {
+                                log.error("Error parsing value for key {}: {}", parts[0], e.getMessage());
+                            }
+                        }
                     }
+                    return languageDistribution;
                 }
             }
         }
         return Collections.emptyMap();
     }
+
 
     /**
      * 1. 메서드 설명: SonarQube API를 호출하여 프로젝트의 주요 측정 지표들을 조회하는 메서드.
@@ -587,21 +590,27 @@ public class GithubAnalysisService {
      * 4. return: 측정 지표를 나타내는 Map.
      */
     private Map<String, String> fetchProjectMeasures(String projectKey) {
+        // 가져올 metric 목록
         String metricKeys = "coverage,bugs,code_smells,vulnerabilities,duplicated_lines_density";
-        String url = sonarHostUrl + "/api/measures/component?componentKey=" + projectKey + "&metricKeys=" + metricKeys;
+        String url = sonarHostUrl + "/api/measures/search?projectKeys=" + projectKey + "&metricKeys=" + metricKeys;
+
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
+        headers.set("Authorization", "Basic " + Base64.getEncoder()
+                .encodeToString((sonarLoginToken + ":").getBytes()));
         HttpEntity<String> request = new HttpEntity<>(headers);
+
         ResponseEntity<MeasuresResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, MeasuresResponse.class);
         MeasuresResponse measuresResponse = response.getBody();
         Map<String, String> measuresMap = new HashMap<>();
-        if (measuresResponse != null && measuresResponse.getComponent() != null) {
-            measuresResponse.getComponent().getMeasures().forEach(measure ->
+
+        if (measuresResponse != null && measuresResponse.getMeasures() != null) {
+            measuresResponse.getMeasures().forEach(measure ->
                     measuresMap.put(measure.getMetric(), measure.getValue())
             );
         }
         return measuresMap;
     }
+
 
     /**
      * 1. 메서드 설명: 프로젝트 측정 지표를 기반으로 각 언어별 코드 품질 점수를 계산하는 메서드.
