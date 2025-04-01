@@ -35,4 +35,15 @@ class CompanyProvider extends ChangeNotifier {
       rethrow;
     }
   }
+
+  /// 스크랩 처리 저장
+  void updateScrapStatus(int companyId, bool isScraped) {
+    for (var company in companies) {
+      if (company['company_id'] == companyId) {
+        company['scraped'] = isScraped;
+        break;
+      }
+    }
+    notifyListeners();
+  }
 }

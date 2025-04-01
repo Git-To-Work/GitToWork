@@ -129,7 +129,41 @@ class CompanyApi {
     }
   }
 
+  /// 기업 스크랩 추가 요청
+  static Future<String> scrapCompany(int companyId) async {
+    final response = await ApiService.dio.post(
+      '/api/company-interaction/create/scrap',
+      data: {
+        'companyId': companyId,
+      },
+    );
 
+    if (response.statusCode == 200) {
+      final result = response.data['results'];
+      debugPrint('✅ 스크랩 요청 성공');
+      return result['message'] ?? '스크랩 추가 완료';
+    } else {
+      throw Exception('스크랩 추가 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 기업 스크랩 삭제 요청
+  static Future<String> unscrapCompany(int companyId) async {
+    final response = await ApiService.dio.delete(
+      '/api/company-interaction/delete/scrap',
+      data: {
+        'companyId': companyId,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final result = response.data['results'];
+      debugPrint('✅ 스크랩 삭제 성공');
+      return result['message'] ?? '스크랩 삭제 완료';
+    } else {
+      throw Exception('스크랩 삭제 실패: ${response.statusCode}');
+    }
+  }
 
 
 }

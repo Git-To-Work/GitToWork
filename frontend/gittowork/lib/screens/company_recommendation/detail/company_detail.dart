@@ -6,6 +6,8 @@ import 'package:gittowork/screens/company_recommendation/detail/other_info.dart'
 import 'package:gittowork/screens/company_recommendation/detail/choose_bar.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/company_detail_provider.dart';
+import '../../../providers/company_provider.dart';
+import '../../../services/company_api.dart';
 
 class CompanyDetailScreen extends StatefulWidget {
   const CompanyDetailScreen({super.key});
@@ -85,17 +87,38 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
           ),
         ),
         GestureDetector(
-          onTap: () {
-            setState(() {
-              isSaved = !isSaved;
-            });
+          onTap: () async {
+            final companyId = company['company_id'];
+            try {
+              if (company['scraped'] == true) {
+                await CompanyApi.unscrapCompany(companyId);
+                setState(() {
+                  company['scraped'] = false;
+                });
+                Provider.of<CompanyProvider>(context, listen: false)
+                    .updateScrapStatus(companyId, false); // ✅ Provider 업데이트
+              } else {
+                await CompanyApi.scrapCompany(companyId);
+                setState(() {
+                  company['scraped'] = true;
+                });
+                Provider.of<CompanyProvider>(context, listen: false)
+                    .updateScrapStatus(companyId, true); // ✅ Provider 업데이트
+              }
+            } catch (e) {
+              debugPrint('❌ 스크랩 요청 실패: $e');
+            }
           },
           child: Image.asset(
-            isSaved ? 'assets/icons/Saved.png' : 'assets/icons/Un_Saved.png',
+            (company['scraped'] ?? false)
+                ? 'assets/icons/Saved.png'
+                : 'assets/icons/Un_Saved.png',
             width: 28,
             height: 28,
           ),
         ),
+
+
       ],
     );
   }
