@@ -55,35 +55,13 @@ public class GithubService {
         String overallScore = overallScoreValue > 90 ? "A+"
                 : overallScoreValue > 80 ? "A"
                 : overallScoreValue > 70 ? "B+"
-                : overallScoreValue > 60 ? "B" : "C";
-
-        Map<String, Double> averageLanguageScore = githubAnalysisResult.getRepositories().stream()
-                .flatMap(repositoryResult -> repositoryResult.getLanguageLevel().entrySet().stream())
-                .collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.averagingDouble(Map.Entry::getValue)));
-
-        Map<String, Integer> languageScore = averageLanguageScore.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> {
-                            double avg = entry.getValue();
-                            if (avg > 90) return 10;
-                            else if (avg > 80) return 9;
-                            else if (avg > 70) return 8;
-                            else if (avg > 60) return 7;
-                            else if (avg > 50) return 6;
-                            else if (avg > 40) return 5;
-                            else if (avg > 30) return 4;
-                            else if (avg > 20) return 3;
-                            else if (avg > 10) return 2;
-                            else if (avg > 0)  return 1;
-                            else return 0;
-                        }
-                ));
+                : overallScoreValue > 60 ? "B"
+                : overallScoreValue > 50 ? "C+"
+                : overallScoreValue > 40 ? "C" : "D";
 
         return GetGithubAnalysisByRepositoryResponse.builder()
                 .analysisDate(githubAnalysisResult.getAnalysisDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                 .languageRatios(githubAnalysisResult.getLanguageRatios())
-                .languageLevel(languageScore)
                 .selectedRepositories(githubAnalysisResult.getSelectedRepositories().stream()
                         .map(Repository::getRepoName)
                         .collect(Collectors.toList()))
