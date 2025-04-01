@@ -44,8 +44,12 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
               ],
             ),
           ),
-          bottomNavigationBar: const ChooseView(),
+          bottomNavigationBar: ChooseView(
+            companyId: company['company_id'],
+            initialLiked: company['liked'] ?? false,
+          ),
         );
+
       },
     );
   }

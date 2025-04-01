@@ -62,4 +62,38 @@ class CompanyApi {
     }
   }
 
+  /// 기업 좋아요 요청
+  static Future<String> likeCompany(int companyId) async {
+    final response = await ApiService.dio.post(
+      '/api/company-interaction/create/like',
+      data: {
+        'companyId': companyId,
+      },
+    );
+    if (response.statusCode == 200) {
+      final result = response.data['results'];
+      return result['message'] ?? '좋아요 요청 완료';
+    } else {
+      throw Exception('좋아요 요청 실패: ${response.statusCode}');
+    }
+  }
+
+
+  /// 기업 좋아요 삭제 요청
+  static Future<String> unlikeCompany(int companyId) async {
+    final response = await ApiService.dio.delete(
+      '/api/company-interaction/delete/like',
+      data: {
+        'companyId': companyId,
+      },
+    );
+    if (response.statusCode == 200) {
+      final result = response.data['results'];
+      return result['message'] ?? '좋아요 삭제 완료';
+    } else {
+      throw Exception('좋아요 삭제 실패: ${response.statusCode}');
+    }
+  }
+
+
 }
