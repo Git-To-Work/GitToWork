@@ -211,11 +211,12 @@ def get_companies_with_algorithm(
         search_filters = {
             "company_name": company_name,
             "tech_stacks": tech_stacks,
-            "business_field": business_field,
+            "business_field": business_field, #수정 필요 필터링 조건 비즈니스 필드 ->
             "career": career,
             "location": location,
             "keyword": keyword
         }
+
         search_filters = {k: v for k, v in search_filters.items() if v is not None}
 
         # 검색 필터가 있을 경우 MongoDB에 사용자 검색 로그 저장

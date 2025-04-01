@@ -28,9 +28,12 @@ def run_hybrid_recommendation(db,
     ALPHA = 0.9  # 콘텐츠 기반 점수 비중
     BETA = 0.1  # 협업 필터링 점수 비중
 
-    # 콘텐츠 기반에서 좋아요 기업 유사도 보너스, 싫어요 기업 유사도 패널티
+    # 콘텐츠 기반 내 추가 신호 가중치
     LIKE_BONUS = 0.3
     BLACKLIST_PENALTY = 0.3
+    SCRAPED_BONUS = 0.5  # 구독: 큰 긍정
+
+    SEARCH_BONUS = 0.1  # 조회: 작은 긍정
 
     ######################################
     # 2. 사용자 GitHub 분석 JSON 로딩
