@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gittowork/providers/company_provider.dart';
-import '../../providers/company_detail_provider.dart';
+import 'package:gittowork/providers/company_detail_provider.dart';
 import 'detail/company_detail.dart';
 import 'package:gittowork/services/company_api.dart';
 

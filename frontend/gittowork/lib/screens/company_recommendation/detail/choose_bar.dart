@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gittowork/services/company_api.dart';
+import 'package:gittowork/widgets/confirm_modal.dart';
 
 class ChooseView extends StatefulWidget {
   final int companyId;
@@ -45,45 +46,32 @@ class _ChooseViewState extends State<ChooseView> {
 
   Future<void> _toggleBlacklist() async {
     try {
-      final confirm = await showDialog<bool>(
+      final confirm = await showCustomConfirmDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text(isBlacklisted ? '차단 해제 확인' : '차단 확인'),
-          content: Text(
-            isBlacklisted
-                ? '해당 기업의 차단을 해제하시겠습니까?'
-                : '해당 기업을 차단하시겠습니까?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
+        content: isBlacklisted
+            ? '해당 기업의 차단을 해제하시겠습니까?'
+            : '해당 기업을 차단하시겠습니까?',
+        subText: isBlacklisted
+            ? null
+            : '*기업 차단시 채용 공고 알림이 오지 않습니다',
       );
 
       if (confirm == true) {
         if (isBlacklisted) {
           await CompanyApi.removeCompanyFromBlacklist(widget.companyId);
-          setState(() {
-            isBlacklisted = false;
-          });
         } else {
           await CompanyApi.addCompanyToBlacklist(widget.companyId);
-          setState(() {
-            isBlacklisted = true;
-          });
         }
+
+        setState(() {
+          isBlacklisted = !isBlacklisted;
+        });
       }
     } catch (e) {
       debugPrint("❌ 차단(해제) 요청 실패: $e");
     }
   }
+
 
 
 

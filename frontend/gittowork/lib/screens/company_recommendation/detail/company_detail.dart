@@ -5,9 +5,9 @@ import 'package:gittowork/screens/company_recommendation/detail/job_card.dart';
 import 'package:gittowork/screens/company_recommendation/detail/other_info.dart';
 import 'package:gittowork/screens/company_recommendation/detail/choose_bar.dart';
 import 'package:provider/provider.dart';
-import '../../../providers/company_detail_provider.dart';
-import '../../../providers/company_provider.dart';
-import '../../../services/company_api.dart';
+import 'package:gittowork/providers/company_detail_provider.dart';
+import 'package:gittowork/providers/company_provider.dart';
+import 'package:gittowork/services/company_api.dart';
 
 class CompanyDetailScreen extends StatefulWidget {
   const CompanyDetailScreen({super.key});
