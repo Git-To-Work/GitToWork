@@ -36,12 +36,16 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -212,14 +216,20 @@ public class GithubAnalysisService {
             File localRepo = cloneRepository(repositoryPathUrl);
             String projectKey = extractProjectKey(repositoryPathUrl);
 
-            ProcessBuilder processBuilder = new ProcessBuilder(
-                    "sonar-scanner",
-                    "-X",
-                    "-Dsonar.projectKey=" + projectKey,
-                    "-Dsonar.sources=" + localRepo.getAbsolutePath(),
-                    "-Dsonar.host.url=" + sonarHostUrl,
-                    "-Dsonar.login=" + sonarLoginToken
-            );
+            String command = "mkdir -p /pmd_result/" + projectKey + " && " +
+                    "pmd check -d \"" + localRepo.getAbsolutePath() + "\" -R rulesets/java/quickstart.xml -f xml -r /pmd_result/" + projectKey + "/pmd-report.xml && " +
+                    "python3 /app/scripts/pmd_to_sonar.py /pmd_result/" + projectKey + "/pmd-report.xml /pmd_result/" + projectKey + "/pmd-report.json && " +
+                    "sonar-scanner -X -Dsonar.log.level=TRACE " +
+                    "-Dsonar.projectBaseDir=\"" + localRepo.getAbsolutePath() + "\" " +
+                    "-Dsonar.projectKey=" + projectKey + " " +
+                    "-Dsonar.projectName=\"" + repository.getFullName() + "\" " +
+                    "-Dsonar.sources=. " +
+                    "-Dsonar.host.url=" + sonarHostUrl + " " +
+                    "-Dsonar.login=" + sonarLoginToken + " " +
+                    "-Dsonar.exclusions=**/*.java " +
+                    "-Dsonar.externalIssuesReportPaths=/pmd_result/" + projectKey + "/pmd-report.json";
+
+            ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", command);
             processBuilder.directory(localRepo);
             Process process = processBuilder.start();
             BufferedReader stdOut = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -235,6 +245,7 @@ public class GithubAnalysisService {
             if (exitCode != 0) {
                 throw new SonarAnalysisException("SonarQube analysis failed for project: " + repositoryPathUrl);
             }
+
             RepositoryResult result = pollAndParseAnalysisResult(projectKey, repository.getRepoId());
 
             GithubCommit githubCommit = githubCommitRepository.findByRepoId(repository.getRepoId())
@@ -321,15 +332,21 @@ public class GithubAnalysisService {
     }
 
     /**
-     * 1. 메서드 설명: SonarQube로부터 프로젝트 분석 결과를 폴링하고 파싱하여 RepositoryResult 객체를 생성하는 메서드.
+     * 1. 메서드 설명: SonarQube와 PMD 외부 이슈 데이터를 통합하여 프로젝트 분석 결과를 폴링하고 파싱하여
+     *    RepositoryResult 객체를 생성하는 메서드.
      * 2. 로직:
-     *    - SonarQube API를 반복 호출하여 분석 결과가 준비될 때까지 대기한다.
-     *    - 프로젝트 상태와 조건들을 기반으로 총 페널티를 계산하고 점수를 산출한다.
-     *    - 언어 분포 및 품질 점수를 추가로 계산하여 RepositoryResult 객체를 빌더 패턴으로 생성한다.
+     *    - SonarQube API를 반복 호출하여 분석 결과(비자바 언어 메트릭)를 가져오고, 이를 기반으로 기본 penalty를 계산한다.
+     *    - 클론된 리포지토리 디렉토리에서 파일 시스템을 통해 Java 소스 파일의 총 라인 수(ncloc)를 직접 계산하여,
+     *      언어 분포에 "java" 항목으로 포함시킨다.
+     *    - SonarQube가 제공하는 언어 분포를 정수형 Map으로 변환한다.
+     *    - SonarQube 프로젝트 측정 지표를 조회하여, 비자바 언어의 품질 점수를 산출한다.
+     *    - PMD 외부 이슈 데이터를 조회하여 자바 코드에 대한 penalty를 계산하고, 이를 통해 자바 품질 점수를 산출한다.
+     *    - 최종 점수는 비자바 분석 결과(내장 메트릭 기반)에서 자바 penalty를 차감하여 산출하며,
+     *      통합된 언어 분포와 언어 품질 점수를 포함하는 RepositoryResult 객체를 생성한다.
      * 3. param:
-     *      projectKey - SonarQube 프로젝트 키.
-     *      repoId - repository 식별자.
-     * 4. return: RepositoryResult 객체.
+     *      projectKey - SonarQube 프로젝트 키 (프로젝트 고유 식별자).
+     *      repoId - 분석 대상 repository의 식별자.
+     * 4. return: 통합 분석 결과(비자바 메트릭과 자바 PMD penalty를 모두 반영)를 포함하는 RepositoryResult 객체.
      */
     private RepositoryResult pollAndParseAnalysisResult(String projectKey, int repoId) {
         Map<String, Double> weights = Map.of(
@@ -339,10 +356,12 @@ public class GithubAnalysisService {
                 "vulnerabilities", 50.0,
                 "duplicated_lines_density", 10.0
         );
+        int nonJavaScore = 100;
+        double sonarTotalPenalty = 0.0;
         while (true) {
             SonarResponse sonarResponse = fetchAnalysisResult(projectKey);
             if (sonarResponse.isSuccessful()) {
-                double totalPenalty = sonarResponse.getProjectStatus().getConditions().stream()
+                sonarTotalPenalty = sonarResponse.getProjectStatus().getConditions().stream()
                         .mapToDouble(condition -> {
                             double weight = weights.getOrDefault(condition.getMetricKey(), 10.0);
                             if ("ERROR".equalsIgnoreCase(condition.getStatus())) {
@@ -356,25 +375,123 @@ public class GithubAnalysisService {
                             }
                             return 0.0;
                         }).sum();
-                int overallScore = (int) Math.max(0, 100 - totalPenalty);
-                Map<String, Double> languageDistribution = fetchLanguageDistribution(projectKey);
-                Map<String, Integer> languageDistributionInt = languageDistribution.entrySet().stream()
-                        .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().intValue()));
-                Map<String, String> projectMeasures = fetchProjectMeasures(projectKey);
-                Map<String, Double> languageQualityScores = computeQualityScoreByLanguage(projectMeasures);
-                return RepositoryResult.builder()
-                        .repoId(repoId)
-                        .score(overallScore)
-                        .insights("Coverage: " + sonarResponse.getCoverage() + "%, Bugs: " + sonarResponse.getBugCount())
-                        .languages(languageDistributionInt)
-                        .stats(null)
-                        .commitFrequency(0)
-                        .languageLevel(languageQualityScores)
-                        .build();
+                nonJavaScore = (int) Math.max(0, 100 - sonarTotalPenalty);
+                break;
             } else if (sonarResponse.isError()) {
                 throw new SonarAnalysisException("SonarQube analysis returned error: " + sonarResponse.getErrorMessage());
             }
         }
+
+        Map<String, Double> languageDistribution = fetchLanguageDistribution(projectKey);
+
+        File repoDir = new File("/tmp/repositories/" + projectKey);
+        double javaLoc = calculateJavaNcloc(repoDir);
+        if (javaLoc > 0) {
+            languageDistribution.put("java", javaLoc);
+        }
+
+        Map<String, Integer> languageDistributionInt = languageDistribution.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().intValue()));
+
+        Map<String, String> projectMeasures = fetchProjectMeasures(projectKey);
+        Map<String, Double> languageQualityScores = computeQualityScoreByLanguage(projectMeasures);
+
+        String pmdIssuesUrl = sonarHostUrl + "/api/issues/search?componentKeys=" + projectKey + "&engineId=pmd";
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Basic " + Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
+        HttpEntity<String> request = new HttpEntity<>(headers);
+        ResponseEntity<Map> issuesResponse = restTemplate.exchange(pmdIssuesUrl, HttpMethod.GET, request, Map.class);
+        double javaPenalty = 0.0;
+        int blockerCount = 0, criticalCount = 0, majorCount = 0, minorCount = 0, infoCount = 0;
+        if (issuesResponse.getBody() != null && issuesResponse.getBody().containsKey("issues")) {
+            List<Map<String, Object>> issues = (List<Map<String, Object>>) issuesResponse.getBody().get("issues");
+            for (Map<String, Object> issue : issues) {
+                String severity = (String) issue.get("severity");
+                switch (severity) {
+                    case "BLOCKER":
+                        blockerCount++;
+                        javaPenalty += 10;
+                        break;
+                    case "CRITICAL":
+                        criticalCount++;
+                        javaPenalty += 8;
+                        break;
+                    case "MAJOR":
+                        majorCount++;
+                        javaPenalty += 6;
+                        break;
+                    case "MINOR":
+                        minorCount++;
+                        javaPenalty += 4;
+                        break;
+                    case "INFO":
+                        infoCount++;
+                        javaPenalty += 2;
+                        break;
+                    default:
+                        javaPenalty += 5;
+                }
+            }
+        }
+
+        double javaQualityScore = Math.max(0, 100 - javaPenalty);
+        languageQualityScores.put("java", javaQualityScore);
+
+        int overallScore = (int) Math.max(0, nonJavaScore - javaPenalty);
+
+        String insights = "Non-Java Analysis:\n" +
+                "  - Base Score (from SonarQube analysis): 100 - total penalty (" + sonarTotalPenalty + ") = " + nonJavaScore + "\n" +
+                "Java Analysis (via PMD):\n" +
+                "  - BLOCKER: " + blockerCount + " violations, CRITICAL: " + criticalCount + " violations, " +
+                "MAJOR: " + majorCount + " violations, MINOR: " + minorCount + " violations, INFO: " + infoCount + " violations\n" +
+                "  - Total Java PMD penalty: " + javaPenalty + " => Java Quality Score: 100 - penalty = " + javaQualityScore + "\n" +
+                "Overall Score: Non-Java Score (" + nonJavaScore + ") - Java PMD penalty (" + javaPenalty + ") = " + overallScore + "\n" +
+                "Language Distribution (LOC): " + languageDistributionInt + "\n" +
+                "Language Quality Scores: " + languageQualityScores + "\n";
+
+        return RepositoryResult.builder()
+                .repoId(repoId)
+                .score(overallScore)
+                .insights(insights)
+                .languages(languageDistributionInt)
+                .stats(null)
+                .commitFrequency(0)
+                .languageLevel(languageQualityScores)
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 지정된 리포지토리 디렉토리 내의 모든 Java 소스 파일(.java)의 총 라인 수(ncloc)를 계산한다.
+     * 2. 로직:
+     *    - 주어진 디렉토리가 존재하며 디렉토리인지 확인한다.
+     *    - Files.walk()를 사용하여 해당 디렉토리 하위의 모든 파일을 재귀적으로 탐색한다.
+     *    - 파일 이름이 ".java"로 끝나는 파일들을 필터링하고, 각 파일의 라인 수를 Files.lines()로 계산한 후, 모두 합산한다.
+     * 3. param:
+     *      repoDir - Java 소스 파일들이 포함된 리포지토리의 루트 디렉토리(File 객체).
+     * 4. return: 해당 리포지토리 내 모든 Java 파일의 총 라인 수를 double 타입으로 반환한다.
+     */
+    private double calculateJavaNcloc(File repoDir) {
+        double totalLines = 0.0;
+        if (!repoDir.exists() || !repoDir.isDirectory()) {
+            log.warn("Repository directory {} does not exist or is not a directory.", repoDir.getAbsolutePath());
+            return totalLines;
+        }
+        try (Stream<Path> paths = Files.walk(repoDir.toPath())) {
+            totalLines = paths.filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .mapToLong(path -> {
+                        try {
+                            // 각 파일의 전체 줄 수를 계산
+                            return Files.lines(path).count();
+                        } catch (IOException e) {
+                            log.error("Error reading file {}: {}", path, e.getMessage());
+                            return 0;
+                        }
+                    }).sum();
+        } catch (IOException e) {
+            log.error("Error walking through repository directory {}: {}", repoDir.getAbsolutePath(), e.getMessage());
+        }
+        return totalLines;
     }
 
     /**
