@@ -10,7 +10,7 @@ class CategorySelector extends StatelessWidget {
     required this.onCategoryChanged,
   }) : super(key: key);
 
-  // 카테고리 코드와 표시할 이름 매핑
+  // 4가지 카테고리: 자소서(CL), 컴퓨터 과학(CS), 인성면접(FI), 기술 스택(SS)
   final Map<String, String> categories = const {
     'CL': '자소서',
     'CS': '컴퓨터 과학',
@@ -18,42 +18,97 @@ class CategorySelector extends StatelessWidget {
     'SS': '기술 스택',
   };
 
-  // 선택된 카테고리에 따라 원의 위치를 결정 (간단 예시)
-  double _calcCircleLeft(String category) {
-    final keys = categories.keys.toList();
-    int index = keys.indexOf(category);
-    // 아직 선택되지 않은 경우 중앙 정렬(또는 원하는 기본 위치)
-    if (index == -1) return 15.0;
-    // 각 카테고리 간 간격을 15.0으로 가정
-    return index * 15.0;
+  // 현재 카테고리에 따라 원의 위치를 대략적으로 결정 (간단 예시)
+  Offset _calcCircleOffset(String category) {
+    switch (category) {
+      case 'CL': // 자소서
+        return const Offset(0, 0);
+      case 'CS': // 컴퓨터 과학
+        return const Offset(20, 0);
+      case 'FI': // 인성면접
+        return const Offset(0, 20);
+      case 'SS': // 기술 스택
+        return const Offset(20, 20);
+      default:
+      // 선택되지 않았을 때 (빈 문자열 등)
+        return const Offset(10, 10);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final Offset circleOffset = _calcCircleOffset(currentCategory);
+
     return SizedBox(
-      height: 80,
+      height: 200,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // 카테고리 텍스트들을 나열
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: categories.entries.map((entry) {
-              return GestureDetector(
-                onTap: () {
-                  onCategoryChanged(entry.key);
-                },
-                child: Text(
-                  entry.value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: currentCategory == entry.key ? FontWeight.bold : FontWeight.normal,
-                    color: currentCategory == entry.key ? Colors.blue : Colors.black,
-                  ),
+          // 왼쪽 위: 자소서
+          Positioned(
+            top: 0,
+            left: 0,
+            child: GestureDetector(
+              onTap: () => onCategoryChanged('CL'),
+              child: Text(
+                categories['CL']!,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: currentCategory == 'CL' ? FontWeight.bold : FontWeight.normal,
+                  color: currentCategory == 'CL' ? Colors.blue : Colors.black,
                 ),
-              );
-            }).toList(),
+              ),
+            ),
           ),
-          // 중앙의 사각형 영역과 이동하는 원
+          // 오른쪽 위: 컴퓨터 과학
+          Positioned(
+            top: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: () => onCategoryChanged('CS'),
+              child: Text(
+                categories['CS']!,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: currentCategory == 'CS' ? FontWeight.bold : FontWeight.normal,
+                  color: currentCategory == 'CS' ? Colors.blue : Colors.black,
+                ),
+              ),
+            ),
+          ),
+          // 왼쪽 아래: 인성면접
+          Positioned(
+            bottom: 0,
+            left: 0,
+            child: GestureDetector(
+              onTap: () => onCategoryChanged('FI'),
+              child: Text(
+                categories['FI']!,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: currentCategory == 'FI' ? FontWeight.bold : FontWeight.normal,
+                  color: currentCategory == 'FI' ? Colors.blue : Colors.black,
+                ),
+              ),
+            ),
+          ),
+          // 오른쪽 아래: 기술 스택
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: () => onCategoryChanged('SS'),
+              child: Text(
+                categories['SS']!,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: currentCategory == 'SS' ? FontWeight.bold : FontWeight.normal,
+                  color: currentCategory == 'SS' ? Colors.blue : Colors.black,
+                ),
+              ),
+            ),
+          ),
+          // 중앙에 박스 (C5D5FF 배경) + 안의 움직이는 원
           Center(
             child: Container(
               width: 60,
@@ -74,11 +129,11 @@ class CategorySelector extends StatelessWidget {
                 children: [
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 300),
-                    left: _calcCircleLeft(currentCategory),
-                    top: 15,
+                    left: circleOffset.dx,
+                    top: circleOffset.dy,
                     child: Container(
-                      width: 30,
-                      height: 30,
+                      width: 25,
+                      height: 25,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,

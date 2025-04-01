@@ -34,18 +34,17 @@ class QuizQuestion {
 }
 
 class QuizApi {
-  /// GET /quiz/select?category={category}
-  /// category 값이 없으면 빈 문자열을 보내도록 호출부에서 관리
   static Future<QuizQuestion> fetchQuiz(String category) async {
     try {
       final response = await ApiService.dio.get(
-        '/quiz/select',
+        '/api/quiz/select',
         queryParameters: {'category': category},
       );
+
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['status'] == 200 && data['code'] == 'SU') {
-          return QuizQuestion.fromJson(data['result']);
+        if (data['status'] == 200) {
+          return QuizQuestion.fromJson(data['results']);
         } else {
           throw Exception('퀴즈 데이터를 불러오는 중 오류 발생. code: ${data['code']}');
         }
@@ -57,3 +56,4 @@ class QuizApi {
     }
   }
 }
+
