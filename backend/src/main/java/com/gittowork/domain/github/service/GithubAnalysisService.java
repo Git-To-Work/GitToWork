@@ -231,6 +231,12 @@ public class GithubAnalysisService {
                     "-Dsonar.externalIssuesReportPaths=/pmd_result/" + projectKey + "/pmd-report.json";
 
             ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", command);
+
+            Map<String, String> env = processBuilder.environment();
+            for (Map.Entry<String, String> entry : env.entrySet()) {
+                log.info(entry.getKey() + "=" + entry.getValue());
+            }
+
             processBuilder.directory(localRepo);
             Process process = processBuilder.start();
             BufferedReader stdOut = new BufferedReader(new InputStreamReader(process.getInputStream()));
