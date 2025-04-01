@@ -239,16 +239,37 @@ public class GithubAnalysisService {
 
             processBuilder.directory(localRepo);
             Process process = processBuilder.start();
-            BufferedReader stdOut = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader stdErr = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            String s;
-            while ((s = stdOut.readLine()) != null) {
-                log.info(s);
-            }
-            while ((s = stdErr.readLine()) != null) {
-                log.error(s);
-            }
+
+            Thread stdoutThread = new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        log.info(line);
+                    }
+                } catch (Exception e) {
+                    log.error("Error reading stdout", e);
+                }
+            });
+
+            Thread stderrThread = new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        log.error(line);
+                    }
+                } catch (Exception e) {
+                    log.error("Error reading stderr", e);
+                }
+            });
+
+            stdoutThread.start();
+            stderrThread.start();
+
             int exitCode = process.waitFor();
+
+            stdoutThread.join();
+            stderrThread.join();
+
             if (exitCode != 0) {
                 throw new SonarAnalysisException("SonarQube analysis failed for project: " + repositoryPathUrl);
             }
