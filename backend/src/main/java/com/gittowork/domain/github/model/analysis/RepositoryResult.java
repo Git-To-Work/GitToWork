@@ -9,6 +9,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class RepositoryResult {
     private int repoId;
     private int score;
