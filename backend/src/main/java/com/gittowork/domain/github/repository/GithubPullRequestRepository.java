@@ -10,4 +10,6 @@ import java.util.Optional;
 @Repository
 public interface GithubPullRequestRepository extends MongoRepository<GithubPullRequest, String> {
     Optional<List<GithubPullRequest>> findAllByRepoId(int repoId);
+
+    boolean existsByPrId(int prId);
 }

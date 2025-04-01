@@ -107,6 +107,7 @@ public class GithubService {
 
         boolean analysisStarted = githubRestApiService.checkNewGithubEvents(githubAccessToken, userName, userId, repositoryNames);
         if (analysisStarted) {
+            githubAnalysisService.saveUserGithubRepositoryInfo(githubAccessToken, userName, userId);
             githubAnalysisService.githubAnalysisByRepository(repositories, userName);
         }
         return CreateGithubAnalysisByRepositoryResponse.builder()
@@ -282,6 +283,30 @@ public class GithubService {
 
         return MessageOnlyResponse.builder()
                 .message("레포지토리 조합과 분석 결과가 삭제되었습니다.")
+                .build();
+    }
+
+    @Transactional
+    public MessageOnlyResponse updateGithubData() {
+        User user = userRepository.findByGithubName(getUserName())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        String githubAccessToken = user.getGithubAccessToken();
+        String userName = getUserName();
+        int userId = user.getId();
+
+        boolean isNewRepositoryCreated = githubRestApiService.checkNewRepositoryCreationEvents(githubAccessToken, userName, userId);
+
+        String message = "";
+        if (isNewRepositoryCreated) {
+            githubAnalysisService.saveUserGithubRepositoryInfo(githubAccessToken, userName, userId);
+            message = "새로운 Github Repository가 감지되었습니다. 데이터를 업데이트합니다.";
+        } else {
+            message = "감지된 새로운 Github Repository가 없습니다.";
+        }
+
+        return MessageOnlyResponse.builder()
+                .message(message)
                 .build();
     }
 

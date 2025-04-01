@@ -10,4 +10,6 @@ import java.util.Optional;
 @Repository
 public interface GithubIssueRepository extends MongoRepository<GithubIssue, String> {
     Optional<List<GithubIssue>> findAllByRepoId(int repoId);
+
+    boolean existsByIssueId(long issueId);
 }

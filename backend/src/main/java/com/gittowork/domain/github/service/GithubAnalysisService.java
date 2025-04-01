@@ -104,7 +104,6 @@ public class GithubAnalysisService {
      */
     @Async
     public void saveUserGithubRepositoryInfo(String accessToken, String userName, int userId) {
-        // 저장 순서를 stream으로 연결하지 않고 순차적으로 호출
         var userGithubRepository = githubRestApiService.saveUserGithubRepository(accessToken, userName, userId);
         githubRestApiService.saveUserGithubCommits(accessToken, userName, userId);
         githubRestApiService.saveUserRepositoryLanguage(accessToken, userName, userId);
