@@ -217,7 +217,7 @@ public class GithubAnalysisService {
             String projectKey = extractProjectKey(repositoryPathUrl);
 
             String command = "mkdir -p /pmd_result/" + projectKey + " && " +
-                    "whoami" +
+                    "whoami && " +
                     "pmd check -d \"" + localRepo.getAbsolutePath() + "\" -R rulesets/java/quickstart.xml -f xml -r /pmd_result/" + projectKey + "/pmd-report.xml && " +
                     "python3 /app/scripts/pmd_to_sonar.py /pmd_result/" + projectKey + "/pmd-report.xml /pmd_result/" + projectKey + "/pmd-report.json && " +
                     "sonar-scanner -X -Dsonar.log.level=TRACE " +
