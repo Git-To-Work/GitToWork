@@ -97,13 +97,21 @@ def read_company_detail(
     job_notices = []
     if hasattr(company, "job_notices"):
         for job in company.job_notices:
+            job_tech_stack_set = set()
+            if hasattr(job, "notice_tech_stacks"):
+                for nts in job.notice_tech_stacks:
+                    if nts.tech_stack:
+                        job_tech_stack_set.add(nts.tech_stack.tech_stack_name)
+            job_tech_stack_list = list(job_tech_stack_set)
+
             job_notices.append({
                 "job_notice_id": job.job_notice_id,
                 "job_notice_title": job.job_notice_title,
                 "deadline_dttm": job.deadline_dttm,
                 "location": job.location,
                 "min_career": job.min_career,
-                "max_career": job.max_career
+                "max_career": job.max_career,
+                "tech_stacks": job_tech_stack_list  #나중에 사용자에게 맞는 기술 스택 먼저 표시하게끔 + 공고도 사용자에게 맞는 공고먼저 표시되게..
             })
 
     company_data = {
@@ -119,11 +127,10 @@ def read_company_detail(
         "employee_ratio_female": company.employee_ratio_female,
         "field_id": company.field_id,
         "field_name": field_name,
-        "categories": categories,
         "scraped": scraped,
         "liked": liked,
         "blacklisted": blacklisted,
-        "tech_stacks": tech_stack_list,
+        #"tech_stacks": tech_stack_list, #나중에 사용자에 맞는 tech_stacks 만 넘기게 수정 필요
         "has_job_notice": has_job_notice,
         "job_notices": job_notices
     }
