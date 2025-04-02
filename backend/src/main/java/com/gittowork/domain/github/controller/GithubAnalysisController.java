@@ -49,4 +49,9 @@ public class GithubAnalysisController {
         return ApiResponse.success(HttpStatus.OK, githubService.deleteSelectedGithubRepository(selectedRepositoryId));
     }
 
+    @PutMapping("/update/github-data")
+    public ApiResponse<?> updateGithubData() {
+        return ApiResponse.success(HttpStatus.OK, githubService.updateGithubData());
+    }
+
 }

@@ -126,18 +126,22 @@ public class GithubRestApiService {
     // ============================================================
 
     /**
-     * 1. 메서드 설명: GitHub API를 호출하여 사용자의 repository 정보를 조회하고,
-     *    이를 데이터베이스에 저장하는 메서드.
+     * 1. 메서드 설명: GitHub API를 호출하여 사용자의 repository 목록을 조회하고,
+     *    userId를 기준으로 기존에 DB에 저장된 repository들과 비교하여, 중복되지 않는 신규 repository만을 추가(중복 방지)한 후,
+     *    GithubRepository Document를 저장하는 메서드.
      * 2. 로직:
-     *    - 요청 헤더에 bearer 토큰 방식의 access token을 설정하고, JSON 응답을 수락한다.
-     *    - GitHub 사용자 repository API에 GET 요청을 보내 응답 상태가 2xx가 아니면 예외를 발생시키며,
-     *      응답 본문이 null이면 빈 리스트로 처리한다.
-     *    - 응답 데이터를 Repository 객체로 변환 후 GithubRepository 엔티티에 담아 저장한다.
+     *    - accessToken과 githubName을 사용하여 "https://api.github.com/users/{githubName}/repos" 엔드포인트에 GET 요청을 보낸다.
+     *    - API 응답이 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 빈 리스트로 처리한다.
+     *    - 응답 데이터를 Repository 객체 리스트로 매핑한다.
+     *    - DB에서 userId에 해당하는 GithubRepository 문서가 존재하는지 확인한다.
+     *         - 존재하는 경우: 기존 repositories 목록에서 repoName을 기준으로 중복을 제거하고,
+     *           신규 repository만 추가한 후 업데이트(save)한다.
+     *         - 존재하지 않는 경우: 새로운 GithubRepository Document를 생성하여 삽입한다.
      * 3. param:
-     *      accessToken - GitHub API 접근에 사용되는 access token.
-     *      githubName  - GitHub 사용자 이름.
-     *      userId      - 현재 애플리케이션 사용자 ID.
-     * 4. return: 없음.
+     *      String accessToken - GitHub API 접근에 사용되는 access token.
+     *      String githubName  - GitHub 사용자 이름.
+     *      int userId         - 현재 애플리케이션 사용자의 로컬 식별자.
+     * 4. return: GithubRepository - 저장된 GithubRepository Document.
      */
     public GithubRepository saveUserGithubRepository(String accessToken, String githubName, int userId) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.APPLICATION_JSON));
@@ -152,7 +156,7 @@ public class GithubRestApiService {
             throw new GithubRepositoryNotFoundException("Failed to fetch repositories - HTTP " + response.getStatusCode());
         }
         List<Map<String, Object>> responseBody = response.getBody();
-        List<Repository> repositories = (responseBody == null ? Collections.emptyList() : responseBody)
+        List<Repository> newRepositories = (responseBody == null ? Collections.emptyList() : responseBody)
                 .stream()
                 .map(obj -> {
                     Map<String, Object> map = (Map<String, Object>) obj;
@@ -170,11 +174,30 @@ public class GithubRestApiService {
                             .build();
                 })
                 .collect(Collectors.toList());
-        GithubRepository githubRepository = GithubRepository.builder()
-                .userId(userId)
-                .repositories(repositories)
-                .build();
-        return githubRepoRepository.save(githubRepository);
+
+        Optional<GithubRepository> optionalGithubRepo = githubRepoRepository.findByUserId(userId);
+        if (optionalGithubRepo.isPresent()) {
+            GithubRepository existingRepo = optionalGithubRepo.get();
+
+            Set<String> existingRepoNames = existingRepo.getRepositories().stream()
+                    .map(Repository::getRepoName)
+                    .collect(Collectors.toSet());
+
+            List<Repository> repositoriesToAdd = newRepositories.stream()
+                    .filter(repo -> !existingRepoNames.contains(repo.getRepoName()))
+                    .collect(Collectors.toList());
+
+            List<Repository> mergedRepositories = new ArrayList<>(existingRepo.getRepositories());
+            mergedRepositories.addAll(repositoriesToAdd);
+            existingRepo.setRepositories(mergedRepositories);
+            return githubRepoRepository.save(existingRepo);
+        } else {
+            GithubRepository githubRepository = GithubRepository.builder()
+                    .userId(userId)
+                    .repositories(newRepositories)
+                    .build();
+            return githubRepoRepository.save(githubRepository);
+        }
     }
 
     // ============================================================
@@ -182,28 +205,31 @@ public class GithubRestApiService {
     // ============================================================
 
     /**
-     * 1. 메서드 설명: GitHub API를 호출하여 사용자의 commit 정보를 조회하고,
-     *    각 commit의 파일 변경 내역 중 코드 파일(주 언어 파일)만 필터링하여 데이터베이스에 저장하는 메서드.
+     * 1. 메서드 설명: GitHub API를 호출하여 사용자의 각 repository에 대한 커밋 정보를 조회하고,
+     *    각 repository별로 기존 DB에 저장된 커밋(Document)와 비교하여, commitSha 기준으로 신규 커밋만 추가(중복 방지)하는 메서드.
      * 2. 로직:
-     *    - 일반 조회용과 상세 조회용 HTTP 헤더를 생성한다.
-     *    - userId에 해당하는 repository 목록을 조회한다.
-     *    - 각 repository마다 commit 목록을 GET 요청으로 조회하며, 상태가 2xx가 아니면 예외를 발생시키고,
-     *      응답 본문이 null이면 빈 리스트로 처리한다.
-     *    - 각 commit마다 parseCommit()을 호출하여 Commit 객체로 변환한다.
-     *    - 변환된 Commit 리스트를 포함하는 GithubCommit 엔티티를 생성 후 배치 저장한다.
+     *    - accessToken과 githubName을 사용하여 각 repository의 커밋 정보를 조회한다.
+     *    - API 응답이 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 빈 리스트로 처리한다.
+     *    - 각 repository에 대해 기존 DB에 저장된 GithubCommit Document가 있는지 확인한다.
+     *         * 존재하는 경우: 기존 Document의 commitSha들을 기준으로 신규 커밋만 필터링하여 추가한 후 업데이트한다.
+     *         * 존재하지 않는 경우: 조회된 커밋 전체를 포함하는 새로운 GithubCommit Document를 생성하여 저장한다.
      * 3. param:
      *      accessToken - GitHub API 접근에 사용되는 access token.
      *      githubName  - GitHub 사용자 이름.
-     *      userId      - 현재 애플리케이션 사용자 ID.
+     *      userId      - 현재 애플리케이션 사용자의 로컬 식별자.
      * 4. return: 없음.
      */
     public void saveUserGithubCommits(String accessToken, String githubName, int userId) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.APPLICATION_JSON));
         HttpEntity<String> detailRequest = new HttpEntity<>(createHeaders(accessToken, MediaType.valueOf("application/vnd.github.v3+json")));
+
+        // DB에서 해당 userId의 GithubRepository Document를 조회하여 연관 repository 목록 가져오기
         List<Repository> repositories = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"))
                 .getRepositories();
-        List<GithubCommit> githubCommits = repositories.stream().map(repository -> {
+
+        // 각 repository에 대해 커밋 정보를 가져와서 중복 여부를 판단 후 저장
+        repositories.forEach(repository -> {
             String repositoryName = repository.getRepoName();
             int repoId = repository.getRepoId();
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
@@ -218,16 +244,33 @@ public class GithubRestApiService {
                 throw new GithubRepositoryNotFoundException("Failed to fetch commits for repository: " + repositoryName + " - HTTP " + response.getStatusCode());
             }
             List<Map<String, Object>> responseBody = response.getBody();
-            List<Commit> commits = (responseBody == null ? Collections.<Map<String, Object>>emptyList() : responseBody).stream()
-                    .map((Map<String, Object> commitMap) -> parseCommit(commitMap, githubName, repositoryName, detailRequest))
+            List<Commit> fetchedCommits = (responseBody == null ? Collections.<Map<String, Object>>emptyList() : responseBody)
+                    .stream()
+                    .map(commitMap -> parseCommit(commitMap, githubName, repositoryName, detailRequest))
                     .collect(Collectors.toList());
-            return GithubCommit.builder()
-                    .userId(userId)
-                    .repoId(repoId)
-                    .commits(commits)
-                    .build();
-        }).collect(Collectors.toList());
-        githubCommitRepository.saveAll(githubCommits);
+
+            Optional<GithubCommit> existingCommitOpt = githubCommitRepository.findByUserIdAndRepoId(userId, repoId);
+            if (existingCommitOpt.isPresent()) {
+                GithubCommit existingCommitDoc = existingCommitOpt.get();
+                Set<String> existingCommitShas = existingCommitDoc.getCommits().stream()
+                        .map(Commit::getCommitSha)
+                        .collect(Collectors.toSet());
+                List<Commit> newCommits = fetchedCommits.stream()
+                        .filter(commit -> !existingCommitShas.contains(commit.getCommitSha()))
+                        .toList();
+                if (!newCommits.isEmpty()) {
+                    existingCommitDoc.getCommits().addAll(newCommits);
+                    githubCommitRepository.save(existingCommitDoc);
+                }
+            } else {
+                GithubCommit newCommitDoc = GithubCommit.builder()
+                        .userId(userId)
+                        .repoId(repoId)
+                        .commits(fetchedCommits)
+                        .build();
+                githubCommitRepository.save(newCommitDoc);
+            }
+        });
     }
 
     /**
@@ -342,26 +385,31 @@ public class GithubRestApiService {
 
     /**
      * 1. 메서드 설명: GitHub API를 호출하여 사용자의 각 repository에 대한 언어 정보를 조회하고,
-     *    이를 GithubLanguage 엔티티로 변환하여 데이터베이스에 저장하는 메서드.
+     *    userId와 repoId를 기준으로 DB에 이미 저장된 GithubLanguage Document가 있으면 업데이트하고,
+     *    존재하지 않으면 신규 Document를 삽입하는 메서드.
      * 2. 로직:
-     *    - accessToken과 githubName을 이용해 HTTP 헤더를 생성한다.
-     *    - userId에 해당하는 repository 목록을 조회하고, 각 repository마다 /languages 엔드포인트를 호출하여 언어 정보를 조회한다.
-     *      응답 상태가 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 빈 Map으로 처리한다.
-     *    - 조회된 언어 정보를 기반으로 GithubLanguage 객체를 생성하여 저장한다.
+     *    - accessToken과 githubName을 사용하여 "https://api.github.com/repos/{githubName}/{repositoryName}/languages" 엔드포인트에서 언어 정보를 조회한다.
+     *    - 응답 상태가 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 빈 Map으로 처리한다.
+     *    - 각 repository에 대해 DB에서 userId와 repoId로 GithubLanguage Document를 조회한다.
+     *         * 존재하면, 응답으로 받은 언어 정보를 기존 Document의 languages 필드에 업데이트한 후 저장한다.
+     *         * 존재하지 않으면, 새로운 GithubLanguage Document를 생성하여 저장한다.
      * 3. param:
      *      accessToken - GitHub API 접근에 사용되는 access token.
      *      githubName  - GitHub 사용자 이름.
-     *      userId      - 현재 애플리케이션 사용자 ID.
+     *      userId      - 현재 애플리케이션 사용자의 로컬 식별자.
      * 4. return: 없음.
      */
     public void saveUserRepositoryLanguage(String accessToken, String githubName, int userId) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.APPLICATION_JSON));
+
         List<Repository> repositories = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"))
                 .getRepositories();
-        List<GithubLanguage> languages = repositories.stream().map(repository -> {
+
+        repositories.forEach(repository -> {
             String repositoryName = repository.getRepoName();
             int repoId = repository.getRepoId();
+
             ResponseEntity<Map<String, Long>> response = restTemplate.exchange(
                     "https://api.github.com/repos/{githubName}/{repositoryName}/languages",
                     HttpMethod.GET,
@@ -371,17 +419,26 @@ public class GithubRestApiService {
                     repositoryName
             );
             if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new GithubRepositoryNotFoundException("Failed to fetch languages for repository: " + repositoryName + " - HTTP " + response.getStatusCode());
+                throw new GithubRepositoryNotFoundException("Failed to fetch languages for repository: " + repositoryName
+                        + " - HTTP " + response.getStatusCode());
             }
             Map<String, Long> languageMap = response.getBody();
-            languageMap = languageMap == null ? Collections.emptyMap() : languageMap;
-            return GithubLanguage.builder()
-                    .userId(userId)
-                    .repoId(repoId)
-                    .languages(languageMap)
-                    .build();
-        }).collect(Collectors.toList());
-        githubLanguageRepository.saveAll(languages);
+            languageMap = (languageMap == null) ? Collections.emptyMap() : languageMap;
+
+            Optional<GithubLanguage> existingLanguageOpt = githubLanguageRepository.findByUserIdAndRepoId(userId, repoId);
+            if (existingLanguageOpt.isPresent()) {
+                GithubLanguage existingLanguage = existingLanguageOpt.get();
+                existingLanguage.setLanguages(languageMap);
+                githubLanguageRepository.save(existingLanguage);
+            } else {
+                GithubLanguage newLanguage = GithubLanguage.builder()
+                        .userId(userId)
+                        .repoId(repoId)
+                        .languages(languageMap)
+                        .build();
+                githubLanguageRepository.save(newLanguage);
+            }
+        });
     }
 
     // ============================================================
@@ -389,17 +446,22 @@ public class GithubRestApiService {
     // ============================================================
 
     /**
-     * 1. 메서드 설명: GitHub API를 호출하여 chanhoan/chanhoan_Github repository의 모든 이슈 정보를 조회하고,
-     *    이를 GithubIssue Document로 변환하여 데이터베이스에 저장하는 메서드.
+     * 1. 메서드 설명: GitHub API를 호출하여 사용자의 각 repository에 대한 이슈 정보를 조회하고,
+     *    각 repository별로 기존 DB에 저장된 이슈(issueId 기준)와 비교하여 중복되지 않는 신규 이슈만을 DB에 저장하는 메서드.
      * 2. 로직:
-     *    - accessToken을 이용해 HTTP 헤더를 생성하고, /issues?state=all 엔드포인트에 GET 요청을 보낸다.
-     *      응답 상태가 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 빈 리스트로 처리한다.
-     *    - 응답받은 이슈 리스트를 순회하며 parseIssue()로 변환한 후 배치 저장한다.
+     *    - accessToken과 githubName을 사용하여 "https://api.github.com/repos/{userName}/{repositoryName}/issues?state=all" 엔드포인트에서 이슈 정보를 조회한다.
+     *    - 응답 상태가 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 빈 리스트로 처리한다.
+     *    - 조회된 이슈 데이터를 GithubIssue 객체로 매핑한다.
+     *    - 각 이슈에 대해 issueId를 기준으로 DB에 이미 존재하는지 확인한다.
+     *         * 존재하지 않는 경우에만 신규 이슈 목록에 포함시킨다.
+     *    - 신규 이슈가 있을 경우, 이를 DB에 저장한다.
      * 3. param:
      *      accessToken - GitHub API 접근에 사용되는 access token.
+     *      githubName  - GitHub 사용자 이름.
+     *      userId      - 현재 애플리케이션 사용자의 로컬 식별자.
      * 4. return: 없음.
      */
-    public void saveGithubIssues(String accessToken, String userName, int userId) {
+    public void saveGithubIssues(String accessToken, String githubName, int userId) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.valueOf("application/vnd.github.v3+json")));
         List<Repository> repositories = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"))
@@ -415,21 +477,29 @@ public class GithubRestApiService {
                     HttpMethod.GET,
                     request,
                     new ParameterizedTypeReference<List<Map<String, Object>>>() {},
-                    userName,
+                    githubName,
                     repositoryName
             );
             if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new GithubRepositoryNotFoundException("Failed to fetch issues - HTTP " + response.getStatusCode());
+                throw new GithubRepositoryNotFoundException("Failed to fetch issues for repository: " + repositoryName + " - HTTP " + response.getStatusCode());
             }
-            List<Map<String, Object>> issuesData = response.getBody();
-            issuesData = issuesData == null ? Collections.emptyList() : issuesData;
-            List<GithubIssue> issues = issuesData.stream()
-                    .map(this::parseIssue)
-                    .collect(Collectors.toList());
-            githubIssueRepository.saveAll(issues);
-        }
+            List<Map<String, Object>> issuesData = Optional.ofNullable(response.getBody())
+                    .orElse(Collections.emptyList());
 
+            List<GithubIssue> parsedIssues = issuesData.stream()
+                    .map(this::parseIssue)
+                    .toList();
+
+            List<GithubIssue> newIssues = parsedIssues.stream()
+                    .filter(issue -> !githubIssueRepository.existsByIssueId(issue.getIssueId()))
+                    .collect(Collectors.toList());
+
+            if (!newIssues.isEmpty()) {
+                githubIssueRepository.saveAll(newIssues);
+            }
+        }
     }
+
 
     /**
      * 1. 메서드 설명: API 응답 데이터의 개별 이슈 정보를 파싱하여 GithubIssue 객체로 변환하는 헬퍼 메서드.
@@ -529,17 +599,22 @@ public class GithubRestApiService {
     // ============================================================
 
     /**
-     * 1. 메서드 설명: GitHub API를 호출하여 kobenlys/K6Weaver repository의 모든 Pull Request 정보를 조회하고,
-     *    이를 GithubPullRequest Document로 변환하여 데이터베이스에 저장하는 메서드.
+     * 1. 메서드 설명: GitHub API를 호출하여 사용자의 각 repository에 대한 pull request 정보를 조회하고,
+     *    각 repository별로 기존 DB에 저장된 pull request(prId 기준)와 비교하여 중복되지 않는 신규 pull request만을 DB에 저장하는 메서드.
      * 2. 로직:
-     *    - accessToken을 이용해 HTTP 헤더를 생성하고, /pulls?state=all 엔드포인트에 GET 요청을 보낸다.
-     *      응답 상태가 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 빈 리스트로 처리한다.
-     *    - 응답받은 PR 리스트를 순회하며 parsePullRequest()를 통해 GithubPullRequest 객체로 변환한 후 배치 저장한다.
+     *    - accessToken과 githubName을 사용하여 "https://api.github.com/repos/{userName}/{repositoryName}/pulls?state=all" 엔드포인트에서 pull request 정보를 조회한다.
+     *    - 응답 상태가 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 빈 리스트로 처리한다.
+     *    - 조회된 pull request 데이터를 GithubPullRequest 객체로 매핑한다.
+     *    - 각 pull request에 대해 prId를 기준으로 DB에 이미 존재하는지 확인한다.
+     *         * 존재하지 않는 경우에만 신규 pull request 목록에 포함시킨다.
+     *    - 신규 pull request가 있을 경우, 이를 DB에 저장한다.
      * 3. param:
      *      accessToken - GitHub API 접근에 사용되는 access token.
+     *      githubName  - GitHub 사용자 이름.
+     *      userId      - 현재 애플리케이션 사용자의 로컬 식별자.
      * 4. return: 없음.
      */
-    public void saveGithubPullRequests(String accessToken, String userName, int userId) {
+    public void saveGithubPullRequests(String accessToken, String githubName, int userId) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.valueOf("application/vnd.github.v3+json")));
 
         List<Repository> repositories = githubRepoRepository.findByUserId(userId)
@@ -555,18 +630,26 @@ public class GithubRestApiService {
                     HttpMethod.GET,
                     request,
                     new ParameterizedTypeReference<List<Map<String, Object>>>() {},
-                    userName,
+                    githubName,
                     repositoryName
             );
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw new GithubRepositoryNotFoundException("Failed to fetch pull requests - HTTP " + response.getStatusCode());
             }
-            List<Map<String, Object>> prList = response.getBody();
-            prList = prList == null ? Collections.emptyList() : prList;
-            List<GithubPullRequest> pullRequests = prList.stream()
+            List<Map<String, Object>> prList = Optional.ofNullable(response.getBody())
+                    .orElse(Collections.emptyList());
+
+            List<GithubPullRequest> parsedPRs = prList.stream()
                     .map(this::parsePullRequest)
+                    .toList();
+
+            List<GithubPullRequest> newPRs = parsedPRs.stream()
+                    .filter(pr -> !githubPullRequestRepository.existsByPrId(pr.getPrId()))
                     .collect(Collectors.toList());
-            githubPullRequestRepository.saveAll(pullRequests);
+
+            if (!newPRs.isEmpty()) {
+                githubPullRequestRepository.saveAll(newPRs);
+            }
         }
     }
 
@@ -743,26 +826,7 @@ public class GithubRestApiService {
                         String eventId = (String) eventMap.get("id");
                         return !existingEventIds.contains(eventId);
                     })
-                    .map(eventMap -> {
-                        String eventId = (String) eventMap.get("id");
-                        String eventType = (String) eventMap.get("type");
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> repoMap = (Map<String, Object>) eventMap.get("repo");
-                        String repoName = repoMap != null ? (String) repoMap.get("name") : null;
-                        String createdAtStr = (String) eventMap.get("created_at");
-                        LocalDateTime createdAt = OffsetDateTime.parse(createdAtStr).toLocalDateTime();
-
-                        Event event = Event.builder()
-                                .eventType(eventType)
-                                .repo(repoName)
-                                .createdAt(createdAt)
-                                .build();
-                        return GithubEvent.builder()
-                                .githubEventId(eventId)
-                                .userId(userId)
-                                .events(event)
-                                .build();
-                    })
+                    .map(eventMap -> convertToGithubEvent(eventMap, userId))
                     .collect(Collectors.toList());
 
             if (!newEvents.isEmpty()) {
@@ -775,19 +839,133 @@ public class GithubRestApiService {
                 }
             }
 
-            LocalDateTime latestEventTime = null;
-            for (String repoName : repoNames) {
-                Optional<GithubEvent> latestEventOpt = githubEventRepository
-                        .findTopByUserIdAndEvents_RepoOrderByEventsCreatedAtDesc(userId, repoName);
-                if (latestEventOpt.isPresent()) {
-                    LocalDateTime eventTime = latestEventOpt.get().getEvents().getCreatedAt();
-                    if (latestEventTime == null || eventTime.isAfter(latestEventTime)) {
-                        latestEventTime = eventTime;
-                    }
-                }
-            }
-            return latestEventTime != null && latestEventTime.isBefore(LocalDateTime.now().minusDays(90));
+            return isLatestEventOlderThan90Days(userId);
         }
+    }
+
+    /**
+     * 1. 메서드 설명: GitHub Events API를 호출하여 사용자의 새 repository 생성(CreateEvent) 이벤트가 발생했는지 확인하고,
+     *    신규 이벤트가 있을 경우 DB에 저장한 후, 신규 repository 생성 이벤트가 감지되면 true를 반환하는 메서드.
+     * 2. 로직:
+     *    - API 응답 이벤트가 없는 경우:
+     *         * DB에서 해당 사용자의 최신 이벤트를 조회한다.
+     *         * 최신 이벤트의 생성일이 현재 시간 기준 90일 이전이면 true, 90일 이내이면 false를 반환한다.
+     *         * DB에 이벤트가 하나도 없으면 새로운 이벤트가 있다고 판단하여 true를 반환한다.
+     *    - API 응답 이벤트가 있는 경우:
+     *         * API 응답에서 "CreateEvent" 이벤트 중 payload.ref_type이 "repository"인 이벤트만 필터링한다.
+     *         * DB에 저장된 repository 이름들을 조회한 후, DB에 저장되어 있지 않은 repository가 create되었다면 신규 이벤트로 판단하여
+     *           해당 이벤트를 GithubEvent Document 객체로 변환하고 DB에 저장한 후 true를 반환한다.
+     *         * 신규 이벤트가 없으면 DB의 최신 이벤트 생성 시간을 기준으로 90일 이전이면 true, 그렇지 않으면 false를 반환한다.
+     * 3. param:
+     *      String accessToken - GitHub API 접근에 사용되는 access token.
+     *      String userName - GitHub 사용자 이름.
+     *      int userId - 로컬 사용자 식별자.
+     * 4. return: boolean - 새 repository 생성(CreateEvent) 이벤트가 감지되면 true, 그렇지 않으면 false.
+     */
+    public boolean checkNewRepositoryCreationEvents(String accessToken, String userName, int userId) {
+        HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.APPLICATION_JSON));
+        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                "https://api.github.com/users/{userName}/events",
+                HttpMethod.GET,
+                request,
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {},
+                userName
+        );
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new GithubRepositoryNotFoundException("Failed to fetch events - HTTP " + response.getStatusCode());
+        }
+
+        List<Map<String, Object>> apiEvents = Optional.ofNullable(response.getBody())
+                .orElse(Collections.emptyList());
+
+        List<Map<String, Object>> createEvents = apiEvents.stream()
+                .filter(event -> "CreateEvent".equals(event.get("type")))
+                .filter(event -> {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> payload = (Map<String, Object>) event.get("payload");
+                    return payload != null && "repository".equals(payload.get("ref_type"));
+                })
+                .toList();
+
+        if (createEvents.isEmpty()) {
+            return isLatestEventOlderThan90Days(userId);
+        }
+
+        GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
+                .orElseThrow(() -> new GithubRepositoryNotFoundException("Failed to fetch repository for userId: " + userId));
+        Set<String> storedRepoNames = githubRepository.getRepositories().stream()
+                .map(Repository::getRepoName)
+                .collect(Collectors.toSet());
+
+        List<GithubEvent> newEvents = createEvents.stream()
+                .map(event -> {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> repoMap = (Map<String, Object>) event.get("repo");
+                    String repoName = repoMap != null ? (String) repoMap.get("name") : null;
+                    return repoName != null ? new AbstractMap.SimpleEntry<>(repoName, event) : null;
+                })
+                .filter(Objects::nonNull)
+                .filter(entry -> !storedRepoNames.contains(entry.getKey()))
+                .map(entry -> convertToGithubEvent(entry.getValue(), userId))
+                .collect(Collectors.toList());
+
+        if (!newEvents.isEmpty()) {
+            githubEventRepository.saveAll(newEvents);
+            return true;
+        }
+
+        return isLatestEventOlderThan90Days(userId);
+    }
+
+    /**
+     * 1. 메서드 설명: DB에서 해당 사용자의 최신 이벤트를 조회하고, 최신 이벤트의 생성일이 현재 시간 기준 90일 이전이면 true를 반환하는 메서드.
+     * 2. 로직:
+     *    - githubEventRepository를 통해 userId에 해당하는 최신 GithubEvent 객체를 조회한다.
+     *    - 조회된 이벤트의 생성일(createdAt)이 현재 시간 기준 90일 이전인지 비교한다.
+     *    - 이벤트가 없으면 기본값으로 true를 반환한다.
+     * 3. param:
+     *      int userId - 사용자의 로컬 식별자.
+     * 4. return: boolean - 최신 이벤트가 90일 이전이면 true, 아니면 false.
+     */
+    private boolean isLatestEventOlderThan90Days(int userId) {
+        return githubEventRepository.findTopByUserIdOrderByEventsCreatedAtDesc(userId)
+                .map(githubEvent -> githubEvent.getEvents().getCreatedAt().isBefore(LocalDateTime.now().minusDays(90)))
+                .orElse(true);
+    }
+
+    /**
+     * 1. 메서드 설명: API 이벤트 데이터(Map<String, Object>)를 GithubEvent 객체로 변환하는 메서드.
+     * 2. 로직:
+     *    - 이벤트 맵에서 이벤트 ID, 이벤트 타입, repo 객체, 생성 시간 문자열(created_at)을 추출한다.
+     *    - repo 객체에서 repository 이름을 추출한다.
+     *    - 생성 시간 문자열을 OffsetDateTime을 통해 LocalDateTime으로 변환한다.
+     *    - Event 객체와 GithubEvent 객체를 빌더 패턴으로 생성하여 반환한다.
+     * 3. param:
+     *      Map<String, Object> event - GitHub Events API에서 반환된 이벤트 데이터가 담긴 Map.
+     *      int userId - 사용자의 로컬 식별자.
+     * 4. return: GithubEvent - 변환된 GithubEvent 객체.
+     */
+    private GithubEvent convertToGithubEvent(Map<String, Object> event, int userId) {
+        String eventId = (String) event.get("id");
+        String eventType = (String) event.get("type");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> repoMap = (Map<String, Object>) event.get("repo");
+        String repoName = repoMap != null ? (String) repoMap.get("name") : null;
+        String createdAtStr = (String) event.get("created_at");
+        LocalDateTime createdAt = OffsetDateTime.parse(createdAtStr).toLocalDateTime();
+
+        Event eventObj = Event.builder()
+                .eventType(eventType)
+                .repo(repoName)
+                .createdAt(createdAt)
+                .build();
+
+        return GithubEvent.builder()
+                .githubEventId(eventId)
+                .userId(userId)
+                .events(eventObj)
+                .build();
     }
 
     // ============================================================

@@ -6,5 +6,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.Optional;
 
 public interface GithubAnalysisResultRepository extends MongoRepository<GithubAnalysisResult, String> {
-    Optional<GithubAnalysisResult> findBySelectedRepositoriesId(String selectedRepositoriesId);
+    Optional<GithubAnalysisResult> findFirstBySelectedRepositoriesIdOrderByAnalysisDateDesc(String selectedRepositoriesId);
+
+    Optional<GithubAnalysisResult> findBySelectedRepositoriesId(String selectedGithubRepositoryIds);
 }
