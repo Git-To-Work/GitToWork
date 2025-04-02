@@ -9,6 +9,7 @@ import 'package:gittowork/providers/auth_provider.dart';
 import 'package:gittowork/providers/github_analysis_provider.dart';
 import 'package:gittowork/providers/company_provider.dart';
 import 'package:gittowork/providers/company_detail_provider.dart';
+import 'package:gittowork/providers/search_provider.dart';
 
 // 레이아웃 파일 (스플래시로 쓸 화면)
 import 'layouts/no_appbar_no_bottom_nav_layout.dart';
@@ -34,6 +35,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
         ChangeNotifierProvider(create: (_) => CompanyProvider()),
         ChangeNotifierProvider(create: (_) => CompanyDetailProvider()),
+        ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
       ],
       child: MyApp(initialToken: token),
     ),

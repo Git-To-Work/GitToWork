@@ -5,26 +5,14 @@ class CompanyProvider extends ChangeNotifier {
   List<Map<String, dynamic>> companies = [];
 
   Future<void> loadCompaniesFromApi({
-    String? selectedRepositoriesId,
-    List<String>? techStacks,
-    List<String>? field,
-    String? career,
-    String? location,
-    String? keword,
-    String? page,
-    String? size,
-    bool reset = false, // 필터 변경 등 초기 로딩 시 true로 설정
+    required BuildContext context,
+    required String page,
+    required String size,
+    bool reset = false,
   }) async {
     try {
       final result = await CompanyApi.fetchRecommendedCompanies(
-        selectedRepositoriesId: selectedRepositoriesId,
-        techStacks: techStacks,
-        field: field,
-        career: career,
-        location: location,
-        keword: keword,
-        page: page,
-        size: size,
+        context: context,
       );
 
       final newCompanies = (result['companies'] as List<dynamic>)
@@ -39,7 +27,7 @@ class CompanyProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (error) {
-      debugPrint("CompanyData loadCompaniesFromApi error: $error");
+      debugPrint("loadCompaniesFromApi error: $error");
       rethrow;
     }
   }

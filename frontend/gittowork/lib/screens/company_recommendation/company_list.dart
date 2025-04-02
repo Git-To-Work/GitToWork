@@ -23,7 +23,7 @@ class _CompanyListState extends State<CompanyList> {
   void initState() {
     super.initState();
 
-    _fetchCompanies();
+    _fetchCompanies(reset: true);
 
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
@@ -42,7 +42,7 @@ class _CompanyListState extends State<CompanyList> {
     super.dispose();
   }
 
-  void _fetchCompanies() async {
+  void _fetchCompanies({bool reset = false}) async {
     setState(() {
       _isLoading = true;
     });
@@ -50,20 +50,14 @@ class _CompanyListState extends State<CompanyList> {
     try {
       await Provider.of<CompanyProvider>(context, listen: false)
           .loadCompaniesFromApi(
-        selectedRepositoriesId: "1",
-        techStacks: [],
-        field: [],
-        career: "",
-        location: "",
-        keword: "",
+        context: context,
         page: _currentPage.toString(),
         size: _pageSize.toString(),
+        reset: reset,
       );
 
-      final totalFetched =
-          Provider.of<CompanyProvider>(context, listen: false).companies.length;
-
-      if (totalFetched < _currentPage * _pageSize) {
+      final fetchedCount = Provider.of<CompanyProvider>(context, listen: false).companies.length;
+      if (fetchedCount < _currentPage * _pageSize) {
         _hasMore = false;
       }
     } catch (e) {
@@ -74,6 +68,7 @@ class _CompanyListState extends State<CompanyList> {
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

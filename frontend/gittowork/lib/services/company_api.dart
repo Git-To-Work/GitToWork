@@ -1,10 +1,13 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'api_service.dart';
+import 'package:gittowork/providers/search_provider.dart';
 
 class CompanyApi {
-
   /// 추천 기업 리스트 조회
   static Future<Map<String, dynamic>> fetchRecommendedCompanies({
+    required BuildContext context, // context 추가
     String? selectedRepositoriesId,
     List<String>? techStacks,
     List<String>? field,
@@ -14,11 +17,18 @@ class CompanyApi {
     String? page,
     String? size,
   }) async {
+    // 🔎 Provider 값 디버깅 출력
+    final filterProvider = Provider.of<SearchFilterProvider>(context, listen: false);
+    debugPrint("================= 🔍 Provider 필터 상태 =================");
+    debugPrint("Selected TechStacks: ${filterProvider.selectedTechs}");
+    debugPrint("Selected Tags: ${filterProvider.selectedTags}");
+    debugPrint("Selected Career: ${filterProvider.selectedCareer}");
+    debugPrint("Selected Regions: ${filterProvider.selectedRegions}");
+    debugPrint("=====================================================");
+
     final queryParameters = {
-      // 'selected_repositories_id': selectedRepositoriesId ?? "",
       'techStacks': techStacks ?? [],
       'field': field ?? [],
-      // 'career': career ?? 0,
       'location': location ?? "",
       'keword': keword ?? "",
       'page': page ?? 1.toString(),
@@ -33,7 +43,7 @@ class CompanyApi {
     final results = response.data['result'];
     debugPrint("=============================추천 기업 리스트 조회=====================================");
     debugPrint("응답 데이터 : ${response.data}");
-    debugPrint("=============================추천 기업 리스트 조회=====================================");
+    debugPrint("===================================================================================");
 
     if (response.statusCode == 200) {
       if (results == null) {
@@ -49,11 +59,10 @@ class CompanyApi {
   static Future<Map<String, dynamic>> fetchCompanyDetail(int companyId) async {
     final response = await FastApiService.dio.get('/select/company/$companyId');
     if (response.statusCode == 200) {
-      // 응답 데이터 구조에 따라 "result" 키를 사용합니다.
       final result = response.data['result'];
       debugPrint("=============================선택된 기업 데이터 조회=====================================");
       debugPrint("응답 데이터 : ${response.data}");
-      debugPrint("=============================선택된 기업 데이터 조회=====================================");
+      debugPrint("=========================================================================================");
       if (result is Map<String, dynamic>) {
         return result;
       } else {
@@ -79,7 +88,6 @@ class CompanyApi {
       throw Exception('좋아요 요청 실패: ${response.statusCode}');
     }
   }
-
 
   /// 기업 좋아요 삭제 요청
   static Future<String> unlikeCompany(int companyId) async {
@@ -166,6 +174,4 @@ class CompanyApi {
       throw Exception('스크랩 삭제 실패: ${response.statusCode}');
     }
   }
-
-
 }
