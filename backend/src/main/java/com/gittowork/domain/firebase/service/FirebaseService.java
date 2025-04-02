@@ -36,7 +36,7 @@ public class FirebaseService {
         User user = userRepository.findByGithubName(userName)
                 .orElseThrow(() -> new UserNotFoundException(userName));
 
-        user.setFcmToken(getTokenRequest.getToken());
+        user.setFcmToken(getTokenRequest.getFcmToken());
 
         userRepository.save(user);
 

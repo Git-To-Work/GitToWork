@@ -10,5 +10,5 @@ import lombok.*;
 @Builder
 public class GetTokenRequest {
     @NotNull
-    private String token;
+    private String fcmToken;
 }
