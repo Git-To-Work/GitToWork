@@ -20,7 +20,7 @@ public class CompanyInteractionController {
 
     @Operation(summary = "스크랩한 회사 목록 조회", description = "현재 인증된 사용자가 스크랩한 회사 목록을 조회합니다.")
     @GetMapping("/select/scrap")
-    public ApiResponse<?> getScrapCompany(@RequestBody InteractionGetRequest interactionGetRequest) {
+    public ApiResponse<?> getScrapCompany(@ModelAttribute InteractionGetRequest interactionGetRequest) {
         return ApiResponse.success(companyInteractionService.getScrapCompany(interactionGetRequest));
     }
 
@@ -38,7 +38,7 @@ public class CompanyInteractionController {
 
     @Operation(summary = "좋아요한 회사 목록 조회", description = "현재 인증된 사용자가 좋아요한 회사 목록을 조회합니다.")
     @GetMapping("/select/like")
-    public ApiResponse<?> getMyLikeCompany(@RequestBody InteractionGetRequest interactionGetRequest) {
+    public ApiResponse<?> getMyLikeCompany(@ModelAttribute InteractionGetRequest interactionGetRequest) {
         return ApiResponse.success(companyInteractionService.getMyLikeCompany(interactionGetRequest));
     }
 
@@ -56,7 +56,7 @@ public class CompanyInteractionController {
 
     @Operation(summary = "블랙리스트 회사 목록 조회", description = "현재 인증된 사용자가 블랙리스트에 등록한 회사 목록을 조회합니다.")
     @GetMapping("/select/blacklist")
-    public ApiResponse<?> getMyBlackList(@RequestBody InteractionGetRequest interactionGetRequest) {
+    public ApiResponse<?> getMyBlackList(@ModelAttribute InteractionGetRequest interactionGetRequest) {
         return ApiResponse.success(companyInteractionService.getMyBlackList(interactionGetRequest));
     }
 
