@@ -53,10 +53,28 @@ class QuestionView extends StatelessWidget {
             style: const TextStyle(fontSize: 20),
             textAlign: TextAlign.center,
           ),
+
         ),
         const SizedBox(height: 20),
-        if (quiz.type == '2choice') _buildTwoChoice(context),
-        if (quiz.type == 'ox') _buildOxChoice(context),
+        if (quiz.type == '2CHOICE')
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+               Text(
+                'A : ${quiz.choices[0]}',
+                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+               ),
+              const SizedBox(height: 10),
+              Text(
+                'B : ${quiz.choices[1]}',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              _buildTwoChoice(context),
+            ],
+          ),
+
+        if (quiz.type == 'OX') _buildOxChoice(context),
       ],
     );
   }

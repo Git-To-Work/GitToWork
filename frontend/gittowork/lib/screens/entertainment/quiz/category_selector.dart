@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 
-class CategorySelector extends StatelessWidget {
-  final String currentCategory;
-  final Function(String) onCategoryChanged;
+class CategorySelector extends StatefulWidget {
+  final String initialCategory;
+  final ValueChanged<String> onCategoryChanged;
 
   const CategorySelector({
-    Key? key,
-    required this.currentCategory,
+    super.key,
+    required this.initialCategory,
     required this.onCategoryChanged,
-  }) : super(key: key);
+  });
 
-  // 4가지 카테고리: 자소서(CL), 컴퓨터 과학(CS), 인성면접(FI), 기술 스택(SS)
+  @override
+  State<CategorySelector> createState() => _CategorySelectorState();
+}
+
+class _CategorySelectorState extends State<CategorySelector> {
+  // Widget이 만들어질 때, 부모에서 받은 카테고리를 초기값으로 세팅
+  late String _selectedCategory;
+
+  // 4가지 카테고리
   final Map<String, String> categories = const {
     'CL': '자소서',
     'CS': '컴퓨터 과학',
@@ -18,28 +26,47 @@ class CategorySelector extends StatelessWidget {
     'SS': '기술 스택',
   };
 
-  // 현재 카테고리에 따라 원의 위치를 대략적으로 결정 (간단 예시)
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory = widget.initialCategory;
+  }
+
+  // 선택된 카테고리에 따라 원 위치를 계산
   Offset _calcCircleOffset(String category) {
     switch (category) {
-      case 'CL': // 자소서
-        return const Offset(0, 0);
-      case 'CS': // 컴퓨터 과학
-        return const Offset(20, 0);
-      case 'FI': // 인성면접
-        return const Offset(0, 20);
-      case 'SS': // 기술 스택
-        return const Offset(20, 20);
+      case 'CL': // 좌상단
+        return const Offset(5, 5);
+      case 'CS': // 우상단
+        return const Offset(45, 5);
+      case 'FI': // 좌하단
+        return const Offset(5, 45);
+      case 'SS': // 우하단
+        return const Offset(45, 45);
       default:
-      // 선택되지 않았을 때 (빈 문자열 등)
-        return const Offset(10, 10);
+      // 선택되지 않았을 때 (임의로 중앙)
+        return const Offset(27.5, 10);
     }
+  }
+
+  void _handleCategoryTap(String newCategory) {
+    // 로컬 State를 먼저 바꾸어 원 이동 애니메이션 시작
+    setState(() {
+      _selectedCategory = newCategory;
+    });
+    // 그리고 부모(QuizScreen)에게도 알림 (새 퀴즈 가져오기 등)
+    widget.onCategoryChanged(newCategory);
   }
 
   @override
   Widget build(BuildContext context) {
-    final Offset circleOffset = _calcCircleOffset(currentCategory);
+    final offset = _calcCircleOffset(_selectedCategory);
 
-    return SizedBox(
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFF454545).withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(5),
+      ),
       height: 200,
       child: Stack(
         clipBehavior: Clip.none,
@@ -48,14 +75,21 @@ class CategorySelector extends StatelessWidget {
           Positioned(
             top: 0,
             left: 0,
-            child: GestureDetector(
-              onTap: () => onCategoryChanged('CL'),
-              child: Text(
-                categories['CL']!,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: currentCategory == 'CL' ? FontWeight.bold : FontWeight.normal,
-                  color: currentCategory == 'CL' ? Colors.blue : Colors.black,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(30, 30, 0, 0),
+              child: GestureDetector(
+                onTap: () => _handleCategoryTap('CL'),
+                child: Text(
+                  categories['CL']!,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: _selectedCategory == 'CL'
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: _selectedCategory == 'CL'
+                        ? Colors.blue
+                        : Colors.black,
+                  ),
                 ),
               ),
             ),
@@ -64,14 +98,21 @@ class CategorySelector extends StatelessWidget {
           Positioned(
             top: 0,
             right: 0,
-            child: GestureDetector(
-              onTap: () => onCategoryChanged('CS'),
-              child: Text(
-                categories['CS']!,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: currentCategory == 'CS' ? FontWeight.bold : FontWeight.normal,
-                  color: currentCategory == 'CS' ? Colors.blue : Colors.black,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 30, 30, 0),
+              child: GestureDetector(
+                onTap: () => _handleCategoryTap('CS'),
+                child: Text(
+                  categories['CS']!,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: _selectedCategory == 'CS'
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: _selectedCategory == 'CS'
+                        ? Colors.blue
+                        : Colors.black,
+                  ),
                 ),
               ),
             ),
@@ -80,14 +121,21 @@ class CategorySelector extends StatelessWidget {
           Positioned(
             bottom: 0,
             left: 0,
-            child: GestureDetector(
-              onTap: () => onCategoryChanged('FI'),
-              child: Text(
-                categories['FI']!,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: currentCategory == 'FI' ? FontWeight.bold : FontWeight.normal,
-                  color: currentCategory == 'FI' ? Colors.blue : Colors.black,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(30, 0, 0, 30),
+              child: GestureDetector(
+                onTap: () => _handleCategoryTap('FI'),
+                child: Text(
+                  categories['FI']!,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: _selectedCategory == 'FI'
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: _selectedCategory == 'FI'
+                        ? Colors.blue
+                        : Colors.black,
+                  ),
                 ),
               ),
             ),
@@ -96,44 +144,45 @@ class CategorySelector extends StatelessWidget {
           Positioned(
             bottom: 0,
             right: 0,
-            child: GestureDetector(
-              onTap: () => onCategoryChanged('SS'),
-              child: Text(
-                categories['SS']!,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: currentCategory == 'SS' ? FontWeight.bold : FontWeight.normal,
-                  color: currentCategory == 'SS' ? Colors.blue : Colors.black,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
+              child: GestureDetector(
+                onTap: () => _handleCategoryTap('SS'),
+                child: Text(
+                  categories['SS']!,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: _selectedCategory == 'SS'
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: _selectedCategory == 'SS'
+                        ? Colors.blue
+                        : Colors.black,
+                  ),
                 ),
               ),
             ),
           ),
-          // 중앙에 박스 (C5D5FF 배경) + 안의 움직이는 원
+          // 중앙 박스 (푸른색 박스 80x80) + AnimatedPositioned로 움직이는 흰 원 (30x30)
           Center(
             child: Container(
-              width: 60,
-              height: 60,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 color: const Color(0xFFC5D5FF),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    offset: const Offset(2, 2),
-                    blurRadius: 4,
-                    spreadRadius: -2,
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Stack(
                 children: [
+                  // AnimatedPositioned로 offset.y / offset.x 변경 시 애니메이션
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 300),
-                    left: circleOffset.dx,
-                    top: circleOffset.dy,
+                    curve: Curves.easeInOut,
+                    left: offset.dx,
+                    top: offset.dy,
                     child: Container(
-                      width: 25,
-                      height: 25,
+                      width: 30,
+                      height: 30,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
