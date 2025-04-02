@@ -48,7 +48,7 @@ public class GithubService {
     @Transactional(readOnly = true)
     public GetGithubAnalysisByRepositoryResponse getGithubAnalysisByRepository(String selectedRepositoryId) {
         GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
-                .findBySelectedRepositoriesId(selectedRepositoryId)
+                .findFirstBySelectedRepositoriesIdOrderByAnalysisDateDesc(selectedRepositoryId)
                 .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Result not found"));
 
         int overallScoreValue = githubAnalysisResult.getOverallScore();
