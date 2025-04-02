@@ -5,6 +5,7 @@ pipeline {
         COMPOSE_FILE = 'CI-CD/docker-compose.yml'
         GIT_CREDENTIAL = 'c103'
         BACKEND_CRED  = 'backend-properties'
+        FIREBASE_CRED = 'firebase-key'
         FASTAPI_CRED  = 'fastapi-env'
         MATTERMOST_ENDPOINT = 'https://meeting.ssafy.com/hooks/kw1jqcjjejgeiqq3mbwzuixzkh'
         MATTERMOST_CHANNEL = 'jenkins-build-c103'
@@ -25,6 +26,14 @@ pipeline {
                         sh '''
                             mkdir -p backend/src/main/resources
                             cp "$BACKEND_PROP_FILE" backend/src/main/resources/application.properties
+                        '''
+                    }
+
+                    withCredentials([file(credentialsId: "${FIREBASE_CRED}", variable: 'FIREBASE_SECRET_KEY_FILE')]) {
+                        echo "Injecting backend credentials..."
+                        sh '''
+                            mkdir -p backend/src/main/resources
+                            cp "$FIREBASE_SECRET_KEY_FILE" backend/src/main/resources/gittowork-firebase-key.json
                         '''
                     }
                     
