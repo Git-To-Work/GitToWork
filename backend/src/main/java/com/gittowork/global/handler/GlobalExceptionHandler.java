@@ -215,4 +215,11 @@ public class GlobalExceptionHandler {
         String message = e.getMessage() == null ? ErrorCode.INVALID_ARGUMENT.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ARGUMENT.getCode(), message);
     }
+
+    @ExceptionHandler(FirebaseMessageException.class)
+    public ResponseEntity<?> exceptionHandler(FirebaseMessageException e) {
+        log.warn("FirebaseMessageException: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
+    }
 }

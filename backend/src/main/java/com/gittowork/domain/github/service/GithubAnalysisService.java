@@ -1,6 +1,7 @@
 package com.gittowork.domain.github.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.gittowork.domain.firebase.service.FirebaseService;
 import com.gittowork.domain.github.entity.*;
 import com.gittowork.domain.github.model.analysis.ActivityMetrics;
 import com.gittowork.domain.github.model.analysis.JavaPenaltyResult;
@@ -18,12 +19,10 @@ import com.gittowork.domain.github.repository.GithubRepoRepository;
 import com.gittowork.domain.github.repository.SelectedRepoRepository;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
-import com.gittowork.global.exception.GithubAnalysisException;
-import com.gittowork.global.exception.GithubRepositoryNotFoundException;
-import com.gittowork.global.exception.SonarAnalysisException;
-import com.gittowork.global.exception.UserNotFoundException;
+import com.gittowork.global.exception.*;
 import com.gittowork.global.service.GithubRestApiService;
 import com.gittowork.global.service.GptService;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
@@ -55,6 +54,7 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class GithubAnalysisService {
 
+    private final FirebaseService firebaseService;
     @Value("${sonar.host.url}")
     private String sonarHostUrl;
 
@@ -90,6 +90,12 @@ public class GithubAnalysisService {
         User user = userRepository.findByGithubName(userName)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         analysisSelectedRepositories(user.getId(), selectedRepositories);
+
+        try {
+            firebaseService.sendMessage(user, "Github 분석 완료", user.getGithubName() + "님, Github 분석이 완료되었습니다. \n 지금 바로 확인하세요!", "GithubAnalysis");
+        } catch (FirebaseMessagingException e) {
+            throw new FirebaseMessageException("Firebase message send failed");
+        }
     }
 
     /**

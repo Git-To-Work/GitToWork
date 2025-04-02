@@ -87,4 +87,12 @@ public class SwaggerConfig {
                 .pathsToMatch("/quiz/**")
                 .build();
     }
+
+    @Bean
+    public GroupedOpenApi firebaseApi() {
+        return GroupedOpenApi.builder()
+                .group("firebase API")
+                .pathsToMatch("/firebase/**")
+                .build();
+    }
 }
