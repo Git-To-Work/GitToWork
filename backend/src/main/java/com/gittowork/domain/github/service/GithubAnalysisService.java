@@ -193,12 +193,18 @@ public class GithubAnalysisService {
 
         try {
             GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
+            log.info("GptAnalysisResult: {}", gptAnalysisResult);
+
             githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
             githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
             githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
+
+            log.info("GithubAnalysisResult with gptAnalysisResult: {}", githubAnalysisResult);
+
         } catch (JsonProcessingException e) {
             throw new GithubAnalysisException("Github analysis failed: " + e.getMessage());
         }
+
         githubAnalysisResultRepository.save(githubAnalysisResult);
     }
 
