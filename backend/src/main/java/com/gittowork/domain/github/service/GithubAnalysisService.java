@@ -3,14 +3,19 @@ package com.gittowork.domain.github.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.gittowork.domain.github.entity.*;
 import com.gittowork.domain.github.model.analysis.ActivityMetrics;
+import com.gittowork.domain.github.model.analysis.JavaPenaltyResult;
 import com.gittowork.domain.github.model.analysis.RepositoryResult;
 import com.gittowork.domain.github.model.analysis.Stats;
 import com.gittowork.domain.github.model.commit.Commit;
 import com.gittowork.domain.github.model.repository.Repository;
-import com.gittowork.domain.github.model.sonar.Measure;
 import com.gittowork.domain.github.model.sonar.MeasuresResponse;
 import com.gittowork.domain.github.model.sonar.SonarResponse;
-import com.gittowork.domain.github.repository.*;
+import com.gittowork.domain.github.repository.GithubAnalysisResultRepository;
+import com.gittowork.domain.github.repository.GithubCommitRepository;
+import com.gittowork.domain.github.repository.GithubIssueRepository;
+import com.gittowork.domain.github.repository.GithubPullRequestRepository;
+import com.gittowork.domain.github.repository.GithubRepoRepository;
+import com.gittowork.domain.github.repository.SelectedRepoRepository;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.GithubAnalysisException;
@@ -19,8 +24,8 @@ import com.gittowork.global.exception.SonarAnalysisException;
 import com.gittowork.global.exception.UserNotFoundException;
 import com.gittowork.global.service.GithubRestApiService;
 import com.gittowork.global.service.GptService;
-import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,9 +40,9 @@ import org.springframework.web.client.RestTemplate;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -53,8 +58,11 @@ public class GithubAnalysisService {
     @Value("${sonar.host.url}")
     private String sonarHostUrl;
 
-    @Value("${sonar.login.token}")
-    private String sonarLoginToken;
+    @Value("${sonar.analysis.token}")
+    private String sonarAnalysisToken;
+
+    @Value("${sonar.user.token}")
+    private String sonarUserToken;
 
     private final UserRepository userRepository;
     private final GithubRestApiService githubRestApiService;
@@ -66,7 +74,6 @@ public class GithubAnalysisService {
     private final GithubPullRequestRepository githubPullRequestRepository;
     private final GithubIssueRepository githubIssueRepository;
     private final RestTemplate restTemplate;
-
 
     /**
      * 1. 메서드 설명: 비동기로 선택된 repository에 대해 GitHub 분석을 수행하는 API.
@@ -86,40 +93,40 @@ public class GithubAnalysisService {
     }
 
     /**
-     * 1. 메서드 설명: GitHub API를 통해 사용자 관련 repository, commit, repository language, issues, pull requests, 코드 정보를 비동기적으로 조회 및 저장하는 메서드.
+     * 1. 메서드 설명: GitHub API를 통해 사용자 관련 repository, commit, language, issue, pull request 정보를 비동기적으로 조회 및 저장한다.
      * 2. 로직:
-     *    - githubRestApiService의 메서드들을 호출하여 각 GitHub 관련 정보를 순차적으로 저장한다.
-     *    - 각 저장 작업은 내부적으로 GitHub API와의 통신을 통해 데이터를 조회한 후 데이터베이스에 저장한다.
-     *    - @Async 어노테이션이 적용되어 해당 메서드는 별도 쓰레드에서 실행되므로 호출 후 바로 리턴된다.
+     *    - githubRestApiService의 각 메서드를 호출하여 관련 정보를 조회 후 데이터베이스에 저장한다.
      * 3. param:
-     *      accessToken - GitHub API 접근에 사용되는 access token.
-     *      userName    - GitHub 사용자 이름.
-     *      userId      - 로컬 사용자 식별자.
+     *      String accessToken - GitHub API 접근에 사용되는 access token.
+     *      String userName - GitHub 사용자 이름.
+     *      int userId - 로컬 사용자 식별자.
      * 4. return: 없음.
      */
     @Async
     public void saveUserGithubRepositoryInfo(String accessToken, String userName, int userId) {
-        GithubRepository userGithubRepository = githubRestApiService.saveUserGithubRepository(accessToken, userName, userId);
+        var userGithubRepository = githubRestApiService.saveUserGithubRepository(accessToken, userName, userId);
         githubRestApiService.saveUserGithubCommits(accessToken, userName, userId);
         githubRestApiService.saveUserRepositoryLanguage(accessToken, userName, userId);
         githubRestApiService.saveGithubIssues(accessToken, userName, userId);
         githubRestApiService.saveGithubPullRequests(accessToken, userName, userId);
-        githubRestApiService.checkNewGithubEvents(accessToken, userName, userId, userGithubRepository.getRepositories().stream()
-                .map(Repository::getRepoName)
-                .collect(Collectors.toList()));
+        githubRestApiService.checkNewGithubEvents(
+                accessToken,
+                userName,
+                userId,
+                userGithubRepository.getRepositories().stream().map(Repository::getRepoName).collect(Collectors.toList())
+        );
         log.info("{}: Github repository info saved", userName);
     }
 
     /**
-     * 1. 메서드 설명: GitHub API를 통해 선택된 repository들을 분석하고, SonarQube 및 GitHub 관련 정보를 조회하여 분석 결과를 저장하는 비동기 메서드.
+     * 1. 메서드 설명: 선택된 repository들에 대해 SonarQube 분석 및 GitHub 관련 정보를 조회하여 최종 분석 결과를 저장한다.
      * 2. 로직:
-     *    - 사용자와 연결된 GitHub repository 정보를 조회 후, 선택된 repository들로 필터링한다.
-     *    - 각 repository별로 SonarQube 분석과 GitHub commit, pull request, issue 정보를 조회하여 RepositoryResult 객체를 생성한다.
-     *    - 전체 언어 비율, 점수, star, commit, PR, issue 합계를 계산하고, ActivityMetrics 및 GithubAnalysisResult를 생성한다.
-     *    - GPT 서비스를 통해 추가 분석 후 최종 분석 결과를 데이터베이스에 저장한다.
+     *    - userId에 해당하는 모든 repository를 조회한 후 선택된 repository들로 필터링한다.
+     *    - 각 repository에 대해 processRepository()를 호출하여 개별 분석 결과를 생성하고 통계값을 누적한다.
+     *    - 전체 언어 비율과 점수, 활동 지표(ActivityMetrics)를 계산한 후, GPT 서비스로 추가 분석하고 결과를 저장한다.
      * 3. param:
-     *      userId - 로컬 사용자 식별자.
-     *      selectedRepositoryIds - 선택된 repository들의 식별자 배열.
+     *      int userId - 로컬 사용자 식별자.
+     *      int[] selectedRepositoryIds - 분석 대상 repository들의 repoId 배열.
      * 4. return: 없음.
      */
     private void analysisSelectedRepositories(int userId, int[] selectedRepositoryIds) {
@@ -127,7 +134,14 @@ public class GithubAnalysisService {
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
 
         List<Repository> selectedRepositories = githubRepository.getRepositories().stream()
-                .filter(repo -> Arrays.stream(selectedRepositoryIds).anyMatch(id -> id == repo.getRepoId()))
+                .filter(repo -> {
+                    for (int id : selectedRepositoryIds) {
+                        if (repo.getRepoId() == id) {
+                            return true;
+                        }
+                    }
+                    return false;
+                })
                 .collect(Collectors.toList());
 
         SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndRepositories(userId, selectedRepositories)
@@ -177,31 +191,30 @@ public class GithubAnalysisService {
 
         log.info("GithubAnalysisResult: {}", githubAnalysisResult);
 
-//        try {
-//            GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
-//            githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
-//            githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
-//            githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
-//        } catch (JsonProcessingException e) {
-//            throw new GithubAnalysisException("Github analysis failed" + e.getMessage());
-//        }
-//        githubAnalysisResultRepository.save(githubAnalysisResult);
+        try {
+            GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
+            githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
+            githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
+            githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
+        } catch (JsonProcessingException e) {
+            throw new GithubAnalysisException("Github analysis failed: " + e.getMessage());
+        }
+        githubAnalysisResultRepository.save(githubAnalysisResult);
     }
 
     /**
-     * 1. 메서드 설명: 단일 repository에 대해 SonarQube 분석과 GitHub 관련 정보를 조회하여 RepositoryResult 객체를 생성하는 메서드.
+     * 1. 메서드 설명: 단일 repository에 대해 SonarQube 분석과 GitHub 커밋/PR/Issue 정보를 조회하여 RepositoryResult를 생성한다.
      * 2. 로직:
-     *    - repository를 클론한 후, SonarQube 스캐너를 실행하여 분석 결과를 조회한다.
-     *    - GitHub commit, pull request, issue 정보를 조회하여 Stats 객체를 생성하고 RepositoryResult에 설정한다.
-     *    - commit 날짜를 기반으로 commit 빈도를 계산하고, 언어별 비율을 누적 통계에 반영한다.
+     *    - repository를 클론하고 projectKey를 추출한 후, SonarQube 분석을 위한 스캐너를 실행한다.
+     *    - 분석 결과를 pollAndParseAnalysisResult()로 받아오고, GitHub 관련 통계(커밋, PR, Issue, 언어 분포)를 계산하여 RepositoryResult를 생성한다.
      * 3. param:
-     *      repository - 분석 대상 repository.
-     *      totalLanguageRatio - 전체 언어 비율 통계가 저장되는 Map.
-     *      totalOverallScore - 전체 점수를 누적하는 AtomicInteger.
-     *      totalStars - 전체 star 수를 누적하는 AtomicInteger.
-     *      totalCommits - 전체 commit 수를 누적하는 AtomicInteger.
-     *      totalPRs - 전체 pull request 수를 누적하는 AtomicInteger.
-     *      totalIssues - 전체 issue 수를 누적하는 AtomicInteger.
+     *      Repository repository - 분석 대상 repository.
+     *      Map<String, Integer> totalLanguageRatio - 전체 언어 분포 누적 Map.
+     *      AtomicInteger totalOverallScore - 전체 점수 누적 변수.
+     *      AtomicInteger totalStars - 전체 star 수 누적 변수.
+     *      AtomicInteger totalCommits - 전체 commit 수 누적 변수.
+     *      AtomicInteger totalPRs - 전체 pull request 수 누적 변수.
+     *      AtomicInteger totalIssues - 전체 issue 수 누적 변수.
      * 4. return: RepositoryResult 객체.
      */
     private RepositoryResult processRepository(Repository repository,
@@ -216,77 +229,47 @@ public class GithubAnalysisService {
             File localRepo = cloneRepository(repositoryPathUrl);
             String projectKey = extractProjectKey(repositoryPathUrl);
 
-            String command = "mkdir -p /pmd_result/" + projectKey + " ; " +
-                    "whoami ; " +
-                    "pmd check -d \"" + localRepo.getAbsolutePath() + "\" -R rulesets/java/quickstart.xml -f xml -r /pmd_result/" + projectKey + "/pmd-report.xml ; " +
-                    "cat /app/scripts/pmd_to_sonar.py ; " +
-                    "cat /pmd_result/" + projectKey + "/pmd-report.xml ; " +
-                    "python3 /app/scripts/pmd_to_sonar.py /pmd_result/" + projectKey + "/pmd-report.xml /pmd_result/" + projectKey + "/pmd-report.json ; " +
-                    "sonar-scanner -X -Dsonar.log.level=TRACE " +
-                    "-Dsonar.projectBaseDir=\"" + localRepo.getAbsolutePath() + "\" " +
-                    "-Dsonar.projectKey=" + projectKey + " " +
-                    "-Dsonar.projectName=\"" + repository.getFullName() + "\" " +
-                    "-Dsonar.sources=. " +
-                    "-Dsonar.host.url=" + sonarHostUrl + " " +
-                    "-Dsonar.login=" + sonarLoginToken + " " +
-                    "-Dsonar.exclusions=**/*.java " +
-                    "-Dsonar.externalIssuesReportPaths=/pmd_result/" + projectKey + "/pmd-report.json";
-
-            ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", command);
-
-            Map<String, String> env = processBuilder.environment();
-            for (Map.Entry<String, String> entry : env.entrySet()) {
-                log.info(entry.getKey() + "=" + entry.getValue());
-            }
-
+            ProcessBuilder processBuilder = getProcessBuilder(repository, projectKey, localRepo);
             processBuilder.directory(localRepo);
+
             Process process = processBuilder.start();
 
             Thread stdoutThread = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        log.info(line);
-                    }
-                } catch (Exception e) {
+                    reader.lines().forEach(log::info);
+                } catch (IOException e) {
                     log.error("Error reading stdout", e);
                 }
             });
-
             Thread stderrThread = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        log.error(line);
-                    }
-                } catch (Exception e) {
+                    reader.lines().forEach(log::error);
+                } catch (IOException e) {
                     log.error("Error reading stderr", e);
                 }
             });
-
             stdoutThread.start();
             stderrThread.start();
 
             int exitCode = process.waitFor();
-
             stdoutThread.join();
             stderrThread.join();
 
             if (exitCode != 0) {
-                log.info("Github analysis exited with exit code: " + exitCode);
+                log.info("Github analysis exited with exit code: {}", exitCode);
                 throw new SonarAnalysisException("SonarQube analysis failed for project: " + repositoryPathUrl);
             }
 
             RepositoryResult result = pollAndParseAnalysisResult(projectKey, repository.getRepoId());
 
             GithubCommit githubCommit = githubCommitRepository.findByRepoId(repository.getRepoId())
-                    .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
+                    .orElseThrow(() -> new GithubRepositoryNotFoundException("Github commit repository not found"));
             List<GithubPullRequest> githubPullRequests = githubPullRequestRepository.findAllByRepoId(repository.getRepoId())
-                    .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
+                    .orElseThrow(() -> new GithubRepositoryNotFoundException("Github pull requests not found"));
             List<GithubIssue> githubIssues = githubIssueRepository.findAllByRepoId(repository.getRepoId())
-                    .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
+                    .orElseThrow(() -> new GithubRepositoryNotFoundException("Github issues not found"));
 
-            int commitCount = githubCommit.getCommits().size();
+            int commitCount = Optional.ofNullable(githubCommit.getCommits()).map(List::size).orElse(0);
             int prCount = githubPullRequests.size();
             int issueCount = githubIssues.size();
 
@@ -303,7 +286,7 @@ public class GithubAnalysisService {
             LocalDateTime latestDate = commits.get(0).getCommitDate();
             LocalDateTime oldestDate = commits.get(commits.size() - 1).getCommitDate();
             int daysDifference = (int) ChronoUnit.DAYS.between(oldestDate, latestDate);
-            int commitFrequency = daysDifference > 0 ? commitCount / daysDifference : commitCount;
+            double commitFrequency = daysDifference > 0 ? (double) commitCount / daysDifference : commitCount;
             result.setCommitFrequency(commitFrequency);
 
             result.getLanguages().forEach((lang, count) ->
@@ -323,11 +306,47 @@ public class GithubAnalysisService {
     }
 
     /**
-     * 1. 메서드 설명: 주어진 repository URL로부터 로컬에 repository를 클론하는 메서드.
+     * 1. 메서드 설명: 주어진 repository, projectKey, 로컬 디렉토리를 기반으로 SonarQube 및 PMD 분석 명령을 실행할 ProcessBuilder를 생성한다.
      * 2. 로직:
-     *    - 지정된 디렉토리에 repository가 존재하지 않을 경우, Git 클라이언트를 이용해 클론한다.
+     *    - 분석에 필요한 명령어 문자열을 구성한 후, bash -c 명령을 통해 ProcessBuilder를 생성한다.
      * 3. param:
-     *      repoUrl - 클론할 repository의 URL.
+     *      Repository repository - 분석 대상 repository.
+     *      String projectKey - SonarQube 프로젝트 키.
+     *      File localRepo - 클론된 로컬 repository 디렉토리.
+     * 4. return: ProcessBuilder 객체.
+     */
+    private ProcessBuilder getProcessBuilder(Repository repository, String projectKey, File localRepo) {
+        String command = String.format(
+                "mkdir -p /pmd_result/%s ; " +
+                        "pmd check -d \"%s\" -R rulesets/java/quickstart.xml -f xml -r /pmd_result/%s/pmd-report.xml ; " +
+                        "python3 /app/scripts/pmd_to_sonar.py /pmd_result/%s/pmd-report.xml /pmd_result/%s/pmd-report.json ; " +
+                        "sonar-scanner -X -Dsonar.log.level=TRACE " +
+                        "-Dsonar.projectBaseDir=\"%s\" " +
+                        "-Dsonar.projectKey=%s " +
+                        "-Dsonar.projectName=\"%s\" " +
+                        "-Dsonar.sources=. " +
+                        "-Dsonar.host.url=%s " +
+                        "-Dsonar.login=%s " +
+                        "-Dsonar.exclusions=**/*.java " +
+                        "-Dsonar.externalIssuesReportPaths=/pmd_result/%s/pmd-report.json",
+                projectKey, localRepo.getAbsolutePath(), projectKey,
+                projectKey, projectKey,
+                localRepo.getAbsolutePath(),
+                projectKey,
+                repository.getFullName(),
+                sonarHostUrl,
+                sonarAnalysisToken,
+                projectKey
+        );
+        return new ProcessBuilder("bash", "-c", command);
+    }
+
+    /**
+     * 1. 메서드 설명: 주어진 repository URL을 기반으로 로컬에 repository를 클론한다.
+     * 2. 로직:
+     *    - URL에서 projectKey를 추출한 후, 지정된 경로에 디렉토리가 없으면 JGit을 사용하여 클론한다.
+     * 3. param:
+     *      String repoUrl - 클론할 repository의 URL.
      * 4. return: 클론된 로컬 repository의 File 객체.
      */
     private File cloneRepository(String repoUrl) {
@@ -348,12 +367,12 @@ public class GithubAnalysisService {
     }
 
     /**
-     * 1. 메서드 설명: repository URL에서 organization과 project 이름을 추출하여 프로젝트 키를 생성하는 메서드.
+     * 1. 메서드 설명: 주어진 repository URL에서 organization과 project 이름을 추출하여 프로젝트 키를 생성한다.
      * 2. 로직:
-     *    - URL을 "/"로 분리한 후, organization과 project 이름을 조합하여 프로젝트 키를 생성한다.
+     *    - URL을 "/"로 분리한 후, 마지막 두 부분(organization, project)을 결합하여 projectKey를 생성한다.
      * 3. param:
-     *      repoUrl - repository의 URL.
-     * 4. return: 생성된 프로젝트 키.
+     *      String repoUrl - repository의 URL.
+     * 4. return: 생성된 projectKey 문자열.
      */
     private String extractProjectKey(String repoUrl) {
         String[] parts = repoUrl.split("/");
@@ -363,21 +382,15 @@ public class GithubAnalysisService {
     }
 
     /**
-     * 1. 메서드 설명: SonarQube와 PMD 외부 이슈 데이터를 통합하여 프로젝트 분석 결과를 폴링하고 파싱하여
-     *    RepositoryResult 객체를 생성하는 메서드.
+     * 1. 메서드 설명: SonarQube와 PMD 분석 결과 및 GitHub 데이터를 통합하여 최종 RepositoryResult를 생성한다.
      * 2. 로직:
-     *    - SonarQube API를 반복 호출하여 분석 결과(비자바 언어 메트릭)를 가져오고, 이를 기반으로 기본 penalty를 계산한다.
-     *    - 클론된 리포지토리 디렉토리에서 파일 시스템을 통해 Java 소스 파일의 총 라인 수(ncloc)를 직접 계산하여,
-     *      언어 분포에 "java" 항목으로 포함시킨다.
-     *    - SonarQube가 제공하는 언어 분포를 정수형 Map으로 변환한다.
-     *    - SonarQube 프로젝트 측정 지표를 조회하여, 비자바 언어의 품질 점수를 산출한다.
-     *    - PMD 외부 이슈 데이터를 조회하여 자바 코드에 대한 penalty를 계산하고, 이를 통해 자바 품질 점수를 산출한다.
-     *    - 최종 점수는 비자바 분석 결과(내장 메트릭 기반)에서 자바 penalty를 차감하여 산출하며,
-     *      통합된 언어 분포와 언어 품질 점수를 포함하는 RepositoryResult 객체를 생성한다.
+     *    - SonarQube API를 호출하여 비자바 메트릭 기반 penalty를 계산하고, 언어 분포 정보를 조회한다.
+     *    - 로컬 repository에서 Java 파일의 총 라인 수(ncloc)를 계산하여 언어 분포에 추가한다.
+     *    - PMD API를 통해 자바 penalty를 계산하고, 이를 기반으로 자바 품질 점수를 산출한 후 최종 점수를 계산한다.
      * 3. param:
-     *      projectKey - SonarQube 프로젝트 키 (프로젝트 고유 식별자).
-     *      repoId - 분석 대상 repository의 식별자.
-     * 4. return: 통합 분석 결과(비자바 메트릭과 자바 PMD penalty를 모두 반영)를 포함하는 RepositoryResult 객체.
+     *      String projectKey - SonarQube 프로젝트 키.
+     *      int repoId - 분석 대상 repository의 식별자.
+     * 4. return: RepositoryResult 객체.
      */
     private RepositoryResult pollAndParseAnalysisResult(String projectKey, int repoId) {
         Map<String, Double> weights = Map.of(
@@ -387,98 +400,67 @@ public class GithubAnalysisService {
                 "vulnerabilities", 50.0,
                 "duplicated_lines_density", 10.0
         );
-        int nonJavaScore = 100;
+        final int BASE_SCORE = 100;
         double sonarTotalPenalty = 0.0;
-        while (true) {
-            SonarResponse sonarResponse = fetchAnalysisResult(projectKey);
-            if (sonarResponse.isSuccessful()) {
-                sonarTotalPenalty = sonarResponse.getProjectStatus().getConditions().stream()
-                        .mapToDouble(condition -> {
-                            double weight = weights.getOrDefault(condition.getMetricKey(), 10.0);
-                            if ("ERROR".equalsIgnoreCase(condition.getStatus())) {
-                                try {
-                                    double actual = Double.parseDouble(condition.getActualValue());
-                                    double threshold = Double.parseDouble(condition.getErrorThreshold());
-                                    return weight * Math.min(actual / threshold, 1.0);
-                                } catch (NumberFormatException e) {
-                                    return weight;
-                                }
-                            }
-                            return 0.0;
-                        }).sum();
-                nonJavaScore = (int) Math.max(0, 100 - sonarTotalPenalty);
-                break;
-            } else if (sonarResponse.isError()) {
-                throw new SonarAnalysisException("SonarQube analysis returned error: " + sonarResponse.getErrorMessage());
-            }
+
+        SonarResponse sonarResponse = fetchAnalysisResult(projectKey);
+        if (sonarResponse == null || sonarResponse.getComponent() == null) {
+            throw new SonarAnalysisException("Failed to fetch analysis result.");
         }
 
-        Map<String, Double> languageDistribution = fetchLanguageDistribution(projectKey);
+        for (SonarResponse.Measure measure : sonarResponse.getComponent().getMeasures()) {
+            String metric = measure.getMetric();
+            double weight = weights.getOrDefault(metric, 10.0);
+            double value;
+            try {
+                value = Double.parseDouble(measure.getValue());
+            } catch (NumberFormatException e) {
+                continue;
+            }
 
+            double penalty = switch (metric) {
+                case "coverage" -> weight * ((100.0 - value) / 100.0);
+                case "duplicated_lines_density" -> weight * (value / 100.0);
+                case "bugs", "code_smells", "vulnerabilities" -> weight * Math.min(1.0, Math.log10(value + 1) / 2.0);
+                default -> 0.0;
+            };
+            sonarTotalPenalty += penalty;
+        }
+
+        int nonJavaScore = (int) Math.max(0, BASE_SCORE - sonarTotalPenalty);
+
+        Map<String, Double> languageDistribution = fetchLanguageDistribution(projectKey);
         File repoDir = new File("/tmp/repositories/" + projectKey);
         double javaLoc = calculateJavaNcloc(repoDir);
         if (javaLoc > 0) {
             languageDistribution.put("java", javaLoc);
         }
-
         Map<String, Integer> languageDistributionInt = languageDistribution.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().intValue()));
 
         Map<String, String> projectMeasures = fetchProjectMeasures(projectKey);
-        Map<String, Double> languageQualityScores = computeQualityScoreByLanguage(projectMeasures);
 
-        String pmdIssuesUrl = sonarHostUrl + "/api/issues/search?componentKeys=" + projectKey + "&engineId=pmd";
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
-        HttpEntity<String> request = new HttpEntity<>(headers);
-        ResponseEntity<Map> issuesResponse = restTemplate.exchange(pmdIssuesUrl, HttpMethod.GET, request, Map.class);
-        double javaPenalty = 0.0;
-        int blockerCount = 0, criticalCount = 0, majorCount = 0, minorCount = 0, infoCount = 0;
-        if (issuesResponse.getBody() != null && issuesResponse.getBody().containsKey("issues")) {
-            List<Map<String, Object>> issues = (List<Map<String, Object>>) issuesResponse.getBody().get("issues");
-            for (Map<String, Object> issue : issues) {
-                String severity = (String) issue.get("severity");
-                switch (severity) {
-                    case "BLOCKER":
-                        blockerCount++;
-                        javaPenalty += 10;
-                        break;
-                    case "CRITICAL":
-                        criticalCount++;
-                        javaPenalty += 8;
-                        break;
-                    case "MAJOR":
-                        majorCount++;
-                        javaPenalty += 6;
-                        break;
-                    case "MINOR":
-                        minorCount++;
-                        javaPenalty += 4;
-                        break;
-                    case "INFO":
-                        infoCount++;
-                        javaPenalty += 2;
-                        break;
-                    default:
-                        javaPenalty += 5;
-                }
-            }
-        }
-
+        JavaPenaltyResult javaPenaltyResult = calculateJavaPenalty(projectKey);
+        double javaPenalty = javaPenaltyResult.getPenalty();
         double javaQualityScore = Math.max(0, 100 - javaPenalty);
-        languageQualityScores.put("java", javaQualityScore);
-
         int overallScore = (int) Math.max(0, nonJavaScore - javaPenalty);
 
-        String insights = "Non-Java Analysis:\n" +
-                "  - Base Score (from SonarQube analysis): 100 - total penalty (" + sonarTotalPenalty + ") = " + nonJavaScore + "\n" +
-                "Java Analysis (via PMD):\n" +
-                "  - BLOCKER: " + blockerCount + " violations, CRITICAL: " + criticalCount + " violations, " +
-                "MAJOR: " + majorCount + " violations, MINOR: " + minorCount + " violations, INFO: " + infoCount + " violations\n" +
-                "  - Total Java PMD penalty: " + javaPenalty + " => Java Quality Score: 100 - penalty = " + javaQualityScore + "\n" +
-                "Overall Score: Non-Java Score (" + nonJavaScore + ") - Java PMD penalty (" + javaPenalty + ") = " + overallScore + "\n" +
-                "Language Distribution (LOC): " + languageDistributionInt + "\n" +
-                "Language Quality Scores: " + languageQualityScores + "\n";
+        String insights = String.format("""
+                        Non-Java Analysis:
+                          - Base Score (from SonarQube analysis): 100 - total penalty (%.2f) = %d
+                        Java Analysis (via PMD):
+                          - BLOCKER: %d violations, CRITICAL: %d violations, MAJOR: %d violations, MINOR: %d violations, INFO: %d violations
+                          - Total Java PMD penalty: %.2f => Java Quality Score: 100 - penalty = %.2f
+                        Overall Score: Non-Java Score (%d) - Java PMD penalty (%.2f) = %d
+                        Language Distribution (LOC): %s
+                        """,
+                sonarTotalPenalty, nonJavaScore,
+                javaPenaltyResult.getBlockerCount(), javaPenaltyResult.getCriticalCount(),
+                javaPenaltyResult.getMajorCount(), javaPenaltyResult.getMinorCount(), javaPenaltyResult.getInfoCount(),
+                javaPenalty, javaQualityScore,
+                nonJavaScore, javaPenalty, overallScore,
+                languageDistributionInt
+        );
 
         return RepositoryResult.builder()
                 .repoId(repoId)
@@ -486,125 +468,165 @@ public class GithubAnalysisService {
                 .insights(insights)
                 .languages(languageDistributionInt)
                 .stats(null)
-                .commitFrequency(0)
-                .languageLevel(languageQualityScores)
+                .projectMeasures(projectMeasures)
                 .build();
     }
 
     /**
-     * 1. 메서드 설명: 지정된 리포지토리 디렉토리 내의 모든 Java 소스 파일(.java)의 총 라인 수(ncloc)를 계산한다.
+     * 1. 메서드 설명: PMD 이슈 데이터를 조회하여 자바 코드에 대한 penalty와 violation 카운터를 계산한다. (로그 스케일 적용)
      * 2. 로직:
-     *    - 주어진 디렉토리가 존재하며 디렉토리인지 확인한다.
-     *    - Files.walk()를 사용하여 해당 디렉토리 하위의 모든 파일을 재귀적으로 탐색한다.
-     *    - 파일 이름이 ".java"로 끝나는 파일들을 필터링하고, 각 파일의 라인 수를 Files.lines()로 계산한 후, 모두 합산한다.
+     *    - SonarQube API를 호출하여 PMD 관련 이슈 데이터를 조회한 후, 각 심각도별 건수를 집계하고, 로그 함수를 적용하여 penalty를 산출한다.
      * 3. param:
-     *      repoDir - Java 소스 파일들이 포함된 리포지토리의 루트 디렉토리(File 객체).
-     * 4. return: 해당 리포지토리 내 모든 Java 파일의 총 라인 수를 double 타입으로 반환한다.
+     *      String projectKey - SonarQube 프로젝트 키.
+     * 4. return: JavaPenaltyResult 객체 (penalty와 각 violation 카운터 포함).
+     */
+    private JavaPenaltyResult calculateJavaPenalty(String projectKey) {
+        String pmdIssuesUrl = sonarHostUrl + "/api/issues/search?componentKeys=" + projectKey + "&engineId=pmd";
+        HttpEntity<String> request = setHttpRequest(sonarAnalysisToken);
+        ResponseEntity<Map> issuesResponse = restTemplate.exchange(pmdIssuesUrl, HttpMethod.GET, request, Map.class);
+
+        int blockerCount = 0, criticalCount = 0, majorCount = 0, minorCount = 0, infoCount = 0;
+        if (issuesResponse.getBody() != null && issuesResponse.getBody().containsKey("issues")) {
+            List<Map<String, Object>> issues = (List<Map<String, Object>>) issuesResponse.getBody().get("issues");
+            for (Map<String, Object> issue : issues) {
+                String severity = (String) issue.get("severity");
+                switch (severity) {
+                    case "BLOCKER" -> blockerCount++;
+                    case "CRITICAL" -> criticalCount++;
+                    case "MAJOR" -> majorCount++;
+                    case "MINOR" -> minorCount++;
+                    case "INFO" -> infoCount++;
+                    default -> { }
+                }
+            }
+        }
+
+        Map<String, Double> severityWeights = Map.of(
+                "BLOCKER", 15.0,
+                "CRITICAL", 10.0,
+                "MAJOR", 7.0,
+                "MINOR", 3.0,
+                "INFO", 1.0
+        );
+
+        double javaPenalty = 0.0;
+        javaPenalty += severityWeights.get("BLOCKER") * Math.log(blockerCount + 1);
+        javaPenalty += severityWeights.get("CRITICAL") * Math.log(criticalCount + 1);
+        javaPenalty += severityWeights.get("MAJOR") * Math.log(majorCount + 1);
+        javaPenalty += severityWeights.get("MINOR") * Math.log(minorCount + 1);
+        javaPenalty += severityWeights.get("INFO") * Math.log(infoCount + 1);
+
+        return JavaPenaltyResult.builder()
+                .penalty(javaPenalty)
+                .blockerCount(blockerCount)
+                .criticalCount(criticalCount)
+                .majorCount(majorCount)
+                .minorCount(minorCount)
+                .infoCount(infoCount)
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 지정된 repository 디렉토리 내의 모든 Java 소스 파일(.java)의 총 라인 수(ncloc)를 계산한다.
+     * 2. 로직:
+     *    - Files.walk()를 사용하여 디렉토리 하위의 모든 .java 파일을 탐색한 후, 각 파일의 라인 수를 합산한다.
+     * 3. param:
+     *      File repoDir - Java 소스 파일들이 포함된 repository의 루트 디렉토리.
+     * 4. return: 모든 Java 파일의 총 라인 수 (double).
      */
     private double calculateJavaNcloc(File repoDir) {
-        double totalLines = 0.0;
         if (!repoDir.exists() || !repoDir.isDirectory()) {
             log.warn("Repository directory {} does not exist or is not a directory.", repoDir.getAbsolutePath());
-            return totalLines;
+            return 0.0;
         }
         try (Stream<Path> paths = Files.walk(repoDir.toPath())) {
-            totalLines = paths.filter(Files::isRegularFile)
+            return paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".java"))
                     .mapToLong(path -> {
                         try {
-                            // 각 파일의 전체 줄 수를 계산
                             return Files.lines(path).count();
                         } catch (IOException e) {
                             log.error("Error reading file {}: {}", path, e.getMessage());
-                            return 0;
+                            return 0L;
                         }
                     }).sum();
         } catch (IOException e) {
             log.error("Error walking through repository directory {}: {}", repoDir.getAbsolutePath(), e.getMessage());
         }
-        return totalLines;
+        return 0.0;
     }
 
     /**
-     * 1. 메서드 설명: SonarQube API를 호출하여 프로젝트 분석 결과를 조회하는 메서드.
+     * 1. 메서드 설명: SonarQube API를 호출하여 지정된 프로젝트의 측정 지표(coverage, bugs, code_smells, vulnerabilities, duplicated_lines_density)를 조회한다.
      * 2. 로직:
-     *    - 주어진 프로젝트 키를 기반으로 SonarQube API URL을 생성하고, 인증 헤더를 포함한 GET 요청을 수행한다.
+     *    - 주어진 projectKey를 사용하여 API URL을 구성하고, 인증 헤더를 포함한 GET 요청을 수행한 후 SonarResponse로 파싱한다.
      * 3. param:
-     *      projectKey - SonarQube 프로젝트 키.
+     *      String projectKey - SonarQube 프로젝트 키.
      * 4. return: SonarResponse 객체.
      */
     private SonarResponse fetchAnalysisResult(String projectKey) {
-        String url = sonarHostUrl + "/api/qualitygates/project_status?projectKey=" + projectKey;
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
-        HttpEntity<String> request = new HttpEntity<>(headers);
+        String url = sonarHostUrl + "/api/measures/component?component=" + projectKey +
+                "&metricKeys=coverage,bugs,code_smells,vulnerabilities,duplicated_lines_density";
+        HttpEntity<String> request = setHttpRequest(sonarUserToken);
         ResponseEntity<SonarResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, SonarResponse.class);
         return response.getBody();
     }
 
     /**
-     * 1. 메서드 설명: SonarQube API를 호출하여 프로젝트의 언어 분포 정보를 조회하는 메서드.
+     * 1. 메서드 설명: SonarQube API를 호출하여 프로젝트의 ncloc_language_distribution 측정 지표를 조회한 후 언어별 라인 수 분포 Map으로 반환한다.
      * 2. 로직:
-     *    - 지정된 metric(ncloc_language_distribution)에 대한 값을 조회하여 JSON 문자열을 파싱한 후 Map으로 변환한다.
+     *    - API 호출 후 응답에서 "ncloc_language_distribution" 측정값을 파싱하여 각 언어별 LOC를 Map에 저장한다.
      * 3. param:
-     *      projectKey - SonarQube 프로젝트 키.
-     * 4. return: 언어별 라인 수 분포를 나타내는 Map.
+     *      String projectKey - SonarQube 프로젝트 키.
+     * 4. return: 언어별 LOC 분포를 나타내는 Map<String, Double>.
      */
     private Map<String, Double> fetchLanguageDistribution(String projectKey) {
-        String url = sonarHostUrl + "/api/measures/search?projectKeys=" + projectKey + "&metricKeys=ncloc_language_distribution";
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + Base64.getEncoder().encodeToString((sonarLoginToken + ":").getBytes()));
-        HttpEntity<String> request = new HttpEntity<>(headers);
+        String url = sonarHostUrl + "/api/measures/search?projectKeys=" + projectKey +
+                "&metricKeys=ncloc_language_distribution";
+        HttpEntity<String> request = setHttpRequest(sonarAnalysisToken);
 
         ResponseEntity<MeasuresResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, MeasuresResponse.class);
         MeasuresResponse measuresResponse = response.getBody();
 
         if (measuresResponse != null && measuresResponse.getMeasures() != null) {
-            for (Measure measure : measuresResponse.getMeasures()) {
-                if ("ncloc_language_distribution".equals(measure.getMetric())) {
-                    String value = measure.getValue();
-                    Map<String, Double> languageDistribution = new HashMap<>();
-                    String[] entries = value.split(";");
-                    for (String entry : entries) {
-                        String[] parts = entry.split("=");
-                        if (parts.length == 2) {
-                            try {
-                                languageDistribution.put(parts[0], Double.parseDouble(parts[1]));
-                            } catch (NumberFormatException e) {
-                                log.error("Error parsing value for key {}: {}", parts[0], e.getMessage());
+            return measuresResponse.getMeasures().stream()
+                    .filter(measure -> "ncloc_language_distribution".equals(measure.getMetric()))
+                    .findFirst()
+                    .map(measure -> {
+                        Map<String, Double> languageDistribution = new HashMap<>();
+                        String[] entries = measure.getValue().split(";");
+                        for (String entry : entries) {
+                            String[] parts = entry.split("=");
+                            if (parts.length == 2) {
+                                try {
+                                    languageDistribution.put(parts[0], Double.parseDouble(parts[1]));
+                                } catch (NumberFormatException e) {
+                                    log.error("Error parsing value for key {}: {}", parts[0], e.getMessage());
+                                }
                             }
                         }
-                    }
-                    return languageDistribution;
-                }
-            }
+                        return languageDistribution;
+                    }).orElse(Collections.emptyMap());
         }
         return Collections.emptyMap();
     }
 
-
     /**
-     * 1. 메서드 설명: SonarQube API를 호출하여 프로젝트의 주요 측정 지표들을 조회하는 메서드.
+     * 1. 메서드 설명: SonarQube API를 호출하여 지정된 프로젝트의 주요 측정 지표(coverage, bugs, code_smells, vulnerabilities, duplicated_lines_density)를 조회한 후 Map으로 반환한다.
      * 2. 로직:
-     *    - 지정된 metricKeys(coverage, bugs, code_smells, vulnerabilities, duplicated_lines_density)에 대해 값을 조회한 후 Map으로 변환한다.
+     *    - projectKey와 metricKeys를 이용해 API URL을 구성하고, 응답에서 각 측정값을 Map에 저장한다.
      * 3. param:
-     *      projectKey - SonarQube 프로젝트 키.
-     * 4. return: 측정 지표를 나타내는 Map.
+     *      String projectKey - SonarQube 프로젝트 키.
+     * 4. return: 측정 지표를 나타내는 Map<String, String>.
      */
     private Map<String, String> fetchProjectMeasures(String projectKey) {
-        // 가져올 metric 목록
         String metricKeys = "coverage,bugs,code_smells,vulnerabilities,duplicated_lines_density";
         String url = sonarHostUrl + "/api/measures/search?projectKeys=" + projectKey + "&metricKeys=" + metricKeys;
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + Base64.getEncoder()
-                .encodeToString((sonarLoginToken + ":").getBytes()));
-        HttpEntity<String> request = new HttpEntity<>(headers);
+        HttpEntity<String> request = setHttpRequest(sonarAnalysisToken);
 
         ResponseEntity<MeasuresResponse> response = restTemplate.exchange(url, HttpMethod.GET, request, MeasuresResponse.class);
         MeasuresResponse measuresResponse = response.getBody();
         Map<String, String> measuresMap = new HashMap<>();
-
         if (measuresResponse != null && measuresResponse.getMeasures() != null) {
             measuresResponse.getMeasures().forEach(measure ->
                     measuresMap.put(measure.getMetric(), measure.getValue())
@@ -613,64 +635,21 @@ public class GithubAnalysisService {
         return measuresMap;
     }
 
-
     /**
-     * 1. 메서드 설명: 프로젝트 측정 지표를 기반으로 각 언어별 코드 품질 점수를 계산하는 메서드.
+     * 1. 메서드 설명: 주어진 토큰을 이용해 Basic 인증 헤더가 설정된 HttpEntity를 생성하여 반환하는 유틸리티 메서드.
      * 2. 로직:
-     *    - 측정 지표의 key를 ":"로 분리하여 metric과 언어를 구분하고, 해당 값을 기반으로 각 언어의 점수를 산출한다.
+     *    - 토큰 문자열에 ":"를 추가하여 Basic 인증 형식에 맞게 변환한다.
+     *    - 이를 Base64로 인코딩한 후, "Authorization" 헤더에 "Basic " 접두어와 함께 설정한다.
+     *    - 설정된 HttpHeaders를 포함하는 HttpEntity 객체를 생성하여 반환한다.
      * 3. param:
-     *      measuresMap - 프로젝트 측정 지표를 담고 있는 Map.
-     * 4. return: 언어별 품질 점수를 나타내는 Map.
+     *      String token - Basic 인증에 사용되는 토큰 문자열.
+     * 4. return: HttpEntity<String> 객체 (인증 헤더가 포함된 HTTP 요청 엔티티).
      */
-    private Map<String, Double> computeQualityScoreByLanguage(Map<String, String> measuresMap) {
-        Map<String, Map<String, Double>> languageMetrics = new HashMap<>();
-        measuresMap.forEach((key, valueStr) -> {
-            String[] parts = key.split(":");
-            if (parts.length == 2) {
-                String metric = parts[0];
-                String language = parts[1];
-                double value = parseDoubleOrDefault(valueStr);
-                languageMetrics.computeIfAbsent(language, k -> new HashMap<>()).put(metric, value);
-            }
-        });
-        return getStringDoubleMap(languageMetrics);
-    }
+    private HttpEntity<String> setHttpRequest(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Basic " +
+                Base64.getEncoder().encodeToString((token + ":").getBytes()));
 
-    /**
-     * 1. 메서드 설명: 언어별 측정 지표 Map을 기반으로 각 언어의 최종 품질 점수를 계산하여 반환하는 메서드.
-     * 2. 로직:
-     *    - 각 언어에 대해 coverage, bugs, code_smells, vulnerabilities, duplicated_lines_density 값을 이용해 품질 점수를 산출한다.
-     * 3. param:
-     *      languageMetrics - 언어별로 metric과 값이 저장된 Map.
-     * 4. return: 언어별 품질 점수를 나타내는 Map.
-     */
-    private static Map<String, Double> getStringDoubleMap(Map<String, Map<String, Double>> languageMetrics) {
-        Map<String, Double> languageQualityScores = new HashMap<>();
-        languageMetrics.forEach((language, metrics) -> {
-            double coverage = metrics.getOrDefault("coverage", 0.0);
-            double bugs = metrics.getOrDefault("bugs", 0.0);
-            double codeSmells = metrics.getOrDefault("code_smells", 0.0);
-            double vulnerabilities = metrics.getOrDefault("vulnerabilities", 0.0);
-            double duplicatedLinesDensity = metrics.getOrDefault("duplicated_lines_density", 0.0);
-            double qualityScore = coverage - (bugs * 2 + codeSmells * 0.5 + vulnerabilities * 5 + duplicatedLinesDensity);
-            languageQualityScores.put(language, qualityScore);
-        });
-        return languageQualityScores;
-    }
-
-    /**
-     * 1. 메서드 설명: 문자열을 double로 파싱하며, 파싱에 실패할 경우 기본값 0.0을 반환하는 메서드.
-     * 2. 로직:
-     *    - 문자열이 null이 아니면 double로 파싱하고, NumberFormatException 발생 시 0.0을 반환한다.
-     * 3. param:
-     *      value - 파싱할 문자열.
-     * 4. return: 파싱된 double 값 또는 0.0.
-     */
-    private double parseDoubleOrDefault(String value) {
-        try {
-            return value != null ? Double.parseDouble(value) : 0.0;
-        } catch (NumberFormatException e) {
-            return 0.0;
-        }
+        return new HttpEntity<>(headers);
     }
 }

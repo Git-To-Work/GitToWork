@@ -16,6 +16,6 @@ public class RepositoryResult {
     private String insights;
     private Map<String, Integer> languages;
     private Stats stats;
+    private Map<String, String> projectMeasures;
     private double commitFrequency;
-    private Map<String, Double> languageLevel;
 }
