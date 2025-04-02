@@ -1,56 +1,40 @@
 package com.gittowork.domain.github.model.sonar;
 
-import com.gittowork.domain.github.model.analysis.AIAnalysis;
-import com.gittowork.domain.github.model.analysis.ActivityMetrics;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
-import java.util.Map;
+import java.util.List;
 
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class SonarResponse {
 
-    private ProjectStatus projectStatus;
-    private Map<String, Double> languageDistribution;
-    private double coverage;
-    private int bugCount;
-    private String primaryRole;
-    private Map<String, Integer> roleScores;
-    private ActivityMetrics activityMetrics;
-    private AIAnalysis aiAnalysis;
-    private String aiFeedback;
-    private String errorMessage;
+    private Component component;
 
-    public boolean isSuccessful() {
-        return projectStatus != null && "OK".equalsIgnoreCase(projectStatus.getStatus());
-    }
-
-    public boolean isError() {
-        return errorMessage != null && !errorMessage.isEmpty();
-    }
-
-    @Data
-    @Builder
+    @Getter
+    @Setter
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Condition {
-        private String metricKey;
-        private String comparator;
-        private String errorThreshold;
-        private String actualValue;
-        private String status;
+    @Builder
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Component {
+        private String key;
+        private String name;
+        private String qualifier;
+        private List<Measure> measures;
     }
 
-    @Data
-    @Builder
+    @Getter
+    @Setter
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Period {
-        private int index;
-        private String mode;
-        private String date;
+    @Builder
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Measure {
+        private String metric;
+        private String value;
     }
 }

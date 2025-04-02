@@ -15,7 +15,6 @@ import java.util.Map;
 public class GetGithubAnalysisByRepositoryResponse {
     private String analysisDate;
     private Map<String, Double> languageRatios;
-    private Map<String, Integer> languageLevel;
     private List<String> selectedRepositories;
     private String overallScore;
     private ActivityMetrics activityMetrics;

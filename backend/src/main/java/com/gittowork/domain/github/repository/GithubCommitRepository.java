@@ -9,4 +9,6 @@ import java.util.Optional;
 @Repository
 public interface GithubCommitRepository extends MongoRepository<GithubCommit, Integer> {
     Optional<GithubCommit> findByRepoId(int repoId);
+
+    Optional<GithubCommit> findByUserIdAndRepoId(int userId, int repoId);
 }
