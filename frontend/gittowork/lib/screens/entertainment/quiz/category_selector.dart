@@ -26,6 +26,13 @@ class _CategorySelectorState extends State<CategorySelector> {
     'SS': '기술 스택',
   };
 
+  final Map<String, IconData> categoryIcons = {
+    'CL': Icons.article,   // 자소서
+    'CS': Icons.computer,  // 컴퓨터 과학
+    'FI': Icons.person,    // 인성면접
+    'SS': Icons.build,     // 기술 스택
+  };
+
   @override
   void initState() {
     super.initState();
@@ -65,9 +72,19 @@ class _CategorySelectorState extends State<CategorySelector> {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: const Color(0xFF454545).withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          const BoxShadow(
+            color: Colors.black12,
+          ),
+          const BoxShadow(
+            color: Colors.white,
+            spreadRadius: -2.0,
+            blurRadius: 2.0,
+          ),
+        ],
       ),
-      height: 200,
+      height: 150,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -79,17 +96,27 @@ class _CategorySelectorState extends State<CategorySelector> {
               padding: const EdgeInsets.fromLTRB(30, 30, 0, 0),
               child: GestureDetector(
                 onTap: () => _handleCategoryTap('CL'),
-                child: Text(
-                  categories['CL']!,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: _selectedCategory == 'CL'
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: _selectedCategory == 'CL'
-                        ? Colors.blue
-                        : Colors.black,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      categoryIcons['CL'],
+                      color: _selectedCategory == 'CL' ? Colors.blue : Colors.black,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      categories['CL']!,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: _selectedCategory == 'CL'
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: _selectedCategory == 'CL'
+                            ? Colors.blue
+                            : Colors.black,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -102,17 +129,27 @@ class _CategorySelectorState extends State<CategorySelector> {
               padding: const EdgeInsets.fromLTRB(0, 30, 30, 0),
               child: GestureDetector(
                 onTap: () => _handleCategoryTap('CS'),
-                child: Text(
-                  categories['CS']!,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: _selectedCategory == 'CS'
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: _selectedCategory == 'CS'
-                        ? Colors.blue
-                        : Colors.black,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      categoryIcons['CS'],
+                      color: _selectedCategory == 'CS' ? Colors.blue : Colors.black,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      categories['CS']!,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: _selectedCategory == 'CS'
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: _selectedCategory == 'CS'
+                            ? Colors.blue
+                            : Colors.black,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -125,17 +162,24 @@ class _CategorySelectorState extends State<CategorySelector> {
               padding: const EdgeInsets.fromLTRB(30, 0, 0, 30),
               child: GestureDetector(
                 onTap: () => _handleCategoryTap('FI'),
-                child: Text(
-                  categories['FI']!,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: _selectedCategory == 'FI'
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: _selectedCategory == 'FI'
-                        ? Colors.blue
-                        : Colors.black,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      categoryIcons['FI'],
+                      color: _selectedCategory == 'FI' ? Colors.blue : Colors.black,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      categories['FI']!,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight:
+                        _selectedCategory == 'FI' ? FontWeight.bold : FontWeight.normal,
+                        color: _selectedCategory == 'FI' ? Colors.blue : Colors.black,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -148,17 +192,24 @@ class _CategorySelectorState extends State<CategorySelector> {
               padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
               child: GestureDetector(
                 onTap: () => _handleCategoryTap('SS'),
-                child: Text(
-                  categories['SS']!,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: _selectedCategory == 'SS'
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: _selectedCategory == 'SS'
-                        ? Colors.blue
-                        : Colors.black,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      categoryIcons['SS'],
+                      color: _selectedCategory == 'SS' ? Colors.blue : Colors.black,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      categories['SS']!,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight:
+                        _selectedCategory == 'SS' ? FontWeight.bold : FontWeight.normal,
+                        color: _selectedCategory == 'SS' ? Colors.blue : Colors.black,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -171,9 +222,31 @@ class _CategorySelectorState extends State<CategorySelector> {
               decoration: BoxDecoration(
                 color: const Color(0xFFC5D5FF),
                 borderRadius: BorderRadius.circular(10),
+
               ),
               child: Stack(
                 children: [
+                  // 상단에만 inner shadow 효과를 주기 위한 그라데이션 오버레이
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 50, // 그림자 높이: 필요에 따라 조정하세요.
+                    child: Container(
+                      decoration: BoxDecoration(
+                        // 상단 모서리와의 일치를 위해 borderRadius 적용
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.25), // 그림자 색상 및 투명도 조절
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                   // AnimatedPositioned로 offset.y / offset.x 변경 시 애니메이션
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 300),

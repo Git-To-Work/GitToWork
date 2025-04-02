@@ -2,36 +2,52 @@ import 'package:flutter/material.dart';
 import '../../services/quiz_api.dart';
 
 class QuizProvider extends ChangeNotifier {
-  bool isLoading = false;       // 로딩 중인지 여부
-  QuizQuestion? quiz;          // 현재 퀴즈 데이터
-  String errorMessage = "";     // 에러 메시지 (없으면 "")
+  QuizQuestion? _currentQuiz; // 현재 화면에 표시 중인 퀴즈
+  QuizQuestion? get currentQuiz => _currentQuiz;
 
-  String currentCategory = "";  // 현재 선택된 카테고리
+  QuizQuestion? _cachedQuiz;  // 새로 로딩된 다음 퀴즈 (아직 화면에 안 보이는 상태)
+  QuizQuestion? get cachedQuiz => _cachedQuiz;
 
-  // 카테고리에 맞는 새 퀴즈 가져오기
-  Future<void> fetchQuiz(String category) async {
-    // 로딩 시작
+  bool isLoading = false;     // 지금 새 퀴즈를 로딩 중인지
+  String errorMessage = "";
+
+  // 최초/다음 퀴즈 로딩
+  Future<void> loadQuiz(String category) async {
     isLoading = true;
     notifyListeners();
-
     try {
-      final newQuiz = await QuizApi.fetchQuiz(category);
-      quiz = newQuiz;
-      currentCategory = category;
+      final fetched = await QuizApi.fetchQuiz(category);
       errorMessage = "";
+      // 만약 현재 화면에 퀴즈가 없다면(첫 로딩) 바로 _currentQuiz에 세팅
+      if (_currentQuiz == null) {
+        _currentQuiz = fetched;
+      } else {
+        // 이미 _currentQuiz가 있다면, 새 퀴즈는 _cachedQuiz에 저장만 해두고
+        // 화면 전환은 나중에 commitCachedQuiz()로 수행
+        _cachedQuiz = fetched;
+      }
     } catch (e) {
       errorMessage = "퀴즈 로드 실패: $e";
-      quiz = null;
     }
-
-    // 로딩 끝
     isLoading = false;
     notifyListeners();
   }
 
-  // 이미 currentCategory가 있으니 재요청할 때
-  Future<void> loadNextQuiz() async {
-    if (currentCategory.isEmpty) return;
-    await fetchQuiz(currentCategory);
+  // _cachedQuiz를 실제 화면 표시용(_currentQuiz)으로 적용
+  void commitCachedQuiz() {
+    if (_cachedQuiz != null) {
+      _currentQuiz = _cachedQuiz;
+      _cachedQuiz = null;
+      notifyListeners();
+    }
+  }
+
+  // 필요하다면 초기화 로직도 추가 가능
+  void reset() {
+    _currentQuiz = null;
+    _cachedQuiz = null;
+    errorMessage = "";
+    isLoading = false;
+    notifyListeners();
   }
 }
