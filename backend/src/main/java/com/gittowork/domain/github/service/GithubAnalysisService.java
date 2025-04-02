@@ -189,11 +189,8 @@ public class GithubAnalysisService {
                 .aiAnalysis(null)
                 .build();
 
-        log.info("GithubAnalysisResult: {}", githubAnalysisResult);
-
         try {
             GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
-            log.info("GptAnalysisResult: {}", gptAnalysisResult);
 
             githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
             githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
