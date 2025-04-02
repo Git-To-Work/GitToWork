@@ -10,14 +10,5 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class MeasuresResponse {
-    private Component component;
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class Component {
-        private String key;
-        private String name;
-        private List<Measure> measures;
-    }
+    private List<Measure> measures;
 }

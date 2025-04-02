@@ -72,4 +72,19 @@ public class SwaggerConfig {
                 .build();
     }
 
+    @Bean
+    public GroupedOpenApi userInteractionApi() {
+        return GroupedOpenApi.builder()
+                .group("userInteraction API")
+                .pathsToMatch("/company-interaction/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi quizApi() {
+        return GroupedOpenApi.builder()
+                .group("developerQuiz API")
+                .pathsToMatch("/quiz/**")
+                .build();
+    }
 }

@@ -121,7 +121,6 @@ def get_companies(
             "likes": company.likes,
             "field_id": company.field_id,
             "field_name": field_name,
-            "categories": categories,
             "scraped": scraped,
             "tech_stacks": tech_stack_list,
             "has_job_notice": has_job_notice

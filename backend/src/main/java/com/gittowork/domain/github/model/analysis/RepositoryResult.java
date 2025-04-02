@@ -9,12 +9,13 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class RepositoryResult {
     private int repoId;
     private int score;
     private String insights;
     private Map<String, Integer> languages;
     private Stats stats;
+    private Map<String, String> projectMeasures;
     private double commitFrequency;
-    private Map<String, Double> languageLevel;
 }

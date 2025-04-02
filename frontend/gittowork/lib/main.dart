@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-import 'package:provider/provider.dart';
 import 'dart:async';
 
 // Provider
-import 'package:gittowork/providers/github_analysis_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:gittowork/providers/auth_provider.dart';
+import 'package:gittowork/providers/github_analysis_provider.dart';
 import 'package:gittowork/providers/quiz_provider.dart';
+import 'package:gittowork/providers/company_provider.dart';
+import 'package:gittowork/providers/company_detail_provider.dart';
+import 'package:gittowork/providers/search_provider.dart';
 
 // 레이아웃 파일 (스플래시로 쓸 화면)
 import 'layouts/no_appbar_no_bottom_nav_layout.dart';
@@ -33,6 +35,9 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
         ChangeNotifierProvider(create: (_) => QuizProvider()),
+        ChangeNotifierProvider(create: (_) => CompanyProvider()),
+        ChangeNotifierProvider(create: (_) => CompanyDetailProvider()),
+        ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
       ],
       child: MyApp(initialToken: token),
     ),
@@ -101,8 +106,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigateAfterDelay() async {
-    // 3초 스플래시 대기
-    await Future.delayed(const Duration(seconds: 3));
+    // 2초 스플래시 대기
+    await Future.delayed(const Duration(seconds: 2));
 
     // 위젯이 여전히 마운트 되어 있는지 확인
     if (!mounted) return;
@@ -111,6 +116,11 @@ class _SplashScreenState extends State<SplashScreen> {
     if (_authProvider.accessToken != null) {
       final success = await _authProvider.autoLoginWithToken();
       if (success) {
+        try {
+          await _authProvider.fetchUserProfile();
+        } catch (e) {
+          const SnackBar(content: Text("로그인에 실패했습니다."));
+        }
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
         );

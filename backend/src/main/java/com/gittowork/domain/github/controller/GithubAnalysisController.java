@@ -30,7 +30,7 @@ public class GithubAnalysisController {
     }
 
     @PostMapping("/create/save-selected-repository")
-    public ApiResponse<?> saveSelectedRepositories(@NotNull SaveSelectedRepositoriesRequest saveSelectedRepositoriesRequest) {
+    public ApiResponse<?> saveSelectedRepositories(@NotNull @RequestBody SaveSelectedRepositoriesRequest saveSelectedRepositoriesRequest) {
         return ApiResponse.success(HttpStatus.OK, githubService.saveSelectedGithubRepository(saveSelectedRepositoriesRequest.getRepositories()));
     }
 
@@ -47,6 +47,11 @@ public class GithubAnalysisController {
     @DeleteMapping("/delete/my-repository-combination")
     public ApiResponse<?> deleteGithubAnalysisByRepository(@NotNull @RequestParam String selectedRepositoryId) {
         return ApiResponse.success(HttpStatus.OK, githubService.deleteSelectedGithubRepository(selectedRepositoryId));
+    }
+
+    @PutMapping("/update/github-data")
+    public ApiResponse<?> updateGithubData() {
+        return ApiResponse.success(HttpStatus.OK, githubService.updateGithubData());
     }
 
 }
