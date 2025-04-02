@@ -34,7 +34,7 @@ public class GithubAnalysisResult {
 
     private int overallScore;
     private String primaryRole;
-    private Map<String, Integer> roleScores;
+    private int roleScores;
     private ActivityMetrics activityMetrics;
 
     private AIAnalysis aiAnalysis;

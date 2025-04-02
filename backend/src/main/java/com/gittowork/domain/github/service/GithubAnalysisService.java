@@ -184,7 +184,7 @@ public class GithubAnalysisService {
                 .repositories(repositoryResults)
                 .overallScore(overallScoreMean)
                 .primaryRole(null)
-                .roleScores(null)
+                .roleScores(0)
                 .activityMetrics(activityMetrics)
                 .aiAnalysis(null)
                 .build();
@@ -394,11 +394,11 @@ public class GithubAnalysisService {
      */
     private RepositoryResult pollAndParseAnalysisResult(String projectKey, int repoId) {
         Map<String, Double> weights = Map.of(
-                "coverage", 20.0,
-                "bugs", 40.0,
-                "code_smells", 30.0,
-                "vulnerabilities", 50.0,
-                "duplicated_lines_density", 10.0
+                "coverage", 4.0,
+                "bugs", 8.0,
+                "code_smells", 6.0,
+                "vulnerabilities", 10.0,
+                "duplicated_lines_density", 2.0
         );
         final int BASE_SCORE = 100;
         double sonarTotalPenalty = 0.0;
@@ -502,11 +502,11 @@ public class GithubAnalysisService {
         }
 
         Map<String, Double> severityWeights = Map.of(
-                "BLOCKER", 15.0,
-                "CRITICAL", 10.0,
-                "MAJOR", 7.0,
-                "MINOR", 3.0,
-                "INFO", 1.0
+                "BLOCKER", 3.0,
+                "CRITICAL", 2.0,
+                "MAJOR", 1.2,
+                "MINOR", 0.5,
+                "INFO", 0.2
         );
 
         double javaPenalty = 0.0;
