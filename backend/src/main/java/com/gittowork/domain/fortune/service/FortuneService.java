@@ -40,10 +40,8 @@ public class FortuneService {
     private static final String[] HEAVENLY_STEMS = {"갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"};
     private static final String[] EARTHLY_BRANCHES = {"자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"};
 
-    // 기준일: 1900-01-31 (갑자 기준)
     private static final LocalDate BASE_DATE = LocalDate.of(1900, 1, 31);
 
-    // 12절기 목록 (월/일, 해당 월지)
     private static final List<SolarTerm> SOLAR_TERMS = Arrays.asList(
             new SolarTerm(1, 5, "축"),
             new SolarTerm(2, 4, "인"),
