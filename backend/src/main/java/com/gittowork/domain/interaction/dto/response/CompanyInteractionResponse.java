@@ -1,6 +1,5 @@
 package com.gittowork.domain.interaction.dto.response;
 
-import com.gittowork.domain.company.entity.Company;
 import lombok.*;
 
 import java.util.List;
@@ -11,6 +10,6 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class CompanyInteractionResponse {
-    private List<Company> companies;
+    private List<UserInteractionResult> companies;
     private Pagination pagination;
 }
