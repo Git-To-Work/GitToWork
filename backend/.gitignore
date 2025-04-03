@@ -41,3 +41,6 @@ out/
 
 # Firebase Key
 /src/main/resources/gittowork-firebase-key.json
+
+# ChatGPT Prompt
+/src/main/resources/application.yml

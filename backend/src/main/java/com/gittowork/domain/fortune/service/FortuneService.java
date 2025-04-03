@@ -132,7 +132,16 @@ public class FortuneService {
         LocalDateTime birthDateTime = LocalDateTime.of(birthDt, birthTm);
 
         SajuResult sajuResult = calculateSaju(birthDateTime, getTodayFortuneRequest.getSex());
-        return gptService.todayFortune(sajuResult, 1000);
+        GetTodayFortuneResponse getTodayFortuneResponse = gptService.todayFortune(sajuResult, 1000);
+
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        GetTodayFortuneResponse.Fortune fortune = getTodayFortuneResponse.getFortune();
+        fortune.setDate(date);
+
+        getTodayFortuneResponse.setFortune(fortune);
+
+        return getTodayFortuneResponse;
     }
 
     /**

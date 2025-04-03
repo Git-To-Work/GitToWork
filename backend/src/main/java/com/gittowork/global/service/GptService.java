@@ -10,6 +10,8 @@ import com.gittowork.domain.github.entity.GithubAnalysisResult;
 import com.gittowork.global.config.GptConfig;
 import com.gittowork.global.exception.CoverLetterAnalysisException;
 import com.gittowork.global.exception.JsonParsingException;
+import com.gittowork.global.properties.OpenAIProperties;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -22,21 +24,13 @@ import java.util.Map;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class GptService {
 
-    private final String API_URL = "https://api.openai.com/v1/chat/completions";
     private final GptConfig gptConfig;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-
-    @Autowired
-    public GptService(GptConfig gptConfig,
-                      RestTemplate restTemplate,
-                      ObjectMapper objectMapper) {
-        this.gptConfig = gptConfig;
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
-    }
+    private final OpenAIProperties openAIProperties;
 
     /**
      * 1. 메서드 설명: OpenAI의 ChatGPT API를 호출하여 GitHub 데이터를 분석하는 결과를 JSON 문자열로 받고,
@@ -52,7 +46,7 @@ public class GptService {
      */
     public GithubAnalysisResult githubDataAnalysis(GithubAnalysisResult githubAnalysisResult, int maxToken) throws JsonProcessingException {
         String prompt = generateGithubAnalysisPrompt(githubAnalysisResult);
-        String systemMsg = "아래 프롬프트의 지침에 따라 GitHub 데이터를 분석하고, 결과를 JSON 형식으로 출력 예시에 맞게 출력해 주세요.";
+        String systemMsg = openAIProperties.getPrompts().getGithubAnalysis().getSystemMsg();
         String responseBody = callGptApi(systemMsg, prompt, maxToken);
         return githubAnalysisResultParser(responseBody);
     }
@@ -70,9 +64,7 @@ public class GptService {
      */
     public CoverLetterAnalysis coverLetterAnalysis(String content, int maxToken) {
         String prompt = generateCoverLetterAnalysisPrompt(content);
-        String systemMsg = "당신은 자기소개서 분석 전문가입니다. 아래에 PDF에서 추출된 자기소개서 텍스트가 제공될 것입니다. "
-                + "단, PDF 추출 과정에서 일부 내용이 누락되거나 불완전할 수 있습니다. 이런 경우, 문맥에 맞게 누락된 부분을 보완하여 "
-                + "전체 자기소개서의 내용을 분석해 주세요. 분석 시에는 출력 예시의 8가지 역량에 대한 점수와 전반적인 강점 및 약점을 포괄적으로 평가해 주시기 바랍니다.";
+        String systemMsg = openAIProperties.getPrompts().getCoverLetterAnalysis().getSystemMsg();
         String responseBody = callGptApi(systemMsg, prompt, maxToken);
         return coverLetterAnalysisResultParser(responseBody);
     }
@@ -92,16 +84,7 @@ public class GptService {
      */
     public GetTodayFortuneResponse todayFortune(SajuResult sajuResult, int maxToken) {
         String prompt = generateTodayFortunePrompt(sajuResult);
-        String systemMsg = "당신은 사주 명리학 전문가이자 운세 해석가입니다. 사용자에게는 출생 정보를 통해 산출된 사주의 구성(연주, 월주, 일주, 시주)와 함께 천간, 지지 정보가 제공됩니다. 또한 성별, 환경 및 지역 정보도 함께 제공됩니다. 이 모든 데이터를 바탕으로 오늘의 운세를 작성해 주세요. 오늘의 운세는 다음 네 가지 항목을 포함해야 합니다:\n" +
-                "- 전체적인 운\n" +
-                "- 건강운\n" +
-                "- 사랑운\n" +
-                "- 학업운\n" +
-                "\n" +
-                "작성 시 아래 사항들을 반드시 고려해 주세요:\n" +
-                "1. 생년월일과 태어난 시간이 동일하더라도 성별에 따라 사주의 해석과 삶의 결과는 달라질 수 있습니다.\n" +
-                "2. 기본적인 사주의 구성과 기질은 동일하지만, 성별에 따른 음양 조화, 대운 흐름, 십신 해석의 차이가 해석의 세부적인 방향과 운의 흐름에 영향을 줍니다.\n" +
-                "3. 제공되는 데이터(천간, 지지, 월주, 일주, 시주)를 사주 명리학의 전통적 원칙에 따라 해석하여, 오늘의 운세를 현실감 있고 세밀하게 작성해 주세요.\n";
+        String systemMsg = openAIProperties.getPrompts().getTodayFortune().getSystemMsg();
         String responseBody = callGptApi(systemMsg, prompt, maxToken);
         return  todayFortuneResultParser(responseBody);
     }
@@ -142,11 +125,11 @@ public class GptService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
         try {
-            ResponseEntity<String> response = restTemplate.exchange(API_URL, HttpMethod.POST, entity, String.class);
+            String url = openAIProperties.getUrl();
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
             String responseBody = response.getBody();
             log.info("GPT API response: {}", responseBody);
 
-            // JSON 파싱하여 choices -> message -> content 추출
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode rootNode = objectMapper.readTree(responseBody);
             JsonNode contentNode = rootNode.path("choices").get(0).path("message").path("content");
@@ -168,33 +151,8 @@ public class GptService {
      * 4. return: 생성된 프롬프트 문자열.
      */
     private String generateGithubAnalysisPrompt(GithubAnalysisResult githubAnalysisResult) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("## 다음 GitHub 분석 결과 데이터를 바탕으로, 사용자가 선택한 저장소들의 정보를 종합하여 아래 항목들에 대해 분석해주세요.\n\n");
-        prompt.append("1. primaryRole: 저장소 데이터를 분석하여 사용자가 가장 적합한 IT 직무(예: Backend, Frontend, Devops Engineer 등)를 도출해주세요.\n");
-        prompt.append("2. roleScores: 도출된 primaryRole을 수행할 수 있는 능력을 0에서 100점 사이로 산정해주세요.\n");
-        prompt.append("3. aiAnalysis:\n");
-        prompt.append("   - analysis_summary: 전체 저장소 분석 결과에 대한 요약을 한글로 작성해주세요.\n");
-        prompt.append("   - improvement_suggestions: 개선방안을 한글로 작성해주세요.\n\n");
-        prompt.append("### 출력 예시는 다음과 같이 JSON 형태로 작성해주세요.\n\n");
-        prompt.append("{\n");
-        prompt.append("  \"primaryRole\": \"Backend\",\n");
-        prompt.append("  \"roleScores\": 88,\n");
-        prompt.append("  \"aiAnalysis\": {\n");
-        prompt.append("    \"analysis_summary\": [\n");
-        prompt.append("      \"선택된 저장소들은 주로 백엔드 기술(특히 Python과 Django)을 활용한 프로젝트들이 많아 보입니다.\",\n");
-        prompt.append("      \"안정적인 코드 관리와 높은 생산성을 보이고 있습니다.\",\n");
-        prompt.append("      \"저장소 내 커밋 빈도와 이슈 관리 결과, 백엔드 개발에 적합한 역량을 확인할 수 있습니다.\"\n");
-        prompt.append("    ],\n");
-        prompt.append("    \"improvement_suggestions\": [\n");
-        prompt.append("      \"테스트 커버리지 확장을 통한 코드 안정성 강화가 요구됩니다.\",\n");
-        prompt.append("      \"문서화 및 코드 리뷰 프로세스 개선이 필요합니다.\",\n");
-        prompt.append("      \"프론트엔드와의 연계성을 고려한 통합적인 시스템 설계가 중요합니다.\"\n");
-        prompt.append("    ]\n");
-        prompt.append("  }\n");
-        prompt.append("}\n");
-        prompt.append("## 분석에 사용할 데이터:\n");
-        prompt.append(githubAnalysisResult.toString());
-        return prompt.toString();
+        String prompt = openAIProperties.getPrompts().getGithubAnalysis().getUserMsg();
+        return String.format(prompt, githubAnalysisResult.toString());
     }
 
     /**
@@ -206,33 +164,8 @@ public class GptService {
      * 4. return: 생성된 프롬프트 문자열.
      */
     private String generateCoverLetterAnalysisPrompt(String content) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("\n");
-        prompt.append("분석 결과는 다음 두 가지 부분으로 구성되어야 합니다:\n");
-        prompt.append("1. 8가지 역량의 각 항목(globalCapability, challengeSpirit, sincerity, communicationSkill, ");
-        prompt.append("achievementOrientation, responsibility, honesty, creativity)은 1부터 10까지의 정수로 평가합니다.\n");
-        prompt.append("2. 전반적인 분석은 'analysisResult' 문자열으로 작성되어야 하며, ");
-        prompt.append("강점, 약점 및 개선방안을 포함한 분석 결과를 문장으로 요약해 주세요.\n");
-        prompt.append("\n");
-        prompt.append("출력 형식은 아래 JSON 예시와 정확히 일치해야 하며, 추가적인 설명이나 텍스트는 포함하지 않아야 합니다.\n");
-        prompt.append("\n");
-        prompt.append("## 출력 예시\n");
-        prompt.append("{\n");
-        prompt.append("    \"analysisResult\": ");
-        prompt.append("      \"분석 결과 요약 1\",\n");
-        prompt.append("    \"globalCapability\": 8,\n");
-        prompt.append("    \"challengeSpirit\": 9,\n");
-        prompt.append("    \"sincerity\": 7,\n");
-        prompt.append("    \"communicationSkill\": 8,\n");
-        prompt.append("    \"achievementOrientation\": 6,\n");
-        prompt.append("    \"responsibility\": 9,\n");
-        prompt.append("    \"honesty\": 8,\n");
-        prompt.append("    \"creativity\": 9,\n");
-        prompt.append("}\n");
-        prompt.append("\n");
-        prompt.append("## 분석에 사용할 자기소개서 텍스트:\n");
-        prompt.append(content);
-        return prompt.toString();
+        String prompt = openAIProperties.getPrompts().getCoverLetterAnalysis().getUserMsg();
+        return String.format(prompt, content);
     }
 
     /**
@@ -244,30 +177,8 @@ public class GptService {
      * 4. return: 생성된 프롬프트 문자열.
      */
     private String generateTodayFortunePrompt(SajuResult sajuResult) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("\n");
-        prompt.append("아래 제공된 사주 데이터(천간, 지지, 월주, 일주, 시주 – 복잡한 명리학 데이터이지만, 당신의 개발자 인생과 코딩 실력을 반영하는 비밀 데이터임)를 참고하여,\n");
-        prompt.append("전통 명리학 용어는 직접적으로 언급하지 말고, 대신 일반인이 이해할 수 있는 평이한 표현으로 대체하여,\n");
-        prompt.append("개발자 스타일의 유머와 센스가 넘치는 오늘의 운세를 작성해 주세요.\n\n");
-        prompt.append("주의사항:\n");
-        prompt.append("1. 동일한 생년월일과 태어난 시간이더라도, 성별에 따라(마치 서로 다른 개발 환경 설정처럼) 운세 결과가 달라질 수 있습니다.\n");
-        prompt.append("2. 전문 용어는 직접 사용하지 말고, 대신 일상적인 언어로 쉽게 풀어 써 주세요.\n");
-        prompt.append("3. 제공된 사주 데이터를 바탕으로, 디씨인사이드 스타일로 현실적이면서도 웃겨서 배꼽이 빠질 정도로 재치 있고 유쾌한 오늘의 개발자 운세를 작성해 주세요.\n");
-        prompt.append("4. 오늘의 운세는 전체운, 건강운, 사랑운, 학업운 네 가지 항목을 반드시 포함하며, 각 항목은 공백 포함 약 300자 내외로 작성해 주세요.\n\n");
-        prompt.append("5. 디씨인사이드 스타일로 운세를 작성하되, 욕이나 조롱은 포함하여 작성하지는 말아주세요.\n\n");
-        prompt.append("최종 결과는 아래의 JSON 형식으로 작성해 주세요:\n");
-        prompt.append("{\n");
-        prompt.append("    \"fortune\": {\n");
-        prompt.append("        \"overall\": \"전체운 운세 내용\",\n");
-        prompt.append("        \"wealth\": \"건강운 운세 내용\",\n");
-        prompt.append("        \"love\": \"사랑운 운세 내용\",\n");
-        prompt.append("        \"study\": \"학업운 운세 내용\",\n");
-        prompt.append("        \"date\": \"YYYY-MM-DD (한국 오늘 날짜)\"\n");
-        prompt.append("    }\n");
-        prompt.append("}\n");
-        prompt.append("## 분석에 사용할 사주 데이터:\n");
-        prompt.append(sajuResult.toString());
-        return prompt.toString();
+        String prompt = openAIProperties.getPrompts().getTodayFortune().getUserMsg();
+        return String.format(prompt, sajuResult.toString());
     }
 
     /**
