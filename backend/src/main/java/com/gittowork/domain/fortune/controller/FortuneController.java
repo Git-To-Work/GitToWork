@@ -25,7 +25,7 @@ public class FortuneController {
         return ApiResponse.success(HttpStatus.OK, fortuneService.getFortuneInfo());
     }
 
-    @GetMapping("/select/today")
+    @PostMapping("/select/today")
     public ApiResponse<?> getTodayFortune(@RequestBody GetTodayFortuneRequest getTodayFortuneRequest){
         return ApiResponse.success(HttpStatus.OK, fortuneService.getTodayFortune(getTodayFortuneRequest));
     }

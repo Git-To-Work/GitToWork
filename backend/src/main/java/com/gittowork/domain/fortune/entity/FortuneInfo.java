@@ -18,6 +18,7 @@ import java.time.LocalTime;
 @Builder
 @Table(name = "fortune_info")
 public class FortuneInfo {
+
     @Id
     @Column(name = "user_id", nullable = false)
     private Integer id;

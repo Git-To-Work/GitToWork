@@ -28,6 +28,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -58,25 +59,33 @@ public class FortuneService {
     );
 
     /**
-     * 1. 메서드 설명: 사용자가 입력한 운세 정보를 저장하는 메서드로, 현재 인증된 사용자를 조회한 후
-     *    FortuneInfo 엔티티를 생성하여 DB에 저장한다.
+     * 1. 메서드 설명: 현재 인증된 사용자에 대한 운세 정보를 저장하거나 업데이트하는 메서드이다.
+     *    입력된 생년월일, 태어난 시간, 성별 정보를 사용하여 FortuneInfo 엔티티를 생성 또는 갱신한 후, DB에 저장한다.
      * 2. 로직:
      *    - SecurityContext에서 현재 인증된 사용자를 조회한다.
-     *    - 사용자의 생년월일, 태어난 시간, 성별 정보를 기반으로 FortuneInfo 객체를 빌더 패턴으로 생성한다.
-     *    - FortuneInfoRepository를 통해 엔티티를 저장한다.
-     * 3. param: InsertFortuneInfoRequest (생년월일, 태어난 시간, 성별 정보를 포함)
-     * 4. return: MessageOnlyResponse (저장 성공 메시지를 포함)
+     *    - InsertFortuneInfoRequest에서 생년월일, 태어난 시간, 성별 정보를 파싱한다.
+     *    - FortuneInfoRepository를 통해 해당 사용자의 기존 운세 정보를 조회한다.
+     *      - 기존 정보가 있으면 해당 엔티티를 업데이트한다.
+     *      - 없으면 새로운 FortuneInfo 엔티티를 생성한다.
+     *    - 업데이트 또는 생성된 FortuneInfo 엔티티를 DB에 저장한다.
+     * 3. param:
+     *      insertFortuneInfoRequest - 생년월일, 태어난 시간, 성별 정보를 포함하는 요청 DTO.
+     * 4. return:
+     *      MessageOnlyResponse - 저장 성공 메시지를 포함하는 응답 객체.
      */
     @Transactional
     public MessageOnlyResponse insertFortuneInfo(InsertFortuneInfoRequest insertFortuneInfoRequest) {
         User user = getUser();
 
-        FortuneInfo fortuneInfo = FortuneInfo.builder()
-                .user(user)
-                .birthDt(LocalDate.parse(insertFortuneInfoRequest.getBirthDt()))
-                .sex(insertFortuneInfoRequest.getSex())
-                .time(LocalTime.parse(insertFortuneInfoRequest.getBirthTm(), DateTimeFormatter.ofPattern("HH:mm")))
-                .build();
+        LocalDate birthDt = LocalDate.parse(insertFortuneInfoRequest.getBirthDt());
+        LocalTime birthTm = LocalTime.parse(insertFortuneInfoRequest.getBirthTm(), DateTimeFormatter.ofPattern("HH:mm"));
+        String sex = insertFortuneInfoRequest.getSex();
+
+        FortuneInfo fortuneInfo = fortuneInfoRepository.findByUser(user)
+                .orElseGet(() -> FortuneInfo.builder().user(user).build());
+        fortuneInfo.setBirthDt(birthDt);
+        fortuneInfo.setTime(birthTm);
+        fortuneInfo.setSex(sex);
 
         fortuneInfoRepository.save(fortuneInfo);
 
@@ -124,7 +133,7 @@ public class FortuneService {
         LocalDateTime birthDateTime = LocalDateTime.of(birthDt, birthTm);
 
         SajuResult sajuResult = calculateSaju(birthDateTime, getTodayFortuneRequest.getSex());
-        return gptService.todayFortune(sajuResult, 500);
+        return gptService.todayFortune(sajuResult, 1000);
     }
 
     /**

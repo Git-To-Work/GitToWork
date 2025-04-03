@@ -246,12 +246,15 @@ public class GptService {
     private String generateTodayFortunePrompt(SajuResult sajuResult) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("\n");
-        prompt.append("아래 제공된 데이터(천간, 지지, 월주, 일주, 시주)와 추가 정보(성별)를 바탕으로 사주 명리학의 전통적 원칙에 따라 오늘의 운세를 작성해 주세요.\n\n");
+        prompt.append("아래 제공된 사주 데이터(천간, 지지, 월주, 일주, 시주 – 복잡한 명리학 데이터이지만, 당신의 개발자 인생과 코딩 실력을 반영하는 비밀 데이터임)를 참고하여,\n");
+        prompt.append("전통 명리학 용어는 직접적으로 언급하지 말고, 대신 일반인이 이해할 수 있는 평이한 표현으로 대체하여,\n");
+        prompt.append("개발자 스타일의 유머와 센스가 넘치는 오늘의 운세를 작성해 주세요.\n\n");
         prompt.append("주의사항:\n");
-        prompt.append("1. 생년월일과 태어난 시간이 동일하더라도 성별에 따라 사주의 해석과 삶의 결과는 달라질 수 있습니다.\n");
-        prompt.append("2. 기본적인 사주의 구성과 기질은 동일하지만, 성별에 따른 음양 조화, 대운 흐름, 십신 해석의 차이들이 해석의 세부적인 방향과 운의 흐름에 영향을 줍니다.\n");
-        prompt.append("3. 제공되는 데이터(천간, 지지, 월주, 일주, 시주)를 기준으로 해석하여, 현실감 있고 세밀한 오늘의 운세를 작성해 주세요.\n");
-        prompt.append("4. 오늘의 운세는 전체운, 건강운, 사랑운, 학업운 네 가지 항목을 반드시 포함해야 하며, 각 항목의 운세는 공백 포함 약 250자 내외로 작성해 주세요.\n\n");
+        prompt.append("1. 동일한 생년월일과 태어난 시간이더라도, 성별에 따라(마치 서로 다른 개발 환경 설정처럼) 운세 결과가 달라질 수 있습니다.\n");
+        prompt.append("2. 전문 용어는 직접 사용하지 말고, 대신 일상적인 언어로 쉽게 풀어 써 주세요.\n");
+        prompt.append("3. 제공된 사주 데이터를 바탕으로, 디씨인사이드 스타일로 현실적이면서도 웃겨서 배꼽이 빠질 정도로 재치 있고 유쾌한 오늘의 개발자 운세를 작성해 주세요.\n");
+        prompt.append("4. 오늘의 운세는 전체운, 건강운, 사랑운, 학업운 네 가지 항목을 반드시 포함하며, 각 항목은 공백 포함 약 300자 내외로 작성해 주세요.\n\n");
+        prompt.append("5. 디씨인사이드 스타일로 운세를 작성하되, 욕이나 조롱은 포함하여 작성하지는 말아주세요.\n\n");
         prompt.append("최종 결과는 아래의 JSON 형식으로 작성해 주세요:\n");
         prompt.append("{\n");
         prompt.append("    \"fortune\": {\n");
@@ -259,11 +262,11 @@ public class GptService {
         prompt.append("        \"wealth\": \"건강운 운세 내용\",\n");
         prompt.append("        \"love\": \"사랑운 운세 내용\",\n");
         prompt.append("        \"study\": \"학업운 운세 내용\",\n");
-        prompt.append("        \"date\": \"YYYY-MM-DD (대한민국 오늘 날짜)\"\n");
+        prompt.append("        \"date\": \"YYYY-MM-DD (한국 오늘 날짜)\"\n");
         prompt.append("    }\n");
         prompt.append("}\n");
         prompt.append("## 분석에 사용할 사주 데이터:\n");
-        prompt.append(sajuResult);
+        prompt.append(sajuResult.toString());
         return prompt.toString();
     }
 

@@ -7,13 +7,14 @@ import com.gittowork.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/github")
-@AllArgsConstructor(onConstructor = @__(@Autowired))
+@RequiredArgsConstructor
 @Tag(name="Github Analysis")
 public class GithubAnalysisController {
 
