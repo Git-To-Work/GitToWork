@@ -222,4 +222,11 @@ public class GlobalExceptionHandler {
         String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
+
+    @ExceptionHandler(FortuneInfoNotFoundException.class)
+    public ResponseEntity<?> exceptionHandler(FortuneInfoNotFoundException e) {
+        log.warn("Fortune info not found: {}", e.getMessage());
+        String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
+        return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
+    }
 }
