@@ -8,7 +8,7 @@ from app.api.routes.company_detail import router as company_detail_router
 from app.api.routes.recommendation import router as recommendation_router
 
 logging.basicConfig(level=logging.WARNING)
-logging.log(">>> app/main.py loaded")
+logging.log(logging.INFO,">>> app/main.py loaded")
 
 app = FastAPI()
 
