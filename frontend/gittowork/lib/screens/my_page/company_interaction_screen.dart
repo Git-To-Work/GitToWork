@@ -1,6 +1,7 @@
 // company_interaction_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:gittowork/widgets/app_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/company.dart';
 import '../../services/user_api.dart'; // Company 모델 경로
@@ -33,7 +34,7 @@ class _CompanyInteractionScreenState extends State<CompanyInteractionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar 없이 SafeArea로 상단 구성
+      appBar: CustomAppBar(),
       body: SafeArea(
         child: Column(
           children: [
@@ -108,7 +109,7 @@ class _CompanyInteractionScreenState extends State<CompanyInteractionScreen> {
 
 // 스크랩 기업 화면
 class ScrapCompanyScreen extends StatelessWidget {
-  const ScrapCompanyScreen({Key? key}) : super(key: key);
+  const ScrapCompanyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +123,7 @@ class ScrapCompanyScreen extends StatelessWidget {
 
 // 좋아요 기업 화면
 class LikedCompanyScreen extends StatelessWidget {
-  const LikedCompanyScreen({Key? key}) : super(key: key);
+  const LikedCompanyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +161,7 @@ class RecentCompanyScreen extends StatelessWidget {
 
 // 차단한 기업 화면
 class BlockedCompanyScreen extends StatelessWidget {
-  const BlockedCompanyScreen({Key? key}) : super(key: key);
+  const BlockedCompanyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
