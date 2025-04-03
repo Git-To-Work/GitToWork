@@ -31,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +52,7 @@ public class CompanyInteractionService {
      * 3. param: 없음
      * 4. return: User 객체
      */
-    private User getCurrentUser() {
+    private User getUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String githubName = authentication.getName();
         return userRepository.findByGithubName(githubName)
@@ -82,7 +81,7 @@ public class CompanyInteractionService {
      * 4. return: CompanyInteractionResponse 객체
      */
     private CompanyInteractionResponse buildCompanyInteractionResponse(Page<?> interactionPage) {
-        int currentUserId = getCurrentUser().getId(); // 현재 사용자 ID를 미리 조회
+        int userId = getUser().getId();
 
         List<UserInteractionResult> results = interactionPage.stream()
                 .map(interaction -> {
@@ -99,7 +98,7 @@ public class CompanyInteractionService {
                     }
 
                     // 스크랩 여부를 Repository를 통해 조회
-                    boolean scrapped = userScrapsRepository.existsById(new UserScrapsId(currentUserId, company.getId()));
+                    boolean scrapped = userScrapsRepository.existsById(new UserScrapsId(userId, company.getId()));
 
                     // 1. fieldName: Company의 Field 엔티티에서 필드명 추출
                     String fieldName = (company.getField() != null) ? company.getField().getFieldName() : null;
@@ -114,7 +113,7 @@ public class CompanyInteractionService {
                                             .map(nt -> nt.getTechStack().getTechStackName())
                             )
                             .distinct()
-                            .collect(Collectors.toList());
+                            .toList();
 
                     // 4. hasActiveJobNotice: 현재 시각 기준 deadline_dttm이 미래인 JobNotice가 존재하면 true
                     boolean hasActiveJobNotice = jobNotices.stream()
@@ -131,7 +130,7 @@ public class CompanyInteractionService {
                             .scrapped(scrapped)
                             .build();
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         Pagination pagination = new Pagination(
                 interactionPage.getNumber(),
@@ -146,6 +145,7 @@ public class CompanyInteractionService {
                 .build();
     }
 
+
     /**
      * 1. 메서드 설명: 현재 인증된 사용자가 스크랩한 회사 목록을 조회하고, 페이징된 응답 객체를 생성한다.
      * 2. 로직:
@@ -157,7 +157,7 @@ public class CompanyInteractionService {
      */
     @Transactional(readOnly = true)
     public CompanyInteractionResponse getScrapCompany(InteractionGetRequest interactionGetRequest) {
-        int userId = getCurrentUser().getId();
+        int userId = getUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserScraps> userScraps = userScrapsRepository.findByUserId(userId, pageable);
 
@@ -175,7 +175,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse addScrapCompany(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
 
@@ -204,7 +204,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse deleteScrapCompany(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
 
@@ -226,7 +226,7 @@ public class CompanyInteractionService {
      */
     @Transactional(readOnly = true)
     public CompanyInteractionResponse getMyLikeCompany(InteractionGetRequest interactionGetRequest) {
-        int userId = getCurrentUser().getId();
+        int userId = getUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserLikes> userLikes = userLikesRepository.findByUserId(userId, pageable);
 
@@ -244,7 +244,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse addLikeCompany(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
 
@@ -273,7 +273,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse deleteLikeCompany(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
 
@@ -295,7 +295,7 @@ public class CompanyInteractionService {
      */
     @Transactional(readOnly = true)
     public CompanyInteractionResponse getMyBlackList(InteractionGetRequest interactionGetRequest) {
-        int userId = getCurrentUser().getId();
+        int userId = getUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserBlacklist> userBlacklist = userBlacklistRepository.findByUserId(userId, pageable);
 
@@ -313,7 +313,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse addMyBlackList(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserBlacklistId userBlacklistId = new UserBlacklistId(user.getId(), company.getId());
 
@@ -345,7 +345,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse deleteMyBlackList(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserBlacklistId userBlacklistId = new UserBlacklistId(user.getId(), company.getId());
 
