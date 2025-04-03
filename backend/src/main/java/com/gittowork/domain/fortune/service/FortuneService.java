@@ -219,31 +219,6 @@ public class FortuneService {
     }
 
     /**
-     * 1. 메서드 설명: 주어진 월(1~12)에 해당하는 월지를 반환하는 메서드.
-     * 2. 로직:
-     *    - switch문을 사용하여 입력된 월에 대응하는 월지를 매핑한다.
-     * 3. param: month - int (1~12)
-     * 4. return: String (해당 월의 월지)
-     */
-    private String getMonthBranch(int month) {
-        return switch (month) {
-            case 1 -> "인";
-            case 2 -> "묘";
-            case 3 -> "진";
-            case 4 -> "사";
-            case 5 -> "오";
-            case 6 -> "미";
-            case 7 -> "신";
-            case 8 -> "유";
-            case 9 -> "술";
-            case 10 -> "해";
-            case 11 -> "자";
-            case 12 -> "축";
-            default -> throw new IllegalArgumentException("Invalid month: " + month);
-        };
-    }
-
-    /**
      * 1. 메서드 설명: 입력된 출생일을 기준으로 12절기를 고려하여 해당 월지를 결정하는 메서드.
      * 2. 로직:
      *    - 현재 연도의 절기 리스트를 날짜순으로 정렬한 후, 출생일과 비교하여 가장 최근에 시작된 절기를 찾는다.
