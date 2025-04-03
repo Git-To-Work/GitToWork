@@ -114,9 +114,7 @@ class GitHubApi {
           'selectedRepositoryId': selectedRepositoryId,
         },
         options: Options(
-          validateStatus: (status) {
-            return status != null && status <= 404; // 200~404 허용
-          },
+          validateStatus: (status) => status != null && status <= 404,
         ),
       );
 
@@ -126,11 +124,12 @@ class GitHubApi {
         final results = response.data['results'];
         debugPrint("[분석 결과 데이터] : $results");
 
-        provider.updateFromAnalysisResult(results); // ✅ Provider에 저장
+        provider.updateFromAnalysisResult(results);
         return {'analyzing': false};
       } else if (response.statusCode == 404) {
         debugPrint("🕒 분석 중 상태입니다. (404)");
-        provider.setAnalyzingState(); // ✅ 분석 중 상태도 반영
+
+        provider.setAnalyzing(true); // ✅ 분석 중 상태 저장
         return {'analyzing': true};
       } else {
         throw Exception('깃허브 분석 조회 실패: ${response.statusCode}');
@@ -140,6 +139,7 @@ class GitHubApi {
       rethrow;
     }
   }
+
 
 
 }

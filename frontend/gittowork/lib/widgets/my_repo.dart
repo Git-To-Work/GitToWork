@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'select_repo.dart';
 import 'edit_repo.dart';
 import '../../services/github_api.dart'; // GitHub API 호출용 파일
@@ -12,6 +13,8 @@ class MyRepo extends StatefulWidget {
 }
 
 class _MyRepoState extends State<MyRepo> {
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
   int _selectedIndex = 0;
   List<RepositoryCombination> _combinations = [];
   bool _isLoading = true;
@@ -34,8 +37,9 @@ class _MyRepoState extends State<MyRepo> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('조합 레포지토리 불러오기 실패: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('조합 레포지토리 불러오기 실패: $e')),
+      );
     }
   }
 
@@ -74,8 +78,7 @@ class _MyRepoState extends State<MyRepo> {
                               Navigator.of(context).pop();
                               showDialog(
                                 context: context,
-                                builder: (context) =>
-                                const SelectRepoDialog(),
+                                builder: (context) => const SelectRepoDialog(),
                               );
                             },
                             child: Image.asset(
@@ -90,8 +93,7 @@ class _MyRepoState extends State<MyRepo> {
                               Navigator.of(context).pop();
                               showDialog(
                                 context: context,
-                                builder: (context) =>
-                                const EditRepoDialog(),
+                                builder: (context) => const EditRepoDialog(),
                               );
                             },
                             child: Image.asset(
@@ -105,24 +107,20 @@ class _MyRepoState extends State<MyRepo> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  const Divider(
-                      thickness: 1,
-                      height: 20,
-                      color: Colors.black26),
+                  const Divider(thickness: 1, height: 20, color: Colors.black26),
                   SizedBox(
                     height: 300,
                     child: _combinations.isEmpty
                         ? const Center(
-                        child: Text("조회된 조합 레포지토리가 없습니다."))
+                      child: Text("조회된 조합 레포지토리가 없습니다."),
+                    )
                         : ListView.builder(
                       shrinkWrap: true,
                       itemCount: _combinations.length,
                       itemBuilder: (context, index) {
-                        final bool isSelected =
-                            index == _selectedIndex;
+                        final isSelected = index == _selectedIndex;
                         final combination = _combinations[index];
-                        final combinedNames =
-                        combination.repositoryNames.join(', ');
+                        final combinedNames = combination.repositoryNames.join(', ');
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(
@@ -174,9 +172,20 @@ class _MyRepoState extends State<MyRepo> {
                   style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
                 onPressed: () async {
-                  if (_selectedIndex >= 0 && _selectedIndex < _combinations.length) {
-                    final selectedRepoId = _combinations[_selectedIndex].selectedRepositoryId;
+                  if (_selectedIndex >= 0 &&
+                      _selectedIndex < _combinations.length) {
+                    final selectedRepoId =
+                        _combinations[_selectedIndex].selectedRepositoryId;
+
                     debugPrint("선택된 Repository ID: $selectedRepoId");
+
+                    // secure storage에 저장
+                    await _secureStorage.write(
+                      key: 'selected_repo_id',
+                      value: selectedRepoId,
+                    );
+                    debugPrint("🔐 저장된 selected_repo_id: $selectedRepoId");
+
                     try {
                       debugPrint("분석 데이터 실행");
                       final result = await GitHubApi.fetchGithubAnalysis(
@@ -184,7 +193,7 @@ class _MyRepoState extends State<MyRepo> {
                         selectedRepositoryId: selectedRepoId,
                       );
                       if (result['analyzing'] == true) {
-                        debugPrint("아직 분석 중입니다.");
+                        debugPrint("⌛ 아직 분석 중입니다.");
                       } else {
                         debugPrint("✅ 분석 결과 저장 완료");
                       }

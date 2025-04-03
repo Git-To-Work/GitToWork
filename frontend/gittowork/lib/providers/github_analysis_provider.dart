@@ -7,16 +7,18 @@ class GitHubAnalysisProvider extends ChangeNotifier {
   Map<String, dynamic> _activityMetrics = {};
   Map<String, dynamic> _aiAnalysis = {};
   Map<String, dynamic> _languageRatios = {};
+  bool _isAnalyzing = false;
 
+  // 🔓 Getters
   String get repoName => _repoName;
   String get lastAnalysis => _lastAnalysis;
   String get overallScore => _overallScore;
   Map<String, dynamic> get activityMetrics => _activityMetrics;
   Map<String, dynamic> get aiAnalysis => _aiAnalysis;
   Map<String, dynamic> get languageRatios => _languageRatios;
-  // { "Python": 60, "JavaScript": 30, "HTML": 10 };
+  bool get isAnalyzing => _isAnalyzing;
 
-  // ✅ 퍼센트 계산
+  // ✅ 분석 등급 → 퍼센트
   double getGradePercent() {
     switch (_overallScore) {
       case 'D': return 0.30;
@@ -26,10 +28,9 @@ class GitHubAnalysisProvider extends ChangeNotifier {
       case 'B+': return 0.7667;
       case 'A': return 0.8833;
       case 'A+': return 1.0;
-      default: return 0.0; // 등급이 없는 경우 0%
+      default: return 0.0;
     }
   }
-
 
   // ✅ 분석 결과 저장
   void updateFromAnalysisResult(Map<String, dynamic> result) {
@@ -39,17 +40,27 @@ class GitHubAnalysisProvider extends ChangeNotifier {
     _activityMetrics = result['activityMetrics'] ?? {};
     _aiAnalysis = result['aiAnalysis'] ?? {};
     _languageRatios = result['languageRatios'] ?? {};
+    _isAnalyzing = false; // ✅ 분석 완료 → false
     notifyListeners();
   }
 
-  // ✅ 분석 중 상태 처리 (선택 사항)
-  void setAnalyzingState() {
-    _repoName = '';
-    _lastAnalysis = '';
-    _overallScore = '';
-    _activityMetrics = {};
-    _aiAnalysis = {};
-    _languageRatios = {};
+  // ✅ 분석 중 상태 설정
+  void setAnalyzing(bool value) {
+    _isAnalyzing = value;
+    if (value) {
+      // 분석 중일 때 기존 결과 초기화 (선택)
+      _repoName = '';
+      _lastAnalysis = '';
+      _overallScore = '';
+      _activityMetrics = {};
+      _aiAnalysis = {};
+      _languageRatios = {};
+    }
     notifyListeners();
+  }
+
+  // ✅ 기존 코드 호환용 (삭제해도 무방)
+  void setAnalyzingState() {
+    setAnalyzing(true);
   }
 }

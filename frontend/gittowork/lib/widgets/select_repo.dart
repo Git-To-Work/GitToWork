@@ -137,7 +137,7 @@ class _SelectRepoDialogState extends State<SelectRepoDialog> {
                             },
                             child: Image.asset(
                               isSelected
-                                  ? 'assets/icons/Choose.png'
+                                  ? 'assets/icons/Checked.png'
                                   : 'assets/icons/Un_Checked.png',
                               width: 24,
                               height: 24,
