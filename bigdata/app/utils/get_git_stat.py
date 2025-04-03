@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 from app.core.mongo import get_mongo_db
@@ -130,7 +131,7 @@ def get_selected_repo_stats(selected_repositories_id: str, user_id: int) -> List
                 stats = get_repo_stats(user_id, repo_id)
                 stats_list.append(stats)
             except Exception as e:
-                print(f"Error processing repo_id {repo_id}: {e}")
+                logging.error(f"Error processing repo_id {repo_id}: {e}")
     return stats_list
 
 

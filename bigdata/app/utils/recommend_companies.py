@@ -11,6 +11,8 @@ from surprise import SVD, Dataset, Reader
 
 from app.models import JobNotice, Company
 
+import logging
+
 
 def min_max_normalize(score_dict):
     values = list(score_dict.values())
@@ -37,13 +39,10 @@ def run_hybrid_recommendation(db: Session,
     #############################################
     if isinstance(analysis_result, str):
         analysis_result = analysis_result.strip().lstrip('\ufeff')
-        print("DEBUG analysis_result repr:", repr(analysis_result))
         try:
             analysis_result = json.loads(analysis_result)
         except json.JSONDecodeError as e:
             raise ValueError(f"JSON 파싱 실패: {e}")
-
-    print(analysis_result)
 
     #############################################
     # 2. 사용자 프로필 텍스트 생성 (여러 저장소 데이터 병합: complexity 및 README 반영)
@@ -299,4 +298,4 @@ def run_hybrid_recommendation(db: Session,
         {"$set": record},
         upsert=True
     )
-    print(f"[하이브리드 추천] 결과가 MongoDB에 저장(업데이트)되었습니다. user_id : {user_id}, selected_repositories_id : {selected_repositories_id}")
+    logging.log(f"[하이브리드 추천] 결과가 MongoDB에 저장(업데이트)되었습니다. user_id : {user_id}, selected_repositories_id : {selected_repositories_id}")
