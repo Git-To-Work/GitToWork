@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'duck.dart';
 import 'lucky.dart';
-import 'quiz.dart';
+import 'quiz_screen.dart';
 
 class EntertainmentScreen extends StatefulWidget {
   const EntertainmentScreen({super.key});

@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:gittowork/providers/auth_provider.dart';
 import 'package:gittowork/providers/github_analysis_provider.dart';
+import 'package:gittowork/providers/quiz_provider.dart';
 import 'package:gittowork/providers/company_provider.dart';
 import 'package:gittowork/providers/company_detail_provider.dart';
 import 'package:gittowork/providers/search_provider.dart';
@@ -33,6 +34,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
+        ChangeNotifierProvider(create: (_) => QuizProvider()),
         ChangeNotifierProvider(create: (_) => CompanyProvider()),
         ChangeNotifierProvider(create: (_) => CompanyDetailProvider()),
         ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
@@ -118,7 +120,7 @@ class _SplashScreenState extends State<SplashScreen> {
           await _authProvider.fetchUserProfile();
         } catch (e) {
           const SnackBar(content: Text("로그인에 실패했습니다."));
-    }
+        }
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
         );

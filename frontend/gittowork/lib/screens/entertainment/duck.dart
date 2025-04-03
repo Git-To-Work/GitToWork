@@ -2,7 +2,7 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'lucky.dart';
-import 'quiz.dart';
+import 'quiz_screen.dart';
 
 class DuckScreen extends StatelessWidget {
   final Function(int)? onChangeScreen;
