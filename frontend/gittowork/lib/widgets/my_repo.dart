@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'select_repo.dart';
 import 'edit_repo.dart';
 import '../../services/github_api.dart'; // GitHub API 호출용 파일
@@ -13,7 +12,6 @@ class MyRepo extends StatefulWidget {
 }
 
 class _MyRepoState extends State<MyRepo> {
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   int _selectedIndex = 0;
   List<RepositoryCombination> _combinations = [];
@@ -176,15 +174,6 @@ class _MyRepoState extends State<MyRepo> {
                       _selectedIndex < _combinations.length) {
                     final selectedRepoId =
                         _combinations[_selectedIndex].selectedRepositoryId;
-
-                    debugPrint("선택된 Repository ID: $selectedRepoId");
-
-                    // secure storage에 저장
-                    await _secureStorage.write(
-                      key: 'selected_repo_id',
-                      value: selectedRepoId,
-                    );
-                    debugPrint("🔐 저장된 selected_repo_id: $selectedRepoId");
 
                     try {
                       debugPrint("분석 데이터 실행");

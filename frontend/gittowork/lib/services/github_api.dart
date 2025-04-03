@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/github_analysis_provider.dart';
@@ -101,11 +102,17 @@ class GitHubApi {
     }
   }
 
+  /// 분석 결과 조회
   static Future<Map<String, dynamic>> fetchGithubAnalysis({
     required BuildContext context,
     required String selectedRepositoryId,
   }) async {
     debugPrint("[요청 시작] selectedRepositoryId: $selectedRepositoryId");
+    final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+    await _secureStorage.write(
+      key: 'selected_repo_id',
+      value: selectedRepositoryId,
+    );
 
     try {
       final response = await ApiService.dio.get(

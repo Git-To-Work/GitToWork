@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../services/github_api.dart'; // GitHub API 호출용 파일
 import '../../models/repository.dart'; // CombinationRepository 모델이 포함되어 있음
+import 'alert_modal.dart';
+import 'confirm_modal.dart';
 import 'my_repo.dart'; // 조합 레포지토리 선택 화면
 
 class EditRepoDialog extends StatefulWidget {
@@ -38,9 +41,44 @@ class _EditRepoDialogState extends State<EditRepoDialog> {
   }
 
   Future<void> _deleteCombination(int index) async {
+    if (_combinations.length <= 1) {
+      await showCustomAlertDialog(
+        context: context,
+        content: "최소 1개의 조합은 유지해야 합니다.",
+      );
+      return;
+    }
+
+    final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+    final selectedRepoId = await _secureStorage.read(key: 'selected_repo_id');
     final combination = _combinations[index];
+
     try {
-      // API 호출 시 selectedRepositoryId는 String 타입입니다.
+      // ✅ selectedRepoId와 삭제 대상이 같을 때만 처리
+      if (selectedRepoId != null &&
+          selectedRepoId == combination.selectedRepositoryId) {
+        // ✅ 삭제 대상이 첫 번째 조합인 경우 → 두 번째 조합을 분석
+        final nextIndex = index == 0 ? 1 : 0;
+        final newTargetRepoId = _combinations[nextIndex].selectedRepositoryId;
+
+        // 🔁 분석 API 호출
+        try {
+          final result = await GitHubApi.fetchGithubAnalysis(
+            context: context,
+            selectedRepositoryId: newTargetRepoId,
+          );
+          if (result['analyzing'] == true) {
+            debugPrint("⌛ 아직 분석 중입니다.");
+          } else {
+            debugPrint("✅ 분석 결과 저장 완료");
+          }
+
+        } catch (e) {
+          debugPrint("❌ 분석 데이터 불러오기 실패: $e");
+        }
+      }
+
+      // ✅ 삭제 실행
       await GitHubApi.deleteRepositoryCombination(combination.selectedRepositoryId);
       setState(() {
         _combinations.removeAt(index);
@@ -51,6 +89,7 @@ class _EditRepoDialogState extends State<EditRepoDialog> {
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -96,8 +135,15 @@ class _EditRepoDialogState extends State<EditRepoDialog> {
                             style: const TextStyle(color: Colors.grey, fontSize: 18),
                           ),
                           trailing: GestureDetector(
-                            onTap: () {
-                              _deleteCombination(index);
+                            onTap: () async {
+                              final confirmed = await showCustomConfirmDialog(
+                                context: context,
+                                content: '정말 삭제하시겠어요?',
+                              );
+
+                              if (confirmed == true) {
+                                _deleteCombination(index);
+                              }
                             },
                             child: Image.asset(
                               'assets/icons/Delete.png',
