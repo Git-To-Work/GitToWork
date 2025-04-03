@@ -5,10 +5,14 @@ import com.gittowork.domain.company.repository.CompanyRepository;
 import com.gittowork.domain.interaction.dto.request.InteractionGetRequest;
 import com.gittowork.domain.interaction.dto.response.CompanyInteractionResponse;
 import com.gittowork.domain.interaction.dto.response.Pagination;
+import com.gittowork.domain.interaction.dto.response.UserInteractionResult;
 import com.gittowork.domain.interaction.entity.*;
 import com.gittowork.domain.interaction.repository.UserBlacklistRepository;
 import com.gittowork.domain.interaction.repository.UserLikesRepository;
 import com.gittowork.domain.interaction.repository.UserScrapsRepository;
+import com.gittowork.domain.jobnotice.entity.JobNotice;
+import com.gittowork.domain.jobnotice.repository.JobNoticeRepository;
+import com.gittowork.domain.techstack.repository.NoticeTechStackRepository;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.CompanyNotFoundException;
@@ -25,6 +29,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,6 +42,8 @@ public class CompanyInteractionService {
     private final UserLikesRepository userLikesRepository;
     private final UserScrapsRepository userScrapsRepository;
     private final UserBlacklistRepository userBlacklistRepository;
+    private final JobNoticeRepository jobNoticeRepository;
+    private final NoticeTechStackRepository noticeTechStackRepository;
 
     /**
      * 1. 메서드 설명: 현재 인증된 사용자의 정보를 조회한다.
@@ -75,17 +82,54 @@ public class CompanyInteractionService {
      * 4. return: CompanyInteractionResponse 객체
      */
     private CompanyInteractionResponse buildCompanyInteractionResponse(Page<?> interactionPage) {
-        List<Company> companies = interactionPage.stream()
+        int currentUserId = getCurrentUser().getId(); // 현재 사용자 ID를 미리 조회
+
+        List<UserInteractionResult> results = interactionPage.stream()
                 .map(interaction -> {
+                    Company company;
+                    // 각 상호작용 타입에 따라 Company 객체 추출
                     if (interaction instanceof UserScraps) {
-                        return ((UserScraps) interaction).getCompany();
+                        company = ((UserScraps) interaction).getCompany();
                     } else if (interaction instanceof UserLikes) {
-                        return ((UserLikes) interaction).getCompany();
+                        company = ((UserLikes) interaction).getCompany();
                     } else if (interaction instanceof UserBlacklist) {
-                        return ((UserBlacklist) interaction).getCompany();
+                        company = ((UserBlacklist) interaction).getCompany();
                     } else {
                         throw new IllegalArgumentException("Unsupported interaction type");
                     }
+
+                    // 스크랩 여부를 Repository를 통해 조회
+                    boolean scrapped = userScrapsRepository.existsById(new UserScrapsId(currentUserId, company.getId()));
+
+                    // 1. fieldName: Company의 Field 엔티티에서 필드명 추출
+                    String fieldName = (company.getField() != null) ? company.getField().getFieldName() : null;
+
+                    // 2. jobNotices 조회: 해당 회사와 연결된 JobNotice들을 조회
+                    List<JobNotice> jobNotices = jobNoticeRepository.findByCompanyId(company.getId());
+
+                    // 3. techStacks: 각 JobNotice에 연결된 NoticeTechStack에서 TechStack 이름을 수집 (중복 제거)
+                    List<String> techStacks = jobNotices.stream()
+                            .flatMap(notice ->
+                                    noticeTechStackRepository.findByJobNoticeId(notice.getId()).stream()
+                                            .map(nt -> nt.getTechStack().getTechStackName())
+                            )
+                            .distinct()
+                            .collect(Collectors.toList());
+
+                    // 4. hasActiveJobNotice: 현재 시각 기준 deadline_dttm이 미래인 JobNotice가 존재하면 true
+                    boolean hasActiveJobNotice = jobNotices.stream()
+                            .anyMatch(notice -> notice.getDeadlineDttm().isAfter(LocalDateTime.now()));
+
+                    // UserInteractionResult DTO로 변환
+                    return UserInteractionResult.builder()
+                            .companyId(company.getId())
+                            .companyName(company.getCompanyName())
+                            .logo(company.getLogo())
+                            .fieldName(fieldName)
+                            .techStacks(techStacks)
+                            .hasActiveJobNotice(hasActiveJobNotice)
+                            .scrapped(scrapped)
+                            .build();
                 })
                 .collect(Collectors.toList());
 
@@ -97,7 +141,7 @@ public class CompanyInteractionService {
         );
 
         return CompanyInteractionResponse.builder()
-                .companies(companies)
+                .companies(results)
                 .pagination(pagination)
                 .build();
     }
