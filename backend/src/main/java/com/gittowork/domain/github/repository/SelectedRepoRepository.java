@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface SelectedRepoRepository extends MongoRepository<SelectedRepository, Integer> {
+public interface SelectedRepoRepository extends MongoRepository<SelectedRepository, String> {
     List<SelectedRepository> findAllByUserId(int userId);
 
     Optional<SelectedRepository> findByUserIdAndRepositories(int userId, List<com.gittowork.domain.github.model.repository.Repository> repositories);

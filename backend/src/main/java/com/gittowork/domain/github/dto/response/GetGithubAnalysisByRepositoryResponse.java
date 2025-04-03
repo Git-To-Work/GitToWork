@@ -13,6 +13,8 @@ import java.util.Map;
 @AllArgsConstructor
 @Builder
 public class GetGithubAnalysisByRepositoryResponse {
+    private String status;
+    private String selectedRepositoryId;
     private String analysisDate;
     private Map<String, Double> languageRatios;
     private List<String> selectedRepositories;
