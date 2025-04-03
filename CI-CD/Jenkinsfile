@@ -33,6 +33,7 @@ pipeline {
                         echo "Injecting backend credentials..."
                         sh '''
                             mkdir -p backend/src/main/resources
+                            chmod u+w backend/src/main/resources/gittowork-firebase-key.json
                             cp "$FIREBASE_SECRET_KEY_FILE" backend/src/main/resources/gittowork-firebase-key.json
                         '''
                     }
