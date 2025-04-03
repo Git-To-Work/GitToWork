@@ -12,4 +12,5 @@ public class SajuResult {
     private String monthPillar;
     private String dayPillar;
     private String hourPillar;
+    private String sex;
 }

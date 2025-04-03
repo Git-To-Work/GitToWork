@@ -4,7 +4,6 @@ import com.gittowork.domain.fortune.dto.request.GetTodayFortuneRequest;
 import com.gittowork.domain.fortune.dto.request.InsertFortuneInfoRequest;
 import com.gittowork.domain.fortune.service.FortuneService;
 import com.gittowork.global.response.ApiResponse;
-import com.google.protobuf.Api;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +27,6 @@ public class FortuneController {
 
     @GetMapping("/select/today")
     public ApiResponse<?> getTodayFortune(@RequestBody GetTodayFortuneRequest getTodayFortuneRequest){
-        return ApiResponse.success(HttpStatus.OK);
+        return ApiResponse.success(HttpStatus.OK, fortuneService.getTodayFortune(getTodayFortuneRequest));
     }
 }

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gittowork.domain.coverletter.entity.CoverLetterAnalysis;
+import com.gittowork.domain.fortune.dto.response.GetTodayFortuneResponse;
+import com.gittowork.domain.fortune.model.SajuResult;
 import com.gittowork.domain.github.entity.GithubAnalysisResult;
 import com.gittowork.global.config.GptConfig;
 import com.gittowork.global.exception.CoverLetterAnalysisException;
@@ -73,6 +75,35 @@ public class GptService {
                 + "전체 자기소개서의 내용을 분석해 주세요. 분석 시에는 출력 예시의 8가지 역량에 대한 점수와 전반적인 강점 및 약점을 포괄적으로 평가해 주시기 바랍니다.";
         String responseBody = callGptApi(systemMsg, prompt, maxToken);
         return coverLetterAnalysisResultParser(responseBody);
+    }
+
+    /**
+     * 1. 메서드 설명: OpenAI의 ChatGPT API를 호출하여 사주 명리학 데이터를 기반으로 오늘의 운세를 생성하는 결과를 JSON 문자열로 받고,
+     *    이를 GetTodayFortuneResponse 객체로 파싱하여 반환하는 메서드.
+     * 2. 로직:
+     *    - 사주 명리학에 따른 오늘의 운세 생성을 위해, generateTodayFortunePrompt()를 호출하여 사용자 메시지에 해당하는 프롬프트를 생성한다.
+     *    - 제공된 사주 데이터 및 성별, 환경 등의 요소를 반영한 시스템 메시지를 정의한다.
+     *    - 시스템 메시지와 프롬프트, 최대 토큰 수(maxToken)를 이용하여 callGptApi()를 호출한다.
+     *    - GPT API의 응답(JSON 문자열)을 todayFortuneResultParser()를 통해 파싱하여 GetTodayFortuneResponse 객체로 반환한다.
+     * 3. param:
+     *      sajuResult - 사주 명리학 계산 결과를 담은 SajuResult 객체.
+     *      maxToken - GPT API 호출 시 사용할 최대 토큰 수.
+     * 4. return: 오늘의 운세 정보를 담은 GetTodayFortuneResponse 객체.
+     */
+    public GetTodayFortuneResponse todayFortune(SajuResult sajuResult, int maxToken) {
+        String prompt = generateTodayFortunePrompt(sajuResult);
+        String systemMsg = "당신은 사주 명리학 전문가이자 운세 해석가입니다. 사용자에게는 출생 정보를 통해 산출된 사주의 구성(연주, 월주, 일주, 시주)와 함께 천간, 지지 정보가 제공됩니다. 또한 성별, 환경 및 지역 정보도 함께 제공됩니다. 이 모든 데이터를 바탕으로 오늘의 운세를 작성해 주세요. 오늘의 운세는 다음 네 가지 항목을 포함해야 합니다:\n" +
+                "- 전체적인 운\n" +
+                "- 건강운\n" +
+                "- 사랑운\n" +
+                "- 학업운\n" +
+                "\n" +
+                "작성 시 아래 사항들을 반드시 고려해 주세요:\n" +
+                "1. 생년월일과 태어난 시간이 동일하더라도 성별에 따라 사주의 해석과 삶의 결과는 달라질 수 있습니다.\n" +
+                "2. 기본적인 사주의 구성과 기질은 동일하지만, 성별에 따른 음양 조화, 대운 흐름, 십신 해석의 차이가 해석의 세부적인 방향과 운의 흐름에 영향을 줍니다.\n" +
+                "3. 제공되는 데이터(천간, 지지, 월주, 일주, 시주)를 사주 명리학의 전통적 원칙에 따라 해석하여, 오늘의 운세를 현실감 있고 세밀하게 작성해 주세요.\n";
+        String responseBody = callGptApi(systemMsg, prompt, maxToken);
+        return  todayFortuneResultParser(responseBody);
     }
 
     /**
@@ -205,6 +236,38 @@ public class GptService {
     }
 
     /**
+     * 1. 메서드 설명: 사주 데이터를 기반으로 GPT API에 보낼 프롬프트를 생성하는 메서드.
+     * 2. 로직:
+     *    - 오늘의 운세 추출에 필요한 사주 데이터와 출력 예시를 포함한 프롬프트 문자열을 구성한다.
+     * 3. param:
+     *      SajuResult - 오늘의 운세 추출에 필요한 사주 데이터가 담긴 객체.
+     * 4. return: 생성된 프롬프트 문자열.
+     */
+    private String generateTodayFortunePrompt(SajuResult sajuResult) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("\n");
+        prompt.append("아래 제공된 데이터(천간, 지지, 월주, 일주, 시주)와 추가 정보(성별)를 바탕으로 사주 명리학의 전통적 원칙에 따라 오늘의 운세를 작성해 주세요.\n\n");
+        prompt.append("주의사항:\n");
+        prompt.append("1. 생년월일과 태어난 시간이 동일하더라도 성별에 따라 사주의 해석과 삶의 결과는 달라질 수 있습니다.\n");
+        prompt.append("2. 기본적인 사주의 구성과 기질은 동일하지만, 성별에 따른 음양 조화, 대운 흐름, 십신 해석의 차이들이 해석의 세부적인 방향과 운의 흐름에 영향을 줍니다.\n");
+        prompt.append("3. 제공되는 데이터(천간, 지지, 월주, 일주, 시주)를 기준으로 해석하여, 현실감 있고 세밀한 오늘의 운세를 작성해 주세요.\n");
+        prompt.append("4. 오늘의 운세는 전체운, 건강운, 사랑운, 학업운 네 가지 항목을 반드시 포함해야 하며, 각 항목의 운세는 공백 포함 약 250자 내외로 작성해 주세요.\n\n");
+        prompt.append("최종 결과는 아래의 JSON 형식으로 작성해 주세요:\n");
+        prompt.append("{\n");
+        prompt.append("    \"fortune\": {\n");
+        prompt.append("        \"overall\": \"전체운 운세 내용\",\n");
+        prompt.append("        \"wealth\": \"건강운 운세 내용\",\n");
+        prompt.append("        \"love\": \"사랑운 운세 내용\",\n");
+        prompt.append("        \"study\": \"학업운 운세 내용\",\n");
+        prompt.append("        \"date\": \"YYYY-MM-DD (대한민국 오늘 날짜)\"\n");
+        prompt.append("    }\n");
+        prompt.append("}\n");
+        prompt.append("## 분석에 사용할 사주 데이터:\n");
+        prompt.append(sajuResult);
+        return prompt.toString();
+    }
+
+    /**
      * 1. 메서드 설명: JSON 문자열을 파싱하여 GithubAnalysisResult 객체로 변환하는 메서드.
      * 2. 로직:
      *    - ObjectMapper를 사용하여 입력받은 JSON 문자열을 GithubAnalysisResult 객체로 역직렬화한다.
@@ -233,6 +296,22 @@ public class GptService {
             return objectMapper.readValue(jsonString, CoverLetterAnalysis.class);
         } catch (IOException e) {
             throw new JsonParsingException("CoverLetterAnalysis JSON 파싱 중 오류 발생");
+        }
+    }
+
+    /**
+     * 1. 메서드 설명: JSON 문자열을 파싱하여 GetTodayFortuneResponse 객체로 변환하는 메서드.
+     * 2. 로직:
+     *    - ObjectMapper를 사용하여 입력받은 JSON 문자열을 GetTodayFortuneResponse 객체로 역직렬화한다.
+     * 3. param:
+     *      jsonString - 분석 결과를 담은 JSON 문자열.
+     * 4. return: 역직렬화된 GetTodayFortuneResponse 객체.
+     */
+    private GetTodayFortuneResponse todayFortuneResultParser(String jsonString) {
+        try {
+            return objectMapper.readValue(jsonString, GetTodayFortuneResponse.class);
+        } catch (IOException e) {
+            throw new JsonParsingException("TodayFortune JSON 파싱 중 오류 발생");
         }
     }
 }
