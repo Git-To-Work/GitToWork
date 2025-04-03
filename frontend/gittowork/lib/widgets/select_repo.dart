@@ -40,39 +40,52 @@ class _SelectRepoDialogState extends State<SelectRepoDialog> {
   }
 
   Future<void> _saveSelectedRepositories() async {
-    // 선택된 레포지토리들의 repoId 추출
     List<int> selectedRepoIds = [];
     for (int i = 0; i < _repositories.length; i++) {
       if (_selectedList[i]) {
         selectedRepoIds.add(_repositories[i].repoId);
       }
     }
+
+    bool isDuplicate = false;
+
     try {
-      // 레포지토리 선택 저장 API 호출
-      await GitHubApi.saveSelectedRepository(selectedRepoIds);
+      final resultMessage = await GitHubApi.saveSelectedRepository(selectedRepoIds);
+
+      if (resultMessage == '이미 등록된 레포지토리 조합입니다.') {
+        isDuplicate = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이미 등록된 조합입니다.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(resultMessage)),
+        );
+      }
     } catch (e) {
+      isDuplicate = true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('레포지토리 선택 저장 실패: $e')),
       );
     }
 
-    try {
-      // 레포지토리 분석 요청 API 호출
-      await GitHubApi.requestRepositoryAnalysis(selectedRepoIds);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('레포지토리 분석 요청 실패: $e')),
+    if (!isDuplicate) {
+      try {
+        await GitHubApi.requestRepositoryAnalysis(selectedRepoIds);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('레포지토리 분석 요청 실패: $e')),
+        );
+      }
+
+      Navigator.of(context).pop(); // ✅ 중복이 아닌 경우에만 닫힘
+      showDialog(
+        context: context,
+        builder: (context) => const MyRepo(),
       );
     }
-
-    Navigator.of(context).pop();
-    showDialog(
-      context: context,
-      builder: (context) =>
-      const MyRepo(),
-    );
-
   }
+
 
   @override
   Widget build(BuildContext context) {

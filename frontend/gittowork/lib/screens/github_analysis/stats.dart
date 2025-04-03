@@ -10,12 +10,12 @@ class StatsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<GitHubAnalysisProvider>(
       builder: (context, provider, child) {
-        final totalStars = provider.testData.isNotEmpty ? provider.testData[0] : 342;
-        final totalCommits = provider.testData.length > 1 ? provider.testData[1] : 1247;
-        final totalPRs = provider.testData.length > 2 ? provider.testData[2] : 86;
-        final totalIssues = provider.testData.length > 3 ? provider.testData[3] : 124;
-        final grade = 'C+';
-        final gradePercent = 0.65;
+        final totalStars = provider.activityMetrics['totalStars'] ?? 342;
+        final totalCommits = provider.activityMetrics['totalCommits'] ?? 1247;
+        final totalPRs = provider.activityMetrics['totalPRs'] ?? 86;
+        final totalIssues = provider.activityMetrics['totalIssues'] ?? 124;
+        final grade = provider.overallScore;
+        final gradePercent = provider.getGradePercent(); // percent 변환 함수
 
         return Container(
           width: double.infinity,
@@ -24,15 +24,15 @@ class StatsScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(  // 👈 추가된 부분 (외곽선 효과)
+            border: Border.all(
               color: const Color(0xFFD6D6D6),
               width: 1,
             ),
-            boxShadow: [ // 👈 추가된 부분 (그림자 효과)
+            boxShadow: const [
               BoxShadow(
-                color: const Color.fromARGB(64, 0, 0, 0),
+                color: Color.fromARGB(64, 0, 0, 0),
                 blurRadius: 4,
-                offset: const Offset(0, 4),
+                offset: Offset(0, 4),
               ),
             ],
           ),
@@ -55,34 +55,22 @@ class StatsScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Total Stars',
-                              style: TextStyle(color: Colors.grey, fontSize: 16)),
-                          Text('$totalStars',
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Text('Total Stars', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                          Text('$totalStars', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 12),
-                          const Text('Total PRs',
-                              style: TextStyle(color: Colors.grey, fontSize: 16)),
-                          Text('$totalPRs',
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Text('Total PRs', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                          Text('$totalPRs', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       const SizedBox(width: 30),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Total Commits',
-                              style: TextStyle(color: Colors.grey, fontSize: 16)),
-                          Text('$totalCommits',
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Text('Total Commits', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                          Text('$totalCommits', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 12),
-                          const Text('Total Issues',
-                              style: TextStyle(color: Colors.grey, fontSize: 16)),
-                          Text('$totalIssues',
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Text('Total Issues', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                          Text('$totalIssues', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ],

@@ -109,7 +109,6 @@ class _MyRepoState extends State<MyRepo> {
                       thickness: 1,
                       height: 20,
                       color: Colors.black26),
-                  // 고정 높이 영역: 항상 300픽셀 영역 유지
                   SizedBox(
                     height: 300,
                     child: _combinations.isEmpty
@@ -157,7 +156,6 @@ class _MyRepoState extends State<MyRepo> {
                 ],
               ),
             ),
-            // 버튼 영역
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -172,11 +170,31 @@ class _MyRepoState extends State<MyRepo> {
                   padding: const EdgeInsets.symmetric(vertical: 20),
                 ),
                 child: const Text(
-                  '완료',
+                  '선택하기',
                   style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
-                onPressed: () {
-                  Navigator.of(context).pop(); // 창만 닫음
+                onPressed: () async {
+                  if (_selectedIndex >= 0 && _selectedIndex < _combinations.length) {
+                    final selectedRepoId = _combinations[_selectedIndex].selectedRepositoryId;
+                    debugPrint("선택된 Repository ID: $selectedRepoId");
+                    try {
+                      debugPrint("분석 데이터 실행");
+                      final result = await GitHubApi.fetchGithubAnalysis(
+                        context: context,
+                        selectedRepositoryId: selectedRepoId,
+                      );
+                      if (result['analyzing'] == true) {
+                        debugPrint("아직 분석 중입니다.");
+                      } else {
+                        debugPrint("✅ 분석 결과 저장 완료");
+                      }
+                    } catch (e) {
+                      debugPrint("❌ 분석 데이터 불러오기 실패: $e");
+                    }
+                  } else {
+                    debugPrint("선택된 Repository가 없습니다.");
+                  }
+                  Navigator.of(context).pop();
                 },
               ),
             ),
