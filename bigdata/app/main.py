@@ -2,7 +2,7 @@
 
 import logging
 from fastapi import FastAPI
-from app.core.exception_handlers import setup_exception_handlers  # 추가
+from app.core.exception_handlers import setup_exception_handlers
 from app.api.routes.company import router as company_router
 from app.api.routes.company_detail import router as company_detail_router
 from app.api.routes.recommendation import router as recommendation_router

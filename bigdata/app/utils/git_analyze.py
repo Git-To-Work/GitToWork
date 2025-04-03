@@ -1,15 +1,19 @@
+# app/utils/git_analyze.py
+
+import datetime
+import json
 import os
 import re
-import json
 import subprocess
 import tempfile
 from collections import defaultdict
-from github import Github
-from dotenv import load_dotenv
+
 import lizard
-import datetime
-from pymongo import MongoClient
 from bson import ObjectId
+from dotenv import load_dotenv
+from github import Github
+from pymongo import MongoClient
+
 
 #####################
 # Helper Functions  #
@@ -61,10 +65,8 @@ def flesch_reading_ease(text):
 # Configuration Section #
 #########################
 
-load_dotenv()  # 필요한 환경 변수(MONGODB_URL 등) 불러오기
+load_dotenv()
 
-# GitHub 토큰은 이제 함수 호출 시 매개변수로 전달받으므로 env에서 읽지 않습니다.
-# 분석 대상 개발 언어 확장자 매핑 (HTML, CSS, Markdown 등 제외)
 ext_to_lang = {
     ".py": "Python",
     ".js": "JavaScript",
@@ -248,7 +250,6 @@ def run_full_analysis(user_github_access_token, selected_repository_id):
         try:
             report = analyze_repo(repo_name, github_client)
             all_reports.append(report)
-            print(f"{repo_name} 분석 완료.")
         except Exception as e:
             print(f"{repo_name} 분석 중 오류 발생: {e}")
     combined_report = {
@@ -256,11 +257,5 @@ def run_full_analysis(user_github_access_token, selected_repository_id):
         "repositories": all_reports
     }
     report_json = json.dumps(combined_report, indent=4, ensure_ascii=False)
-    print("최종 분석 보고서:")
-    print(report_json)
     return report_json
 
-if __name__ == "__main__":
-    selected_repository_id = "67ecf3dfe77bd14f37c7ec78"
-    user_github_access_token = "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"
-    run_full_analysis(user_github_access_token, selected_repository_id)

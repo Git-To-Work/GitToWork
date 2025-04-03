@@ -10,5 +10,4 @@ class UserBlacklist(Base):
 
     # 관계 설정
     user = relationship("User", back_populates="user_blacklists")
-    # Company 모델과의 관계는 단방향으로 설정하거나 필요에 따라 back_populates 추가 가능
     company = relationship("Company")
