@@ -1,213 +1,301 @@
-import os
 import json
+import os
 from datetime import datetime
-import pandas as pd
 
+import numpy as np
+import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
+from sqlalchemy.orm import Session
 from surprise import SVD, Dataset, Reader
 
 from app.models import JobNotice, Company
 
-def run_hybrid_recommendation(db,
-                              username,
-                              liked_companies_set,
+import logging
+
+
+def min_max_normalize(score_dict):
+    values = list(score_dict.values())
+    min_val = min(values)
+    max_val = max(values)
+    if max_val == min_val:
+        # 모든 값이 동일할 경우, 정규화하지 않고 원래 값으로 사용
+        return {k: v for k, v in score_dict.items()}
+    return {k: (v - min_val) / (max_val - min_val) for k, v in score_dict.items()}
+
+
+def run_hybrid_recommendation(db: Session,
+                              user_id,
+                              selected_repositories_id,
+                              user_github_name,
+                              liked_companies_set,  # set of company_id (또는 회사 이름; 일관성 필요)
                               blacklisted_companies_set,
                               scraped_companies_set,
-                              user_search_history,
                               user_search_detail_history,
-                              aggregate_selected_repo_stats_data,
-                              sonarqube_data
+                              analysis_result
                               ):
     #############################################
-    # 1. 설정 (사용자, 가중치, 좋아요/싫어요 등)
+    # 1. 사용자 분석 결과 로딩 및 파싱
     #############################################
+    if isinstance(analysis_result, str):
+        analysis_result = analysis_result.strip().lstrip('\ufeff')
+        try:
+            analysis_result = json.loads(analysis_result)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"JSON 파싱 실패: {e}")
 
-    # 하이브리드 가중치
-    ALPHA = 0.9  # 콘텐츠 기반 점수 비중
-    BETA = 0.1  # 협업 필터링 점수 비중
+    #############################################
+    # 2. 사용자 프로필 텍스트 생성 (여러 저장소 데이터 병합: complexity 및 README 반영)
+    #############################################
+    repositories = analysis_result.get("repositories", [])
+    if not repositories:
+        raise ValueError("분석 결과에 저장소 데이터가 없습니다.")
 
-    # 콘텐츠 기반에서 좋아요 기업 유사도 보너스, 싫어요 기업 유사도 패널티
-    LIKE_BONUS = 0.3
-    BLACKLIST_PENALTY = 0.3
+    # 저장소별 language_commit_metrics, complexity_metrics, readme_analysis 병합
+    merged_language_metrics = {}
+    merged_complexity_metrics = {}
+    readme_scores = []
 
-    ######################################
-    # 2. 사용자 GitHub 분석 JSON 로딩
-    ######################################
+    for repo in repositories:
+        # language_commit_metrics 병합 (commit_count 누적)
+        repo_lang = repo.get("language_commit_metrics", {})
+        for lang, metrics in repo_lang.items():
+            commit_count = metrics.get("commit_count", 0)
+            if lang in merged_language_metrics:
+                merged_language_metrics[lang]["commit_count"] += commit_count
+            else:
+                merged_language_metrics[lang] = {"commit_count": commit_count}
 
-    user_data = {**aggregate_selected_repo_stats_data, **sonarqube_data}
+        # complexity_metrics 병합 (여기서는 값이 존재하면 우선 적용)
+        repo_comp = repo.get("complexity_metrics", {})
+        for lang, metrics in repo_comp.items():
+            # 만약 이미 값이 있다면, 0이 아닌 값이 있다면 업데이트
+            if lang in merged_complexity_metrics:
+                if metrics.get("average_cyclomatic_complexity", 0) > 0:
+                    merged_complexity_metrics[lang] = metrics
+            else:
+                merged_complexity_metrics[lang] = metrics
 
-    # GitHub 언어별 커밋 수 -> 사용자 프로필 텍스트
-    user_profile_list = []
-    for lang, info in user_data.get("language_commit_metrics", {}).items():
-        count = info.get("commit_count", 0)
-        user_profile_list.append((lang + " ") * count)
-    user_profile_text = " ".join(user_profile_list)
+        # readme_analysis: Flesch Reading Ease 점수 수집
+        readme = repo.get("readme_analysis", {})
+        if readme:
+            readme_scores.append(readme.get("flesch_reading_ease", 0))
 
-    ######################################
-    # 3. 공고 & 기업 정보 로딩
-    ######################################
+    max_flesch = max(readme_scores) if readme_scores else 0
 
-    # company 테이블에서 기업 정보 가져오기
+    # 병합된 데이터를 기반으로 사용자 프로필 텍스트 생성
+    user_languages = merged_language_metrics
+    complexity_metrics = merged_complexity_metrics
+
+    # 복잡도 값이 0보다 큰 항목만 사용
+    complexity_values = []
+    for lang in user_languages:
+        if lang in complexity_metrics:
+            avg_cc = complexity_metrics[lang].get("average_cyclomatic_complexity")
+            if avg_cc is not None and avg_cc > 0:
+                complexity_values.append(avg_cc)
+    min_complexity = min(complexity_values) if complexity_values else 1.0
+
+    weighted_profile_parts = []
+    for lang, metrics in user_languages.items():
+        commit_count = metrics.get("commit_count", 0)
+        avg_cc = complexity_metrics.get(lang, {}).get("average_cyclomatic_complexity", 1.0)
+        if avg_cc <= 0:
+            avg_cc = 1.0
+        weight = min_complexity / avg_cc
+        effective_commits = max(1, int(round(commit_count * weight)))
+        weighted_profile_parts.append((lang + " ") * effective_commits)
+    weighted_profile_text = " ".join(weighted_profile_parts)
+
+    # README 분석: Flesch Reading Ease 기준 토큰 (없으면 기본값 부여)
+    readability_token = "EasyRead" if max_flesch > 70 else "HardRead"
+
+    user_profile_text = weighted_profile_text + " " + readability_token
+
+    #############################################
+    # 3. DB에서 공고 및 기업 정보 로딩 (기존 로직 사용)
+    #############################################
     company_rows = db.query(Company).all()
     companies = {}
+    # companies의 key는 회사의 고유 식별자 또는 이름(일관성 필요)
     for comp in company_rows:
-        # 회사명 컬럼은 모델의 속성에 따라 company_name 또는 companyName으로 접근 (실제 모델에 맞게 수정)
-        c_name = getattr(comp, "company_name", None) or getattr(comp, "companyName", None)
-        if c_name:
-            companies[c_name] = comp.__dict__
+        company_id = comp.company_id  # 또는 comp.company_name 등
+        companies[company_id] = comp.__dict__
 
     jobs = db.query(JobNotice).all()
 
-    ######################################
-    # 4. 기업별 공고 텍스트(콘텐츠) 만들기
-    ######################################
-    # ex) {"현대자동차": "Python C++ Java ...", "오픈엣지테크놀로지": "Python Go ...", ...}
+    #############################################
+    # 4. 기업별 프로필 텍스트 생성 (콘텐츠 기반)
+    #############################################
+    # 각 기업에 대해 관련 공고에서 기술 스택을 모아 텍스트 생성
     company_profiles = {}
-    for c_name in companies.keys():
+    for comp in company_rows:  # company_rows는 db.query(Company).all()로 가져온 객체 리스트
         tech_texts = []
-        for job in jobs:
-            if job.get("companyName") == c_name:
-                tech_stacks = job.get("techStacks", [])
-                tech_texts.append(" ".join(tech_stacks))
-        company_profiles[c_name] = " ".join(tech_texts).strip()
+        # comp.job_notices는 해당 회사와 연결된 모든 JobNotice 객체를 포함합니다.
+        for job in comp.job_notices:
+            if hasattr(job, "notice_tech_stacks"):
+                tech_stacks = [nts.tech_stack.tech_stack_name
+                               for nts in job.notice_tech_stacks
+                               if nts.tech_stack and nts.tech_stack.tech_stack_name]
+            else:
+                tech_stacks = []
+            tech_texts.append(" ".join(tech_stacks))
+        # 데이터가 없으면 회사 이름을 대체 텍스트로 사용할 수 있음 (빈 문자열 대신)
+        profile_text = " ".join(tech_texts).strip() or comp.company_name
+        company_profiles[comp.company_id] = profile_text
 
-    ######################################
-    # 5. 콘텐츠 기반 점수 계산
-    ######################################
-    def compute_cosine_sim(text_a, text_b):
-        if not text_a.strip() or not text_b.strip():
-            return 0.0
-        vec = TfidfVectorizer()
-        tfidf = vec.fit_transform([text_a, text_b])
-        return cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
+    #############################################
+    # 5. 콘텐츠 기반 점수 계산 (배치 처리)
+    #############################################
+    company_ids = list(company_profiles.keys())
+    company_texts = [company_profiles[c_id] for c_id in company_ids]
+    vectorizer_company = TfidfVectorizer()
+    # 모든 기업 프로필의 TF-IDF 행렬 계산
+    company_tfidf_matrix = vectorizer_company.fit_transform(company_texts)
+    # 사용자 프로필 벡터 계산 (동일 벡터라이저 사용)
+    user_vector = vectorizer_company.transform([user_profile_text])
+    # 사용자와 각 기업 간 유사도 계산
+    base_similarities = cosine_similarity(user_vector, company_tfidf_matrix).flatten()
 
-    def avg(values):
-        return sum(values) / len(values) if values else 0.0
+    # 미리 좋아요/블랙리스트 기업의 인덱스 추출
+    liked_indices = [company_ids.index(c) for c in liked_companies_set if c in company_ids]
+    blacklisted_indices = [company_ids.index(c) for c in blacklisted_companies_set if c in company_ids]
 
-    # 좋아요/싫어요 기업 프로필
-    liked_profiles = [company_profiles[c] for c in liked_companies_set if c in company_profiles]
-    blacklist_profiles = [company_profiles[c] for c in blacklisted_companies_set if c in company_profiles]
+    content_scores = {}
+    # 상수: 추가 신호 가중치 (리팩토링된 값 사용)
+    LIKED_BONUS = 0.3
+    BLACKLISTED_PENALTY = 0.5
+    SCRAPED_BONUS = 0.5
+    SEARCH_BONUS = 0.1
 
-    content_scores = {}  # {회사명: 콘텐츠 기반 점수}
-    for c_name in companies.keys():
-        # 사용자 vs. 기업 유사도
-        user_sim = compute_cosine_sim(user_profile_text, company_profiles[c_name])
+    for idx, comp_id in enumerate(company_ids):
+        base_score = base_similarities[idx]
+        # 좋아요 신호
+        if liked_indices:
+            comp_vector = company_tfidf_matrix[idx]
+            liked_vectors = company_tfidf_matrix[liked_indices]
+            like_sims = cosine_similarity(comp_vector, liked_vectors).flatten()
+            avg_like = np.mean(like_sims)
+        else:
+            avg_like = 0.0
+        # 블랙리스트 신호
+        if blacklisted_indices:
+            comp_vector = company_tfidf_matrix[idx]
+            blacklisted_vectors = company_tfidf_matrix[blacklisted_indices]
+            blacklist_sims = cosine_similarity(comp_vector, blacklisted_vectors).flatten()
+            avg_blacklisted = np.mean(blacklist_sims)
+        else:
+            avg_blacklisted = 0.0
 
-        # 좋아요 기업과의 유사도 평균
-        like_sims = []
-        for lp in liked_profiles:
-            like_sims.append(compute_cosine_sim(company_profiles[c_name], lp))
-        avg_like = avg(like_sims)
+        final_content_score = base_score + LIKED_BONUS * avg_like - BLACKLISTED_PENALTY * avg_blacklisted
 
-        # 싫어요 기업과의 유사도 평균
-        blacklist_sims = []
-        for dp in blacklist_profiles:
-            blacklist_sims.append(compute_cosine_sim(company_profiles[c_name], dp))
-        avg_blacklist = avg(blacklist_sims)
+        # 추가 신호: 스크랩 및 조회
+        if comp_id in scraped_companies_set:
+            final_content_score += SCRAPED_BONUS
+        if comp_id in user_search_detail_history:
+            final_content_score += SEARCH_BONUS
 
-        # 최종 콘텐츠 점수
-        final_content_score = user_sim + LIKE_BONUS * avg_like - BLACKLIST_PENALTY * avg_blacklist
-        content_scores[c_name] = final_content_score
+        content_scores[comp_id] = final_content_score
 
-    ######################################
-    # 6. 협업 필터링(SVD) 점수 계산
-    ######################################
-    # 6-1) TF-IDF 유사도 기반 점수 → 1~5로 스케일링 + 좋아요=5, 싫어요=1
+    #############################################
+    # 6. 협업 필터링 점수 계산 (CF) via Surprise (SVD)
+    #############################################
     interaction_by_company = {}
-
-    # 사용자 vs 공고 TF-IDF
-    vec2 = TfidfVectorizer()
+    vectorizer_cf = TfidfVectorizer()
     for job in jobs:
-        tech_stacks = job.get("techStacks", [])
+        # 기술 스택 정보 추출 (DB에서 저장된 필드 사용)
+        if hasattr(job, "notice_tech_stacks"):
+            tech_stacks = [nts.tech_stack.tech_stack_name for nts in job.notice_tech_stacks
+                           if nts.tech_stack and nts.tech_stack.tech_stack_name]
+        else:
+            tech_stacks = []
         job_text = " ".join(tech_stacks)
         if not job_text.strip():
             continue
-        tfidf_mat = vec2.fit_transform([user_profile_text, job_text])
+        tfidf_mat = vectorizer_cf.fit_transform([user_profile_text, job_text])
         sim = cosine_similarity(tfidf_mat[0:1], tfidf_mat[1:2])[0][0]
-        c_name = job.get("companyName")
-        if c_name:
-            interaction_by_company[c_name] = interaction_by_company.get(c_name, 0.0) + sim
+        comp_id = job.company_id
+        if comp_id:
+            interaction_by_company[comp_id] = interaction_by_company.get(comp_id, 0.0) + sim
 
-    max_sim = max(interaction_by_company.values()) if interaction_by_company else 1.0
+    max_sim_cf = max(interaction_by_company.values()) if interaction_by_company else 1.0
 
-    data_list = []
-    for c_name in companies.keys():
-        base_sim = interaction_by_company.get(c_name, 0.0)
-
-        if c_name in liked_companies_set:
+    cf_data_list = []
+    for comp_id in companies.keys():
+        base_sim = interaction_by_company.get(comp_id, 0.0)
+        if comp_id in liked_companies_set:
             rating = 5.0
-        elif c_name in blacklisted_companies_set:
+        elif comp_id in blacklisted_companies_set:
             rating = 1.0
         else:
-            # 0~max_sim -> 1~5 스케일링
-            rating = (base_sim / max_sim) * 4.0 + 1.0
-
-        data_list.append([username, c_name, rating])
-
-    df_cf = pd.DataFrame(data_list, columns=["user", "item", "rating"])
+            rating = (base_sim / max_sim_cf) * 4.0 + 1.0
+        cf_data_list.append([user_github_name, comp_id, rating])
+    df_cf = pd.DataFrame(cf_data_list, columns=["user", "item", "rating"])
 
     reader = Reader(rating_scale=(1, 5))
-    data_surprise = Dataset.load_from_df(df_cf[["user", "item", "rating"]], reader)
-    trainset = data_surprise.build_full_trainset()
+    data_surprise_cf = Dataset.load_from_df(df_cf[["user", "item", "rating"]], reader)
+    trainset = data_surprise_cf.build_full_trainset()
 
     algo = SVD(n_epochs=20, random_state=42)
     algo.fit(trainset)
 
-    cf_scores = {}  # {회사명: CF 예측 점수}
-    for c_name in companies.keys():
-        pred = algo.predict(username, c_name)
-        cf_scores[c_name] = pred.est
+    cf_scores = {}
+    for comp_id in companies.keys():
+        pred = algo.predict(user_github_name, comp_id)
+        cf_scores[comp_id] = pred.est
 
-    ######################################
-    # 7. 점수 정규화(선택) & 하이브리드 결합
-    ######################################
-    def min_max_normalize(score_dict):
-        vals = list(score_dict.values())
-        min_v = min(vals)
-        max_v = max(vals)
-        if max_v == min_v:
-            return {k: 0.0 for k in score_dict}
-        normed = {}
-        for k, v in score_dict.items():
-            normed[k] = (v - min_v) / (max_v - min_v)
-        return normed
-
+    #############################################
+    # 7. 점수 정규화 및 하이브리드 결합
+    #############################################
     content_norm = min_max_normalize(content_scores)
     cf_norm = min_max_normalize(cf_scores)
 
+    # 하이브리드 결합 가중치 (여기서는 0.9 : 0.1)
+    ALPHA = 0.9
+    BETA = 0.1
+
     final_recommendations = []
-    for c_name in companies.keys():
-        c_score = content_norm[c_name]
-        cf_score = cf_norm[c_name]
-        hybrid_score = ALPHA * c_score + BETA * cf_score
-        logo_filename = companies[c_name].get("logo", "")
+    for comp_id in companies.keys():
+        norm_content = content_norm.get(comp_id, 0.0)
+        norm_cf = cf_norm.get(comp_id, 0.0)
+        hybrid_score = ALPHA * norm_content + BETA * norm_cf
+        logo_filename = companies[comp_id].get("logo", "")
         logo_path = os.path.join("./crawling_img", logo_filename) if logo_filename else ""
         final_recommendations.append({
-            "company": c_name,
-            "content_score_raw": content_scores[c_name],
-            "cf_score_raw": cf_scores[c_name],
-            "content_score_norm": c_score,
-            "cf_score_norm": cf_score,
+            "company_id": comp_id,
+            "company_name": companies[comp_id].get("company_name", ""),
+            "content_score_raw": content_scores.get(comp_id, 0.0),
+            "cf_score_raw": cf_scores.get(comp_id, 0.0),
+            "content_score_norm": norm_content,
+            "cf_score_norm": norm_cf,
             "hybrid_score": hybrid_score,
             "logo": logo_path
         })
 
-    # 점수 내림차순 정렬
     final_recommendations.sort(key=lambda x: x["hybrid_score"], reverse=True)
 
-    ######################################
-    # 8. 결과 저장
-    ######################################
-    result_dir = os.path.join(".", "result", username)
-    os.makedirs(result_dir, exist_ok=True)
+    #############################################
+    # 8. 결과 저장 (MongoDB에 저장 또는 다른 방식 활용)
+    #############################################
+    mongodb_url = os.getenv("MONGODB_URL")
+    if not mongodb_url:
+        raise ValueError("MONGODB_URL 환경 변수가 설정되지 않았습니다.")
+    from pymongo import MongoClient
+    client = MongoClient(mongodb_url)
+    mongo_db = client.get_default_database()
+    recommend_collection = mongo_db["recommend_result"]
 
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    result_file = os.path.join(result_dir, f"{timestamp}_hybrid_result.json")
+    record = {
+        "user_id": user_id,
+        "selected_repositories_id": selected_repositories_id,
+        "user_github_name": user_github_name,
+        "recommendations": final_recommendations,
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
-    with open(result_file, "w", encoding="utf-8") as f:
-        json.dump(final_recommendations, f, ensure_ascii=False, indent=4)
-
-    print(f"[하이브리드 추천] 결과가 {result_file} 에 저장되었습니다.")
-
+    result = recommend_collection.update_one(
+        {"user_id": user_id, "selected_repositories_id": selected_repositories_id},
+        {"$set": record},
+        upsert=True
+    )
+    logging.log(f"[하이브리드 추천] 결과가 MongoDB에 저장(업데이트)되었습니다. user_id : {user_id}, selected_repositories_id : {selected_repositories_id}")

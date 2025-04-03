@@ -12,6 +12,14 @@ def success_response(result: dict, status_code: int = 200, message: str = "OK", 
     })
     return JSONResponse(status_code=status_code, content=content)
 
+def success_response_only_message( status_code: int = 200, message: str = "OK", code: str = "SU") -> JSONResponse:
+    content = jsonable_encoder({
+        "status": status_code,
+        "message": message,
+        "code": code,
+    })
+    return JSONResponse(status_code=status_code, content=content)
+
 def error_response(status_code: int, message: str, code: str) -> JSONResponse:
     content = jsonable_encoder({
         "status": status_code,
