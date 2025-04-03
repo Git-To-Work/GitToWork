@@ -4,7 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:gittowork/services/cover_letter_api.dart';
 
 class CoverLetterUploadForm extends StatefulWidget {
-  const CoverLetterUploadForm({Key? key}) : super(key: key);
+  const CoverLetterUploadForm({super.key});
 
   @override
   State<CoverLetterUploadForm> createState() => CoverLetterUploadFormState();
@@ -51,7 +51,6 @@ class CoverLetterUploadFormState extends State<CoverLetterUploadForm> {
       );
       Navigator.pop(context);
     } catch (e) {
-      print(e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('업로드 실패: $e')),
       );

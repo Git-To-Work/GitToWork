@@ -6,7 +6,7 @@ import 'components/cover_letter_upload_form.dart';
 import 'package:gittowork/widgets/app_bar.dart';
 
 class CoverLetterCreateScreen extends StatefulWidget {
-  const CoverLetterCreateScreen({Key? key}) : super(key: key);
+  const CoverLetterCreateScreen({super.key});
 
   @override
   State<CoverLetterCreateScreen> createState() => _CoverLetterCreateScreenState();
