@@ -129,6 +129,9 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
 
     final success = await UserApi.updateUserProfile(updateParams);
 
+    // 위젯이 여전히 마운트되어 있는지 체크
+    if (!mounted) return;
+
     if (success) {
       Navigator.pop(context);
     } else {

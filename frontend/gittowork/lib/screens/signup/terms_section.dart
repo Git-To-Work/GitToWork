@@ -25,7 +25,7 @@ class TermsSection extends StatefulWidget {
   });
 
   @override
-  _TermsSectionState createState() => _TermsSectionState();
+  State<TermsSection> createState() => _TermsSectionState();
 }
 
 class _TermsSectionState extends State<TermsSection> {
