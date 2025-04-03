@@ -32,7 +32,7 @@ public class CoverLetterAnalysis {
     private User user;
 
     @Lob
-    @Column(name = "analysis_result")
+    @Column(name = "analysis_result", columnDefinition = "TEXT")
     private String analysisResult;
 
     @Column(name = "global_capability")
