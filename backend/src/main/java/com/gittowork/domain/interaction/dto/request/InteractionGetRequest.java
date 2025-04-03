@@ -1,14 +1,12 @@
 package com.gittowork.domain.interaction.dto.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class InteractionGetRequest {
     public int page = 0;
     public int size = 20;

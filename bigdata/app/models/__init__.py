@@ -14,3 +14,4 @@ from .user_likes import UserLikes
 from .user_scraps import UserScraps
 from .cover_letter import CoverLetter
 from .cover_letter_analysis import CoverLetterAnalysis
+from .benefit_category import BenefitCategory

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:gittowork/providers/auth_provider.dart';
-import 'package:provider/provider.dart';
 import 'dart:async';
 
 // Provider
+import 'package:provider/provider.dart';
+import 'package:gittowork/providers/auth_provider.dart';
 import 'package:gittowork/providers/github_analysis_provider.dart';
+import 'package:gittowork/providers/quiz_provider.dart';
+import 'package:gittowork/providers/company_provider.dart';
+import 'package:gittowork/providers/company_detail_provider.dart';
+import 'package:gittowork/providers/search_provider.dart';
 
 // 레이아웃 파일 (스플래시로 쓸 화면)
 import 'layouts/no_appbar_no_bottom_nav_layout.dart';
@@ -30,6 +34,10 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
+        ChangeNotifierProvider(create: (_) => QuizProvider()),
+        ChangeNotifierProvider(create: (_) => CompanyProvider()),
+        ChangeNotifierProvider(create: (_) => CompanyDetailProvider()),
+        ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
       ],
       child: MyApp(initialToken: token),
     ),

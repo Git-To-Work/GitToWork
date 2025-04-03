@@ -48,42 +48,20 @@ public class GithubService {
     @Transactional(readOnly = true)
     public GetGithubAnalysisByRepositoryResponse getGithubAnalysisByRepository(String selectedRepositoryId) {
         GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
-                .findBySelectedRepositoriesId(selectedRepositoryId)
+                .findFirstBySelectedRepositoriesIdOrderByAnalysisDateDesc(selectedRepositoryId)
                 .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Result not found"));
 
         int overallScoreValue = githubAnalysisResult.getOverallScore();
         String overallScore = overallScoreValue > 90 ? "A+"
                 : overallScoreValue > 80 ? "A"
                 : overallScoreValue > 70 ? "B+"
-                : overallScoreValue > 60 ? "B" : "C";
-
-        Map<String, Double> averageLanguageScore = githubAnalysisResult.getRepositories().stream()
-                .flatMap(repositoryResult -> repositoryResult.getLanguageLevel().entrySet().stream())
-                .collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.averagingDouble(Map.Entry::getValue)));
-
-        Map<String, Integer> languageScore = averageLanguageScore.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> {
-                            double avg = entry.getValue();
-                            if (avg > 90) return 10;
-                            else if (avg > 80) return 9;
-                            else if (avg > 70) return 8;
-                            else if (avg > 60) return 7;
-                            else if (avg > 50) return 6;
-                            else if (avg > 40) return 5;
-                            else if (avg > 30) return 4;
-                            else if (avg > 20) return 3;
-                            else if (avg > 10) return 2;
-                            else if (avg > 0)  return 1;
-                            else return 0;
-                        }
-                ));
+                : overallScoreValue > 60 ? "B"
+                : overallScoreValue > 50 ? "C+"
+                : overallScoreValue > 40 ? "C" : "D";
 
         return GetGithubAnalysisByRepositoryResponse.builder()
                 .analysisDate(githubAnalysisResult.getAnalysisDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                 .languageRatios(githubAnalysisResult.getLanguageRatios())
-                .languageLevel(languageScore)
                 .selectedRepositories(githubAnalysisResult.getSelectedRepositories().stream()
                         .map(Repository::getRepoName)
                         .collect(Collectors.toList()))
@@ -129,6 +107,7 @@ public class GithubService {
 
         boolean analysisStarted = githubRestApiService.checkNewGithubEvents(githubAccessToken, userName, userId, repositoryNames);
         if (analysisStarted) {
+            githubAnalysisService.saveUserGithubRepositoryInfo(githubAccessToken, userName, userId);
             githubAnalysisService.githubAnalysisByRepository(repositories, userName);
         }
         return CreateGithubAnalysisByRepositoryResponse.builder()
@@ -152,7 +131,7 @@ public class GithubService {
      * 4. return: 성공 시 "레포지토리 선택 저장 요청 처리 완료" 메시지를 포함한 MessageOnlyResponse 객체.
      */
     @Transactional
-    public MessageOnlyResponse saveSelectedGithubRepository(int[] selectedGithubRepositoryIds) {
+    public SaveSelectedRepositoriesResponse saveSelectedGithubRepository(int[] selectedGithubRepositoryIds) {
         String username = getUserName();
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
@@ -183,8 +162,9 @@ public class GithubService {
                         .repositories(selectedRepositories)
                         .build());
 
-        selectedRepoRepository.save(selectedRepository);
-        return MessageOnlyResponse.builder()
+        String selectedRepositoryId = selectedRepoRepository.save(selectedRepository).getSelectedRepositoryId();
+        return SaveSelectedRepositoriesResponse.builder()
+                .selectedRepositoryId(selectedRepositoryId)
                 .message("레포지토리 선택 저장 요청 처리 완료")
                 .build();
     }
@@ -304,6 +284,30 @@ public class GithubService {
 
         return MessageOnlyResponse.builder()
                 .message("레포지토리 조합과 분석 결과가 삭제되었습니다.")
+                .build();
+    }
+
+    @Transactional
+    public MessageOnlyResponse updateGithubData() {
+        User user = userRepository.findByGithubName(getUserName())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        String githubAccessToken = user.getGithubAccessToken();
+        String userName = getUserName();
+        int userId = user.getId();
+
+        boolean isNewRepositoryCreated = githubRestApiService.checkNewRepositoryCreationEvents(githubAccessToken, userName, userId);
+
+        String message = "";
+        if (isNewRepositoryCreated) {
+            githubAnalysisService.saveUserGithubRepositoryInfo(githubAccessToken, userName, userId);
+            message = "새로운 Github Repository가 감지되었습니다. 데이터를 업데이트합니다.";
+        } else {
+            message = "감지된 새로운 Github Repository가 없습니다.";
+        }
+
+        return MessageOnlyResponse.builder()
+                .message(message)
                 .build();
     }
 
