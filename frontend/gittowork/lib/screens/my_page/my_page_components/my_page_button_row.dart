@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class MyPageButtonRow extends StatelessWidget {
-  const MyPageButtonRow({Key? key}) : super(key: key);
+  const MyPageButtonRow({super.key});
 
   @override
   Widget build(BuildContext context) {
