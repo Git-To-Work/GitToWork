@@ -11,7 +11,6 @@ import com.gittowork.global.response.MessageOnlyResponse;
 import com.gittowork.global.service.GithubRestApiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
