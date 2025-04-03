@@ -131,7 +131,7 @@ public class GithubService {
      * 4. return: 성공 시 "레포지토리 선택 저장 요청 처리 완료" 메시지를 포함한 MessageOnlyResponse 객체.
      */
     @Transactional
-    public MessageOnlyResponse saveSelectedGithubRepository(int[] selectedGithubRepositoryIds) {
+    public SaveSelectedRepositoriesResponse saveSelectedGithubRepository(int[] selectedGithubRepositoryIds) {
         String username = getUserName();
         User user = userRepository.findByGithubName(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
@@ -162,8 +162,9 @@ public class GithubService {
                         .repositories(selectedRepositories)
                         .build());
 
-        selectedRepoRepository.save(selectedRepository);
-        return MessageOnlyResponse.builder()
+        String selectedRepositoryId = selectedRepoRepository.save(selectedRepository).getSelectedRepositoryId();
+        return SaveSelectedRepositoriesResponse.builder()
+                .selectedRepositoryId(selectedRepositoryId)
                 .message("레포지토리 선택 저장 요청 처리 완료")
                 .build();
     }
