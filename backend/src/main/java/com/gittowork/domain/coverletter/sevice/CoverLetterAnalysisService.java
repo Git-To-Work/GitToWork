@@ -3,9 +3,12 @@ package com.gittowork.domain.coverletter.sevice;
 import com.gittowork.domain.coverletter.entity.CoverLetter;
 import com.gittowork.domain.coverletter.entity.CoverLetterAnalysis;
 import com.gittowork.domain.coverletter.repository.CoverLetterAnalysisRepository;
+import com.gittowork.domain.firebase.service.FirebaseService;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.global.exception.EmptyFileException;
+import com.gittowork.global.exception.FirebaseMessageException;
 import com.gittowork.global.service.GptService;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -25,6 +28,7 @@ public class CoverLetterAnalysisService {
 
     private final CoverLetterAnalysisRepository coverLetterAnalysisRepository;
     private final GptService gptService;
+    private final FirebaseService firebaseService;
 
     /**
      * 1. 메서드 설명: 비동기적으로 전달받은 자기소개서 PDF 파일을 분석하여,
@@ -63,8 +67,13 @@ public class CoverLetterAnalysisService {
             analysisResult.setFile(coverLetter);
             analysisResult.setUser(user);
             coverLetterAnalysisRepository.save(analysisResult);
+
+            firebaseService.sendMessage(user, "자기소개서 분석 완료", user.getGithubName() + "님, 자기소개서 분석이 완료되었습니다. \n 지금 바로 확인하세요!", "CoverLetterAnalysis");
+
         } catch (IOException e) {
             throw new EmptyFileException("Empty file input");
+        } catch (FirebaseMessagingException e) {
+            throw new FirebaseMessageException("Firebase message send failed");
         }
     }
 }
