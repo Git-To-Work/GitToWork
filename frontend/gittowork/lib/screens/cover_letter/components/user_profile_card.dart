@@ -4,7 +4,7 @@ import 'package:gittowork/models/user_profile.dart';
 class UserProfileCard extends StatelessWidget {
   final UserProfile userProfile;
 
-  const UserProfileCard({Key? key, required this.userProfile}) : super(key: key);
+  const UserProfileCard({super.key, required this.userProfile});
 
   @override
   Widget build(BuildContext context) {

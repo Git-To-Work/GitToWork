@@ -82,7 +82,7 @@ class AuthApi {
         return false;
       }
       // authorization 헤더 제거 (인터셉터에서 처리)
-      final response = await ApiService.dio.post('/api/user/delete/account');
+      final response = await ApiService.dio.delete('/api/user/delete/account');
       if (response.statusCode == 200) {
         debugPrint('회원탈퇴 성공: ${response.data}');
         await const FlutterSecureStorage().delete(key: 'jwt_token');

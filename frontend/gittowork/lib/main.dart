@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:gittowork/providers/auth_provider.dart';
 import 'package:gittowork/providers/github_analysis_provider.dart';
+import 'package:gittowork/providers/quiz_provider.dart';
 import 'package:gittowork/providers/company_provider.dart';
 import 'package:gittowork/providers/company_detail_provider.dart';
 import 'package:gittowork/providers/search_provider.dart';
@@ -33,6 +34,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
+        ChangeNotifierProvider(create: (_) => QuizProvider()),
         ChangeNotifierProvider(create: (_) => CompanyProvider()),
         ChangeNotifierProvider(create: (_) => CompanyDetailProvider()),
         ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
@@ -106,31 +108,42 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _navigateAfterDelay() async {
     // 2초 스플래시 대기
     await Future.delayed(const Duration(seconds: 2));
-
-    // 위젯이 여전히 마운트 되어 있는지 확인
     if (!mounted) return;
 
     // accessToken 존재 여부에 따라 화면 이동
     if (_authProvider.accessToken != null) {
       final success = await _authProvider.autoLoginWithToken();
+      if (!mounted) return;
+
       if (success) {
         try {
           await _authProvider.fetchUserProfile();
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
+          );
         } catch (e) {
-          const SnackBar(content: Text("로그인에 실패했습니다."));
-    }
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
-        );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("로그인에 실패했습니다.")),
+            );
+          }
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          );
+        }
       } else {
         _authProvider.logout();
         final storage = FlutterSecureStorage();
         await storage.delete(key: 'jwt_token');
+        if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const OnboardingScreen()),
         );
       }
     } else {
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const OnboardingScreen()),
       );

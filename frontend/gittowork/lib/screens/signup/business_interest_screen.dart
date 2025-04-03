@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:gittowork/screens/my_page/my_page_screen.dart';
 import '../../layouts/appbar_bottom_nav_layout.dart';
 import '../../services/user_api.dart'; // 수정: user_api.dart 사용
 import '../../widgets/app_bar.dart';
-import '../my_page/my_info_edit_screen.dart';
 
 // 실제 DB에서 받아올 때, id/name/logoUrl 형태의 모델
 class BusinessField {
@@ -197,7 +195,7 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
                                       ? ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
                                     child: Image.network(
-                                      imageUrl!,
+                                      imageUrl,
                                       width: 180,
                                       height: 100,
                                       fit: BoxFit.cover,

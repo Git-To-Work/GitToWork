@@ -97,7 +97,6 @@ class _MyPageListTile extends StatelessWidget {
   final VoidCallback? onTap;
 
   const _MyPageListTile({
-    super.key,
     required this.title,
     this.onTap,
   });
