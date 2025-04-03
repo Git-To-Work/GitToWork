@@ -48,7 +48,7 @@ def search_companies(
     business_field: Optional[str] = None,
     career: Optional[int] = None,
     location: Optional[str] = None,
-    keyword: Optional[str] = None,  # 추가된 파라미터
+    keyword: Optional[str] = None,
     page: int = 1,
     size: int = 20
 ) -> Tuple[List[Company], int]:
