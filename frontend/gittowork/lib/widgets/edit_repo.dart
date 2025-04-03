@@ -26,11 +26,13 @@ class _EditRepoDialogState extends State<EditRepoDialog> {
   Future<void> _loadCombinations() async {
     try {
       final combinations = await GitHubApi.fetchMyRepositoryCombinations();
+      if (!mounted) return;
       setState(() {
         _combinations = combinations;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -41,6 +43,7 @@ class _EditRepoDialogState extends State<EditRepoDialog> {
   }
 
   Future<void> _deleteCombination(int index) async {
+    // 최소 1개의 조합은 유지해야 함
     if (_combinations.length <= 1) {
       await showCustomAlertDialog(
         context: context,
@@ -49,19 +52,19 @@ class _EditRepoDialogState extends State<EditRepoDialog> {
       return;
     }
 
-    final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-    final selectedRepoId = await _secureStorage.read(key: 'selected_repo_id');
+    final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+    final selectedRepoId = await secureStorage.read(key: 'selected_repo_id');
     final combination = _combinations[index];
 
     try {
-      // ✅ selectedRepoId와 삭제 대상이 같을 때만 처리
+      // selectedRepoId와 삭제 대상이 같을 때만 처리
       if (selectedRepoId != null &&
           selectedRepoId == combination.selectedRepositoryId) {
-        // ✅ 삭제 대상이 첫 번째 조합인 경우 → 두 번째 조합을 분석
+        // 삭제 대상이 첫 번째 조합인 경우 → 두 번째 조합을 분석, 아니면 첫 번째 조합 선택
         final nextIndex = index == 0 ? 1 : 0;
         final newTargetRepoId = _combinations[nextIndex].selectedRepositoryId;
 
-        // 🔁 분석 API 호출
+        // 분석 API 호출
         try {
           final result = await GitHubApi.fetchGithubAnalysis(
             context: context,
@@ -72,24 +75,24 @@ class _EditRepoDialogState extends State<EditRepoDialog> {
           } else {
             debugPrint("✅ 분석 결과 저장 완료");
           }
-
         } catch (e) {
           debugPrint("❌ 분석 데이터 불러오기 실패: $e");
         }
       }
 
-      // ✅ 삭제 실행
+      // 삭제 실행
       await GitHubApi.deleteRepositoryCombination(combination.selectedRepositoryId);
+      if (!mounted) return;
       setState(() {
         _combinations.removeAt(index);
       });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('조합 레포지토리 삭제 실패: $e')),
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +143,6 @@ class _EditRepoDialogState extends State<EditRepoDialog> {
                                 context: context,
                                 content: '정말 삭제하시겠어요?',
                               );
-
                               if (confirmed == true) {
                                 _deleteCombination(index);
                               }
@@ -176,12 +178,11 @@ class _EditRepoDialogState extends State<EditRepoDialog> {
                   '완료',
                   style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
-                onPressed: (){
+                onPressed: () {
                   Navigator.of(context).pop();
                   showDialog(
                     context: context,
-                    builder: (context) =>
-                    const MyRepo(),
+                    builder: (context) => const MyRepo(),
                   );
                 },
               ),

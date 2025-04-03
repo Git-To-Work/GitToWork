@@ -12,7 +12,6 @@ class MyRepo extends StatefulWidget {
 }
 
 class _MyRepoState extends State<MyRepo> {
-
   int _selectedIndex = 0;
   List<RepositoryCombination> _combinations = [];
   bool _isLoading = true;
@@ -26,12 +25,14 @@ class _MyRepoState extends State<MyRepo> {
   Future<void> _loadCombinations() async {
     try {
       final combinations = await GitHubApi.fetchMyRepositoryCombinations();
+      if (!mounted) return;
       setState(() {
         _combinations = combinations;
         _selectedIndex = combinations.isNotEmpty ? 0 : -1;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -76,13 +77,14 @@ class _MyRepoState extends State<MyRepo> {
                               Navigator.of(context).pop();
                               showDialog(
                                 context: context,
-                                builder: (context) => const SelectRepoDialog(),
+                                builder: (context) =>
+                                const SelectRepoDialog(),
                               );
                             },
                             child: Image.asset(
                               'assets/icons/Add.png',
-                              width: 24,
-                              height: 24,
+                              width: 30,
+                              height: 30,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -91,13 +93,14 @@ class _MyRepoState extends State<MyRepo> {
                               Navigator.of(context).pop();
                               showDialog(
                                 context: context,
-                                builder: (context) => const EditRepoDialog(),
+                                builder: (context) =>
+                                const EditRepoDialog(),
                               );
                             },
                             child: Image.asset(
                               'assets/icons/Edit.png',
-                              width: 24,
-                              height: 24,
+                              width: 28,
+                              height: 28,
                             ),
                           ),
                         ],
@@ -105,7 +108,8 @@ class _MyRepoState extends State<MyRepo> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  const Divider(thickness: 1, height: 20, color: Colors.black26),
+                  const Divider(
+                      thickness: 1, height: 20, color: Colors.black26),
                   SizedBox(
                     height: 300,
                     child: _combinations.isEmpty
@@ -118,7 +122,8 @@ class _MyRepoState extends State<MyRepo> {
                       itemBuilder: (context, index) {
                         final isSelected = index == _selectedIndex;
                         final combination = _combinations[index];
-                        final combinedNames = combination.repositoryNames.join(', ');
+                        final combinedNames =
+                        combination.repositoryNames.join(', ');
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(
@@ -174,7 +179,6 @@ class _MyRepoState extends State<MyRepo> {
                       _selectedIndex < _combinations.length) {
                     final selectedRepoId =
                         _combinations[_selectedIndex].selectedRepositoryId;
-
                     try {
                       debugPrint("분석 데이터 실행");
                       final result = await GitHubApi.fetchGithubAnalysis(
@@ -192,6 +196,7 @@ class _MyRepoState extends State<MyRepo> {
                   } else {
                     debugPrint("선택된 Repository가 없습니다.");
                   }
+                  if (!mounted) return;
                   Navigator.of(context).pop();
                 },
               ),
