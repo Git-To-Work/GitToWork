@@ -141,6 +141,7 @@ public class GithubService {
                 .collect(Collectors.toList());
 
         boolean analysisStarted = githubRestApiService.checkNewGithubEvents(githubAccessToken, userName, userId, selectedRepoNames);
+        String selectedRepositoryId = null;
         if (analysisStarted) {
             githubAnalysisService.saveUserGithubRepositoryInfo(githubAccessToken, userName, userId);
             githubAnalysisService.githubAnalysisByRepository(repositories, userName);
@@ -157,11 +158,15 @@ public class GithubService {
 
             analysisStatus.setStatus(AnalysisStatus.Status.analyzing);
 
+            selectedRepositoryId = analysisStatus.getSelectedRepositoriesId();
+
             analysisStatusRepository.save(analysisStatus);
         }
 
         return CreateGithubAnalysisByRepositoryResponse.builder()
                 .analysisStarted(analysisStarted)
+                .selectedRepositoryId(selectedRepositoryId)
+                .selectedRepositories(selectedRepoNames)
                 .message(analysisStarted ? "분석이 시작되었습니다." : "마지막 분석 이후로 추가 이벤트가 없습니다.")
                 .build();
     }
