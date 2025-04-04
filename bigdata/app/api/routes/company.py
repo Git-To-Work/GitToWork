@@ -17,7 +17,7 @@ router = APIRouter()
 @router.get("/select/companies", response_model=dict)
 def get_companies(
         selected_repositories_id: str,
-        techStacks: Optional[List[str]] = Query(None),
+        tech_stacks: Optional[List[str]] = Query(None),
         field: Optional[str] = None,  # 필드 조건 (예: field_name substring)
         career: Optional[int] = None,  # 경력 조건
         keyword: Optional[str] = None,  # 회사명 또는 채용 공고 제목에 포함된 키워드
@@ -88,14 +88,14 @@ def get_companies(
             or_(*[JobNotice.location.ilike(f"%{loc}%") for loc in location])
         )
 
-    # (e) techStacks 필터: JOIN NoticeTechStack와 TechStack, tech_stack_name이 techStacks에 포함
-    if techStacks and len(techStacks) > 0:
+    # (e) techstacks 필터: JOIN NoticeTechStack와 TechStack, tech_stack_name이 techstacks에 포함
+    if tech_stacks and len(tech_stacks) > 0:
         query = query.join(
             NoticeTechStack, NoticeTechStack.job_notice_id == JobNotice.job_notice_id, isouter=True
         ).join(
             TechStack, TechStack.tech_stack_id == NoticeTechStack.tech_stack_id, isouter=True
         ).filter(
-            TechStack.tech_stack_name.in_(techStacks)
+            TechStack.tech_stack_name.in_(tech_stacks)
         )
 
     # 중복 제거
@@ -125,7 +125,7 @@ def get_companies(
         if user_id and hasattr(company, "user_scraps"):
             scraped = any(us.user_id == user_id for us in company.user_scraps)
 
-        # techStacks: 회사의 모든 채용 공고에서 NoticeTechStack을 순회하여 기술 스택 이름 수집
+        # techstacks: 회사의 모든 채용 공고에서 NoticeTechStack을 순회하여 기술 스택 이름 수집
         tech_stack_set = set()
         if hasattr(company, "job_notices"):
             for job in company.job_notices:
@@ -148,7 +148,7 @@ def get_companies(
             "field_id": company.field_id,
             "field_name": field_name,
             "scraped": scraped,
-            "techStacks": tech_stack_list,
+            "tech_stacks": tech_stack_list,
             "hasJobNotice": has_job_notice
         })
 

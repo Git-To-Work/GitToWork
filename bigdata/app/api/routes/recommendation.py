@@ -5,11 +5,32 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_db, get_current_user
 from app.utils.git_analyze import run_full_analysis
-from app.utils.mongo_logger import get_user_search_history
+from app.utils.mongo_logger import get_user_search_history, get_github_analysis_result_for_recommend
 from app.utils.recommend_companies import run_hybrid_recommendation
 from app.utils.response import success_response_only_message
 
 router = APIRouter()
+@router.get("/recommendation/analyze", response_model=dict)
+def get_recommendation_analyze(
+        selected_repositories_id: str,
+        current_user=Depends(get_current_user),
+):
+
+    try:
+        user_github_access_token = current_user.github_access_token
+        if not user_github_access_token:
+            raise HTTPException(status_code=401, detail="GitHub access token not available")
+
+        run_full_analysis(user_github_access_token, selected_repositories_id, user_id=current_user.user_id)
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Analysis failed: {str(e)}")
+
+    return success_response_only_message(
+        status_code=200,
+        message="Analysis completed",
+        code="SU"
+    )
 
 @router.get("/recommendation", response_model=dict)
 def get_recommendation(
@@ -27,7 +48,8 @@ def get_recommendation(
             raise HTTPException(status_code=401, detail="GitHub access token not available")
 
         # 분석 함수 실행: run_full_analysis는 분석 결과를 JSON 문자열로 반환
-        analysis_result = run_full_analysis(user_github_access_token, selected_repositories_id)
+        github_analysis_result_for_recommend = get_github_analysis_result_for_recommend(user_id, selected_repositories_id)
+
 
         # 현재 사용자가 좋아요, 스크랩, 블랙리스트한 기업들을 set으로 구성
         liked_companies_set = {ul.company.company_id for ul in current_user.user_likes}
@@ -46,7 +68,7 @@ def get_recommendation(
             blacklisted_companies_set,
             scraped_companies_set,
             user_search_detail_history,
-            analysis_result  # analysis_result
+            github_analysis_result_for_recommend  # analysis_result
         )
 
     except Exception as e:
