@@ -298,4 +298,4 @@ def run_hybrid_recommendation(db: Session,
         {"$set": record},
         upsert=True
     )
-    logging.log(f"[하이브리드 추천] 결과가 MongoDB에 저장(업데이트)되었습니다. user_id : {user_id}, selected_repositories_id : {selected_repositories_id}")
+    logging.log(logging.INFO,f"[하이브리드 추천] 결과가 MongoDB에 저장(업데이트)되었습니다. user_id : {user_id}, selected_repositories_id : {selected_repositories_id}")

@@ -87,7 +87,7 @@ def get_github_client(user_github_access_token: str) -> Github:
     """Github API 클라이언트를 생성합니다."""
     return Github(user_github_access_token)
 
-def get_repo_full_names(selected_repository_id):
+def get_repo_full_names(selected_repositories_id):
     """
     MongoDB에서 selected_repository_id로 문서를 조회하여,
     repositories 배열 내 fullName 값을 리스트로 추출하는 함수.
@@ -98,9 +98,9 @@ def get_repo_full_names(selected_repository_id):
     client = MongoClient(mongodb_url)
     db = client.get_default_database()
     collection = db["selected_repository"]
-    document = collection.find_one({"_id": ObjectId(selected_repository_id)})
+    document = collection.find_one({"_id": ObjectId(selected_repositories_id)})
     if not document:
-        raise ValueError(f"해당 _id({selected_repository_id})로 문서를 찾을 수 없습니다.")
+        raise ValueError(f"해당 _id({selected_repositories_id})로 문서를 찾을 수 없습니다.")
     if "repositories" not in document:
         raise KeyError("문서에 'repositories' 필드가 없습니다.")
     repo_full_names = [repo["fullName"] for repo in document["repositories"] if "fullName" in repo]
@@ -239,14 +239,15 @@ def analyze_repo(repo_full_name, github_client: Github):
     }
     return report
 
-def run_full_analysis(user_github_access_token, selected_repository_id, user_id):
+def run_full_analysis(user_github_access_token, selected_repositories_id, user_id):
     """
     전체 분석 프로세스를 수행하여 분석 결과를 JSON 문자열로 반환합니다.
     파일 저장 없이 결과를 print로 출력하고 반환합니다.
     """
     github_client = get_github_client(user_github_access_token)
-    repo_full_names = get_repo_full_names(selected_repository_id)
+    repo_full_names = get_repo_full_names(selected_repositories_id)
     all_reports = []
+
     for repo_name in repo_full_names:
         try:
             report = analyze_repo(repo_name, github_client)
@@ -268,13 +269,13 @@ def run_full_analysis(user_github_access_token, selected_repository_id, user_id)
 
     record = {
         "user_id": user_id,
-        "selected_repository_id": selected_repository_id,
+        "selected_repositories_id": selected_repositories_id,
         "repositories" : all_reports,
         "analysis_dttm": datetime.datetime.now().isoformat()
     }
 
     github_analysis_result_for_recommend.update_one(
-        {"user_id": user_id, "selected_repository_id": selected_repository_id},
+        {"user_id": user_id, "selected_repositories_id": selected_repositories_id},
         {"$set" : record},
         upsert=True
     )
