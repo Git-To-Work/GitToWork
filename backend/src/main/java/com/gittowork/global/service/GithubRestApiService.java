@@ -518,46 +518,96 @@ public class GithubRestApiService {
      * 4. return: 파싱된 정보를 기반으로 생성된 GithubIssue 객체.
      */
     private GithubIssue parseIssue(Map<String, Object> issueMap) {
+        if (issueMap == null) {
+            throw new IllegalArgumentException("issueMap cannot be null");
+        }
+
         int repoId = Optional.ofNullable(issueMap.get("repo_id"))
+                .filter(val -> val instanceof Number)
                 .map(val -> ((Number) val).intValue())
                 .orElse(0);
         long issueId = Optional.ofNullable(issueMap.get("issue_id"))
+                .filter(val -> val instanceof Number)
                 .map(val -> ((Number) val).longValue())
                 .orElse(0L);
-        String url = Optional.ofNullable((String) issueMap.get("url")).orElse("");
-        String commentsUrl = Optional.ofNullable((String) issueMap.get("comments_url")).orElse("");
-        String title = Optional.ofNullable((String) issueMap.get("title")).orElse("");
-        String body = Optional.ofNullable((String) issueMap.get("body")).orElse("");
+        String url = Optional.ofNullable(issueMap.get("url"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElse("");
+        String commentsUrl = Optional.ofNullable(issueMap.get("comments_url"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElse("");
+        String title = Optional.ofNullable(issueMap.get("title"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElse("");
+        String body = Optional.ofNullable(issueMap.get("body"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElse("");
         int comments = Optional.ofNullable(issueMap.get("comments"))
+                .filter(val -> val instanceof Number)
                 .map(val -> ((Number) val).intValue())
                 .orElse(0);
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> userMap = (Map<String, Object>) issueMap.get("user");
-        IssueUser user = userMap != null ? parseIssueUser(userMap) : null;
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> labelsList = (List<Map<String, Object>>) issueMap.get("labels");
-        List<IssueLabel> labels = Optional.ofNullable(labelsList)
-                .orElse(Collections.emptyList())
-                .stream()
-                .map(this::parseLabel)
-                .collect(Collectors.toList());
-
-        IssueUser assignee = null;
-        if (issueMap.get("assignee") != null) {
+        IssueUser user = null;
+        Object userObj = issueMap.get("user");
+        if (userObj instanceof Map) {
             @SuppressWarnings("unchecked")
-            Map<String, Object> assigneeMap = (Map<String, Object>) issueMap.get("assignee");
-            assignee = parseIssueUser(assigneeMap);
+            Map<String, Object> userMap = (Map<String, Object>) userObj;
+            try {
+                user = parseIssueUser(userMap);
+            } catch (Exception e) {
+            }
         }
 
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> assigneesList = (List<Map<String, Object>>) issueMap.get("assignees");
-        List<IssueUser> assignees = Optional.ofNullable(assigneesList)
-                .orElse(Collections.emptyList())
-                .stream()
-                .map(this::parseIssueUser)
-                .collect(Collectors.toList());
+        List<IssueLabel> labels = Collections.emptyList();
+        Object labelsObj = issueMap.get("labels");
+        if (labelsObj instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> labelsList = (List<Map<String, Object>>) labelsObj;
+            labels = labelsList.stream()
+                    .filter(Objects::nonNull)
+                    .map(labelMap -> {
+                        try {
+                            return parseLabel(labelMap);
+                        } catch (Exception e) {
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+
+        IssueUser assignee = null;
+        Object assigneeObj = issueMap.get("assignee");
+        if (assigneeObj instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> assigneeMap = (Map<String, Object>) assigneeObj;
+            try {
+                assignee = parseIssueUser(assigneeMap);
+            } catch (Exception e) {
+            }
+        }
+
+        List<IssueUser> assignees = Collections.emptyList();
+        Object assigneesObj = issueMap.get("assignees");
+        if (assigneesObj instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> assigneesList = (List<Map<String, Object>>) assigneesObj;
+            assignees = assigneesList.stream()
+                    .filter(Objects::nonNull)
+                    .map(item -> {
+                        try {
+                            return parseIssueUser(item);
+                        } catch (Exception e) {
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
 
         return GithubIssue.builder()
                 .repoId(repoId)
@@ -573,7 +623,6 @@ public class GithubRestApiService {
                 .comments(comments)
                 .build();
     }
-
 
     /**
      * 1. 메서드 설명: GitHub 이슈의 사용자 정보를 파싱하여 GithubIssueUser 객체로 변환하는 헬퍼 메서드.
