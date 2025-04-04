@@ -12,6 +12,7 @@ import lizard
 from bson import ObjectId
 from dotenv import load_dotenv
 from github import Github
+from numpy.core.records import record
 from pymongo import MongoClient
 
 
@@ -238,7 +239,7 @@ def analyze_repo(repo_full_name, github_client: Github):
     }
     return report
 
-def run_full_analysis(user_github_access_token, selected_repository_id):
+def run_full_analysis(user_github_access_token, selected_repository_id, user_id):
     """
     전체 분석 프로세스를 수행하여 분석 결과를 JSON 문자열로 반환합니다.
     파일 저장 없이 결과를 print로 출력하고 반환합니다.
@@ -256,6 +257,25 @@ def run_full_analysis(user_github_access_token, selected_repository_id):
         "analysis_date": datetime.datetime.now().isoformat(),
         "repositories": all_reports
     }
-    report_json = json.dumps(combined_report, indent=4, ensure_ascii=False)
-    return report_json
+
+    mongodb_url = os.getenv("MONGODB_URL")
+    if not mongodb_url:
+        raise ValueError("MONGODB_URL 환경 변수가 설정되지 않았습니다.")
+    from pymongo import MongoClient
+    client = MongoClient(mongodb_url)
+    mongo_db = client.get_default_database()
+    github_analysis_result_for_recommend = mongo_db["github_analysis_result_for_recommend"]
+
+    record = {
+        "user_id": user_id,
+        "selected_repository_id": selected_repository_id,
+        "repositories" : all_reports,
+        "analysis_dttm": datetime.datetime.now().isoformat()
+    }
+
+    github_analysis_result_for_recommend.update_one(
+        {"user_id": user_id, "selected_repository_id": selected_repository_id},
+        {"$set" : record},
+        upsert=True
+    )
 
