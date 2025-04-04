@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import 'api_service.dart';
 import 'package:gittowork/providers/search_provider.dart';
@@ -7,53 +8,61 @@ import 'package:gittowork/providers/search_provider.dart';
 class CompanyApi {
   /// 추천 기업 리스트 조회
   static Future<Map<String, dynamic>> fetchRecommendedCompanies({
-    required BuildContext context, // context 추가
-    String? selectedRepositoriesId,
-    List<String>? techStacks,
-    List<String>? field,
-    String? career,
-    String? location,
+    required BuildContext context,
     String? keword,
-    String? page,
-    String? size,
+    int page = 1,
+    int size = 20,
   }) async {
-    // 🔎 Provider 값 디버깅 출력
     final filterProvider = Provider.of<SearchFilterProvider>(context, listen: false);
-    debugPrint("================= 🔍 Provider 필터 상태 =================");
-    debugPrint("Selected TechStacks: ${filterProvider.selectedTechs}");
-    debugPrint("Selected Tags: ${filterProvider.selectedTags}");
-    debugPrint("Selected Career: ${filterProvider.selectedCareer}");
-    debugPrint("Selected Regions: ${filterProvider.selectedRegions}");
-    debugPrint("=====================================================");
+    final secureStorage = const FlutterSecureStorage();
 
-    final queryParameters = {
-      'techStacks': techStacks ?? [],
-      'field': field ?? [],
-      'location': location ?? "",
-      'keword': keword ?? "",
-      'page': page ?? 1.toString(),
-      'size': size ?? 20.toString(),
+    String? selectedRepoId = filterProvider.selectedRepoId;
+    if (selectedRepoId.isEmpty) {
+      selectedRepoId = await secureStorage.read(key: 'selected_repo_id');
+    }
+
+    // 💡 조건에 맞는 값만 포함시킴
+    final Map<String, dynamic> queryParameters = {
+      if (selectedRepoId != null && selectedRepoId.isNotEmpty)
+        'selected_repositories_id': selectedRepoId,
+      if (filterProvider.selectedTechs.isNotEmpty)
+        'techStacks': filterProvider.selectedTechs.toList(),
+      if (filterProvider.selectedTags.isNotEmpty)
+        'field': filterProvider.selectedTags.toList(),
+      if (filterProvider.selectedCareer != '전체')
+        'career': int.tryParse(filterProvider.selectedCareer.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
+      if (filterProvider.selectedRegions.isNotEmpty)
+        'location': filterProvider.selectedRegions.toList(),
+      if (keword != null && keword.isNotEmpty)
+        'keword': keword,
+      'page': page,
+      'size': size,
     };
 
-    final response = await FastApiService.dio.get(
-      '/select/companies',
-      queryParameters: queryParameters,
-    );
+    debugPrint("🔍 최종 API 호출 파라미터: $queryParameters");
 
-    final results = response.data['result'];
-    debugPrint("=============================추천 기업 리스트 조회=====================================");
-    debugPrint("응답 데이터 : ${response.data}");
-    debugPrint("===================================================================================");
+    try {
+      final response = await FastApiService.dio.get(
+        '/select/companies',
+        queryParameters: queryParameters,
+      );
 
-    if (response.statusCode == 200) {
-      if (results == null) {
-        throw Exception('응답 데이터에 값이 없습니다.');
+      final results = response.data['result'];
+      if (response.statusCode == 200) {
+        if (results == null) {
+          throw Exception('응답 데이터에 값이 없습니다.');
+        }
+        return results as Map<String, dynamic>;
+      } else {
+        throw Exception('추천 기업 조회 실패: ${response.statusCode}');
       }
-      return results as Map<String, dynamic>;
-    } else {
-      throw Exception('추천 기업 조회 실패: ${response.statusCode}');
+    } catch (e) {
+      debugPrint("🚨 API Error: $e");
+      rethrow;
     }
   }
+
+
 
   /// 기업 상세 보기
   static Future<Map<String, dynamic>> fetchCompanyDetail(int companyId) async {
@@ -172,6 +181,26 @@ class CompanyApi {
       return result['message'] ?? '스크랩 삭제 완료';
     } else {
       throw Exception('스크랩 삭제 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 기업 분석 요청
+  static Future<String> requestCompanyAnalysis() async {
+    final secureStorage = const FlutterSecureStorage();
+    final selectedRepoId = await secureStorage.read(key: 'selected_repo_id');
+
+    final response = await ApiService.dio.get(
+      '/recommendation',
+      queryParameters: {
+        'selected_repositories_id': selectedRepoId,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final result = response.data['message'];
+      return result ?? 'FastApi 분석 요청 완료';
+    } else {
+      throw Exception('FastApi 분석 요청 실패: ${response.statusCode}');
     }
   }
 }

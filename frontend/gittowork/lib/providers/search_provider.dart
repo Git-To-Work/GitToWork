@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 
 class SearchFilterProvider extends ChangeNotifier {
+  // ✅ My Repo 관련 필드
+  String _selectedRepoName = '';
+  String _selectedRepoId = '';
+
+  String get selectedRepoName => _selectedRepoName;
+  String get selectedRepoId => _selectedRepoId;
+
+  // ✅ 기타 필터 상태
   String selectedCareer;
   Set<String> selectedTechs;
   Set<String> selectedTags;
@@ -15,6 +23,14 @@ class SearchFilterProvider extends ChangeNotifier {
         selectedTags = selectedTags ?? {},
         selectedRegions = selectedRegions ?? {};
 
+  // ✅ My Repo 업데이트
+  void updateSelectedRepo(String name, String id) {
+    _selectedRepoName = name;
+    _selectedRepoId = id;
+    notifyListeners();
+  }
+
+  // ✅ 나머지 필터 업데이트
   void updateCareer(String career) {
     selectedCareer = career;
     notifyListeners();

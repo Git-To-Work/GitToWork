@@ -49,7 +49,7 @@ class _InitialRepoScreenState extends State<InitialRepoScreen> {
     }
 
     try {
-      await GitHubApi.requestRepositoryAnalysis(selectedRepoIds);
+      await GitHubApi.requestRepositoryAnalysis(context, selectedRepoIds);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('레포지토리 분석 요청 실패: $e')),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class AnalysingScreen extends StatelessWidget {
-  const AnalysingScreen({super.key});
+class FailScreen extends StatelessWidget {
+  const FailScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -30,20 +30,6 @@ class AnalysingScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 16, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context); // 뒤로 가기
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
-                child: const Text(
-                  '나가기',
-                  style: TextStyle(color: Colors.white),
-                ),
-              )
             ],
           ),
         ),
