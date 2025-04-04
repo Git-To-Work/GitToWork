@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:gittowork/widgets/app_bar.dart';
 import '../../../models/user_profile.dart';
@@ -133,6 +134,16 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
     if (!mounted) return;
 
     if (success) {
+      if (_serviceNotification) {
+        // 스위치 ON -> FCM 토큰 얻어서 등록
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          await UserApi.updateFcmToken(token);
+        }
+      } else {
+        // 스위치 OFF -> DB 토큰 비우기
+        await UserApi.updateFcmToken('');
+      }
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

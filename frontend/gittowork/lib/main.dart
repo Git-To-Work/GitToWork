@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -23,11 +25,27 @@ import 'layouts/appbar_bottom_nav_layout.dart';
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
 GlobalKey<ScaffoldMessengerState>();
 
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // 백그라운드 푸시 수신 시 처리 로직
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   final storage = FlutterSecureStorage();
   final token = await storage.read(key: 'jwt_token'); // 저장된 JWT 토큰 읽어오기
+
+  // FCM 설정
+  await Firebase.initializeApp();
+  // 안드로이드 알림 권한 확인(안드로이드 13 이상)
+  NotificationSettings settings = await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   debugPrint('JWT 토큰: $token');
   runApp(
     MultiProvider(
