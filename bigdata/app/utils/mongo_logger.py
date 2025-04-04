@@ -55,3 +55,21 @@ def get_user_search_history(user_id: int, collection_name: str) -> list:
         return logs
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve search history: {str(e)}")
+
+
+def get_recommend_result(user_id: int, selected_repositories_id: str):
+    db = get_mongo_db()
+    collection = db["recommend_result"]
+    try:
+        return collection.find({"user_id": user_id, selected_repositories_id: selected_repositories_id})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve recommend results: {str(e)}")
+
+
+def get_github_analysis_result_for_recommend(user_id: int, selected_repositories_id: str):
+    db = get_mongo_db()
+    collection = db["github_analysis_result_for_recommend"]
+    try:
+        return collection.find_one({"user_id": user_id, "selected_repositories_id": selected_repositories_id})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve github analysis results: {str(e)}")
