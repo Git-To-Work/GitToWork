@@ -13,6 +13,7 @@ class JobNotice(Base):
     newcomer = Column(Boolean, nullable=False, server_default=text("1"))
     min_career = Column(Integer, nullable=True)
     max_career = Column(Integer, nullable=True)
+    task_id = Column(Integer, ForeignKey("task.task_id"), nullable=True)
 
     company = relationship("Company", back_populates="job_notices")
     notice_tech_stacks = relationship("NoticeTechStack", back_populates="job_notice")

@@ -28,7 +28,7 @@ def run_hybrid_recommendation(db: Session,
                               user_id,
                               selected_repositories_id,
                               user_github_name,
-                              liked_companies_set,  # set of company_id (또는 회사 이름; 일관성 필요)
+                              liked_companies_set,
                               blacklisted_companies_set,
                               scraped_companies_set,
                               user_search_detail_history,
