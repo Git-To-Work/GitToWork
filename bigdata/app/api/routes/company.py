@@ -10,7 +10,7 @@ from pymongo import MongoClient
 import os
 
 from app.core.deps import get_db, get_current_user
-from app.models import Company, JobNotice, NoticeTechStack, TechStack, Field
+from app.models import Company, JobNotice, NoticeTechStack, TechStack, Field, Task
 from app.utils.response import success_response
 
 router = APIRouter()
@@ -60,8 +60,11 @@ def get_companies(
     query = query.filter(Company.company_id.in_(recommended_ids))
 
     # (a) field 필터: Company.field 관계를 활용하여 Field.field_name을 직접 참조
+
+    # (a) field 필터: 회사의 공고와 연결된 Task의 task_name이 field와 같아야 함
     if field:
-        query = query.filter(Company.field.has(Field.field_name.ilike(f"%{field}%")))
+        # JobNotice와 Task를 JOIN (outer join을 사용하여, 없는 경우는 필터에서 제외)
+        query = query.join(Task, JobNotice.task).filter(Task.task_name == field)
 
     # (b) career 필터: 채용 공고의 min_career, max_career 조건
     if career is not None:
@@ -72,14 +75,11 @@ def get_companies(
             )
         )
 
-    # (c) keyword 필터: 회사명 또는 채용 공고 제목에 keyword 포함
+    # (c) keyword 필터: 회사명에 keyword 포함
     if keyword:
         like_pattern = f"%{keyword}%"
         query = query.filter(
-            or_(
-                Company.company_name.ilike(like_pattern),
-                JobNotice.job_notice_title.ilike(like_pattern)
-            )
+            Company.company_name.ilike(like_pattern)
         )
 
     # (d) location 필터: 입력된 지역 배열 중 하나라도 JobNotice.location과 일치

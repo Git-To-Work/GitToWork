@@ -16,3 +16,4 @@ class JobNotice(Base):
 
     company = relationship("Company", back_populates="job_notices")
     notice_tech_stacks = relationship("NoticeTechStack", back_populates="job_notice")
+    task = relationship("Task", back_populates="job_notices")

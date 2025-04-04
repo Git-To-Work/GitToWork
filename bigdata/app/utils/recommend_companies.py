@@ -256,6 +256,9 @@ def run_hybrid_recommendation(db: Session,
 
     final_recommendations = []
     for comp_id in companies.keys():
+        # 블랙리스트에 속하는 기업은 최종 결과에서 제외합니다.
+        if comp_id in blacklisted_companies_set:
+            continue
         norm_content = content_norm.get(comp_id, 0.0)
         norm_cf = cf_norm.get(comp_id, 0.0)
         hybrid_score = ALPHA * norm_content + BETA * norm_cf
@@ -298,4 +301,4 @@ def run_hybrid_recommendation(db: Session,
         {"$set": record},
         upsert=True
     )
-    logging.log(logging.INFO,f"[하이브리드 추천] 결과가 MongoDB에 저장(업데이트)되었습니다. user_id : {user_id}, selected_repositories_id : {selected_repositories_id}")
+    logging.log(logging.INFO, f"[하이브리드 추천] 결과가 MongoDB에 저장(업데이트)되었습니다. user_id : {user_id}, selected_repositories_id : {selected_repositories_id}")
