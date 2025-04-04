@@ -17,7 +17,7 @@ router = APIRouter()
 @router.get("/select/companies", response_model=dict)
 def get_companies(
         selected_repositories_id: str,
-        techstacks: Optional[List[str]] = Query(None),
+        tech_stacks: Optional[List[str]] = Query(None),
         field: Optional[str] = None,  # 필드 조건 (예: field_name substring)
         career: Optional[int] = None,  # 경력 조건
         keyword: Optional[str] = None,  # 회사명 또는 채용 공고 제목에 포함된 키워드
@@ -89,13 +89,13 @@ def get_companies(
         )
 
     # (e) techstacks 필터: JOIN NoticeTechStack와 TechStack, tech_stack_name이 techstacks에 포함
-    if techstacks and len(techstacks) > 0:
+    if tech_stacks and len(tech_stacks) > 0:
         query = query.join(
             NoticeTechStack, NoticeTechStack.job_notice_id == JobNotice.job_notice_id, isouter=True
         ).join(
             TechStack, TechStack.tech_stack_id == NoticeTechStack.tech_stack_id, isouter=True
         ).filter(
-            TechStack.tech_stack_name.in_(techstacks)
+            TechStack.tech_stack_name.in_(tech_stacks)
         )
 
     # 중복 제거
@@ -148,7 +148,7 @@ def get_companies(
             "field_id": company.field_id,
             "field_name": field_name,
             "scraped": scraped,
-            "techstacks": tech_stack_list,
+            "tech_stacks": tech_stack_list,
             "hasJobNotice": has_job_notice
         })
 
