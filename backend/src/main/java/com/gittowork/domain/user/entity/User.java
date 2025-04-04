@@ -1,5 +1,11 @@
 package com.gittowork.domain.user.entity;
 
+import com.gittowork.domain.coverletter.entity.CoverLetter;
+import com.gittowork.domain.coverletter.entity.CoverLetterAnalysis;
+import com.gittowork.domain.firebase.entity.UserAlertLog;
+import com.gittowork.domain.interaction.entity.UserBlacklist;
+import com.gittowork.domain.interaction.entity.UserLikes;
+import com.gittowork.domain.interaction.entity.UserScraps;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -8,6 +14,8 @@ import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -19,6 +27,7 @@ import java.time.LocalDateTime;
 public class User {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id", nullable = false)
     private Integer id;
 
@@ -80,6 +89,28 @@ public class User {
 
     @OneToOne(mappedBy = "user")
     private UserGitInfo userGitInfo;
+
+    @Size(max = 255)
+    @Column(name = "FCM_token")
+    private String fcmToken;
+
+    @OneToMany(mappedBy = "user")
+    private Set<CoverLetter> coverLetters = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "user")
+    private Set<CoverLetterAnalysis> coverLetterAnalyses = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "user")
+    private Set<UserAlertLog> userAlertLogs = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "user")
+    private Set<UserBlacklist> userBlacklists = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "user")
+    private Set<UserLikes> userLikes = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "user")
+    private Set<UserScraps> userScraps = new LinkedHashSet<>();
 
     public void setUserGitInfo(UserGitInfo userGitInfo) {
         if (userGitInfo == null) {

@@ -17,4 +17,5 @@ public class GetMyProfileResponse {
     private int experience;
     private String avatarUrl;
     private String[] interestFields;
+    private boolean notificationAgreed;
 }

@@ -5,10 +5,14 @@ import com.gittowork.domain.company.repository.CompanyRepository;
 import com.gittowork.domain.interaction.dto.request.InteractionGetRequest;
 import com.gittowork.domain.interaction.dto.response.CompanyInteractionResponse;
 import com.gittowork.domain.interaction.dto.response.Pagination;
+import com.gittowork.domain.interaction.dto.response.UserInteractionResult;
 import com.gittowork.domain.interaction.entity.*;
 import com.gittowork.domain.interaction.repository.UserBlacklistRepository;
 import com.gittowork.domain.interaction.repository.UserLikesRepository;
 import com.gittowork.domain.interaction.repository.UserScrapsRepository;
+import com.gittowork.domain.jobnotice.entity.JobNotice;
+import com.gittowork.domain.jobnotice.repository.JobNoticeRepository;
+import com.gittowork.domain.techstack.repository.NoticeTechStackRepository;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.CompanyNotFoundException;
@@ -25,8 +29,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +41,8 @@ public class CompanyInteractionService {
     private final UserLikesRepository userLikesRepository;
     private final UserScrapsRepository userScrapsRepository;
     private final UserBlacklistRepository userBlacklistRepository;
+    private final JobNoticeRepository jobNoticeRepository;
+    private final NoticeTechStackRepository noticeTechStackRepository;
 
     /**
      * 1. 메서드 설명: 현재 인증된 사용자의 정보를 조회한다.
@@ -46,7 +52,7 @@ public class CompanyInteractionService {
      * 3. param: 없음
      * 4. return: User 객체
      */
-    private User getCurrentUser() {
+    private User getUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String githubName = authentication.getName();
         return userRepository.findByGithubName(githubName)
@@ -75,19 +81,56 @@ public class CompanyInteractionService {
      * 4. return: CompanyInteractionResponse 객체
      */
     private CompanyInteractionResponse buildCompanyInteractionResponse(Page<?> interactionPage) {
-        List<Company> companies = interactionPage.stream()
+        int userId = getUser().getId();
+
+        List<UserInteractionResult> results = interactionPage.stream()
                 .map(interaction -> {
+                    Company company;
+                    // 각 상호작용 타입에 따라 Company 객체 추출
                     if (interaction instanceof UserScraps) {
-                        return ((UserScraps) interaction).getCompany();
+                        company = ((UserScraps) interaction).getCompany();
                     } else if (interaction instanceof UserLikes) {
-                        return ((UserLikes) interaction).getCompany();
+                        company = ((UserLikes) interaction).getCompany();
                     } else if (interaction instanceof UserBlacklist) {
-                        return ((UserBlacklist) interaction).getCompany();
+                        company = ((UserBlacklist) interaction).getCompany();
                     } else {
                         throw new IllegalArgumentException("Unsupported interaction type");
                     }
+
+                    // 스크랩 여부를 Repository를 통해 조회
+                    boolean scrapped = userScrapsRepository.existsById(new UserScrapsId(userId, company.getId()));
+
+                    // 1. fieldName: Company의 Field 엔티티에서 필드명 추출
+                    String fieldName = (company.getField() != null) ? company.getField().getFieldName() : null;
+
+                    // 2. jobNotices 조회: 해당 회사와 연결된 JobNotice들을 조회
+                    List<JobNotice> jobNotices = jobNoticeRepository.findByCompanyId(company.getId());
+
+                    // 3. techStacks: 각 JobNotice에 연결된 NoticeTechStack에서 TechStack 이름을 수집 (중복 제거)
+                    List<String> techStacks = jobNotices.stream()
+                            .flatMap(notice ->
+                                    noticeTechStackRepository.findByJobNoticeId(notice.getId()).stream()
+                                            .map(nt -> nt.getTechStack().getTechStackName())
+                            )
+                            .distinct()
+                            .toList();
+
+                    // 4. hasActiveJobNotice: 현재 시각 기준 deadline_dttm이 미래인 JobNotice가 존재하면 true
+                    boolean hasActiveJobNotice = jobNotices.stream()
+                            .anyMatch(notice -> notice.getDeadlineDttm().isAfter(LocalDateTime.now()));
+
+                    // UserInteractionResult DTO로 변환
+                    return UserInteractionResult.builder()
+                            .companyId(company.getId())
+                            .companyName(company.getCompanyName())
+                            .logo(company.getLogo())
+                            .fieldName(fieldName)
+                            .techStacks(techStacks)
+                            .hasActiveJobNotice(hasActiveJobNotice)
+                            .scrapped(scrapped)
+                            .build();
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         Pagination pagination = new Pagination(
                 interactionPage.getNumber(),
@@ -97,10 +140,11 @@ public class CompanyInteractionService {
         );
 
         return CompanyInteractionResponse.builder()
-                .companies(companies)
+                .companies(results)
                 .pagination(pagination)
                 .build();
     }
+
 
     /**
      * 1. 메서드 설명: 현재 인증된 사용자가 스크랩한 회사 목록을 조회하고, 페이징된 응답 객체를 생성한다.
@@ -113,7 +157,7 @@ public class CompanyInteractionService {
      */
     @Transactional(readOnly = true)
     public CompanyInteractionResponse getScrapCompany(InteractionGetRequest interactionGetRequest) {
-        int userId = getCurrentUser().getId();
+        int userId = getUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserScraps> userScraps = userScrapsRepository.findByUserId(userId, pageable);
 
@@ -131,7 +175,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse addScrapCompany(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
 
@@ -160,7 +204,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse deleteScrapCompany(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
 
@@ -182,7 +226,7 @@ public class CompanyInteractionService {
      */
     @Transactional(readOnly = true)
     public CompanyInteractionResponse getMyLikeCompany(InteractionGetRequest interactionGetRequest) {
-        int userId = getCurrentUser().getId();
+        int userId = getUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserLikes> userLikes = userLikesRepository.findByUserId(userId, pageable);
 
@@ -200,7 +244,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse addLikeCompany(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
 
@@ -229,7 +273,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse deleteLikeCompany(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
 
@@ -251,7 +295,7 @@ public class CompanyInteractionService {
      */
     @Transactional(readOnly = true)
     public CompanyInteractionResponse getMyBlackList(InteractionGetRequest interactionGetRequest) {
-        int userId = getCurrentUser().getId();
+        int userId = getUser().getId();
         Pageable pageable = PageRequest.of(interactionGetRequest.getPage(), interactionGetRequest.getSize());
         Page<UserBlacklist> userBlacklist = userBlacklistRepository.findByUserId(userId, pageable);
 
@@ -269,7 +313,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse addMyBlackList(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserBlacklistId userBlacklistId = new UserBlacklistId(user.getId(), company.getId());
 
@@ -284,6 +328,9 @@ public class CompanyInteractionService {
                 .build();
 
         userBlacklistRepository.save(userBlacklist);
+        userScrapsRepository.deleteById(new UserScrapsId(user.getId(), company.getId()));
+        userLikesRepository.deleteById(new UserLikesId(user.getId(), company.getId()));
+
         return MessageOnlyResponse.builder().message("차단 기업 추가 완료").build();
     }
 
@@ -298,7 +345,7 @@ public class CompanyInteractionService {
      */
     @Transactional
     public MessageOnlyResponse deleteMyBlackList(int companyId) {
-        User user = getCurrentUser();
+        User user = getUser();
         Company company = getCompanyById(companyId);
         UserBlacklistId userBlacklistId = new UserBlacklistId(user.getId(), company.getId());
 

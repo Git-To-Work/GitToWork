@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:gittowork/widgets/bottom_nav_bar.dart';
 import 'package:gittowork/screens/github_analysis/github.dart';
 import 'package:gittowork/screens/company_recommendation/company.dart';
-import 'package:gittowork/screens/cover_letter/coverLetter.dart';
+import 'package:gittowork/screens/cover_letter/cover_letter_screen.dart';
 import 'package:gittowork/screens/entertainment/entertainment.dart';
-import 'package:gittowork/screens/my_page/myPage.dart';
+import '../screens/my_page/my_page_screen.dart';
+import '../services/github_api.dart';
 
 class AppBarBottomNavLayout extends StatefulWidget {
   const AppBarBottomNavLayout({super.key});
@@ -14,6 +16,7 @@ class AppBarBottomNavLayout extends StatefulWidget {
 }
 
 class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(); // ✅ 추가
   int _selectedIndex = 0;
   late final PageController _pageController;
 
@@ -29,7 +32,35 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
+    _loadGitHubData(); // ✅ 초기화 시 실행
   }
+
+  Future<void> _loadGitHubData() async {
+    final selectedRepoId = await _secureStorage.read(key: 'selected_repo_id');
+
+    if (selectedRepoId == null || selectedRepoId.isEmpty) {
+      debugPrint("⚠ 저장된 selected_repo_id가 없습니다.");
+      return;
+    }
+
+    debugPrint("✅ 저장된 selected_repo_id: $selectedRepoId");
+
+    try {
+      debugPrint("분석 데이터 실행");
+      final result = await GitHubApi.fetchGithubAnalysis(
+        context: context,
+        selectedRepositoryId: selectedRepoId,
+      );
+      if (result['analyzing'] == true) {
+        debugPrint("⌛ 아직 분석 중입니다.");
+      } else {
+        debugPrint("✅ 분석 결과 저장 완료");
+      }
+    } catch (e) {
+      debugPrint("❌ 분석 데이터 불러오기 실패: $e");
+    }
+  }
+
 
   @override
   void dispose() {
@@ -37,7 +68,6 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
     super.dispose();
   }
 
-  // 버튼 클릭 시 페이지 애니메이션 효과와 함께 전환
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -52,7 +82,7 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: null, // 항상 AppBar 없음
+      appBar: null,
       backgroundColor: Colors.white,
       body: PageView(
         controller: _pageController,

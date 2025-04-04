@@ -64,4 +64,43 @@ public class SwaggerConfig {
                 .build();
     }
 
+    @Bean
+    public GroupedOpenApi coverLetterApi() {
+        return GroupedOpenApi.builder()
+                .group("CoverLetter API")
+                .pathsToMatch("/cover-letter/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi userInteractionApi() {
+        return GroupedOpenApi.builder()
+                .group("userInteraction API")
+                .pathsToMatch("/company-interaction/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi quizApi() {
+        return GroupedOpenApi.builder()
+                .group("developerQuiz API")
+                .pathsToMatch("/quiz/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi firebaseApi() {
+        return GroupedOpenApi.builder()
+                .group("firebase API")
+                .pathsToMatch("/firebase/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi fortuneAPI() {
+        return GroupedOpenApi.builder()
+                .group("fortune API")
+                .pathsToMatch("/fortune/**")
+                .build();
+    }
 }

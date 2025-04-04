@@ -38,3 +38,9 @@ out/
 
 # Spring Boot properties
 /src/main/resources/application.properties
+
+# Firebase Key
+/src/main/resources/gittowork-firebase-key.json
+
+# ChatGPT Prompt
+/src/main/resources/application.yml
