@@ -21,7 +21,6 @@ class CompanyApi {
       selectedRepoId = await secureStorage.read(key: 'selected_repo_id');
     }
 
-    // 💡 조건에 맞는 값만 포함시킴
     final Map<String, dynamic> queryParameters = {
       if (selectedRepoId != null && selectedRepoId.isNotEmpty)
         'selected_repositories_id': selectedRepoId,
@@ -50,18 +49,21 @@ class CompanyApi {
       final results = response.data['result'];
       if (response.statusCode == 200) {
         if (results == null) {
-          throw Exception('응답 데이터에 값이 없습니다.');
+          debugPrint("⚠️ 응답 데이터가 null입니다.");
+          return {'companies': []}; // ✅ 빈 리스트 반환
         }
         debugPrint("[ 회사 데이터 ]: $results");
         return results as Map<String, dynamic>;
       } else {
-        throw Exception('추천 기업 조회 실패: ${response.statusCode}');
+        debugPrint("❌ 실패 상태 코드: ${response.statusCode}");
+        return {'companies': []}; // ✅ 실패해도 빈 리스트 반환
       }
     } catch (e) {
       debugPrint("🚨 API Error: $e");
-      rethrow;
+      return {'companies': []}; // ✅ 예외 발생 시에도 빈 리스트 반환
     }
   }
+
 
 
 
@@ -191,7 +193,7 @@ class CompanyApi {
     final secureStorage = const FlutterSecureStorage();
     final selectedRepoId = await secureStorage.read(key: 'selected_repo_id');
 
-    final response = await ApiService.dio.get(
+    final response = await FastApiService.dio.get(
       '/recommendation/analyze',
       queryParameters: {
         'selected_repositories_id': selectedRepoId,
@@ -200,9 +202,29 @@ class CompanyApi {
 
     if (response.statusCode == 200) {
       final result = response.data['message'];
+      requestAction();
       return result ?? 'FastApi 분석 요청 완료';
     } else {
       throw Exception('FastApi 분석 요청 실패: ${response.statusCode}');
+    }
+  }
+
+  static requestAction() async {
+    final secureStorage = const FlutterSecureStorage();
+    final selectedRepoId = await secureStorage.read(key: 'selected_repo_id');
+
+    final response = await FastApiService.dio.get(
+      '/recommendation',
+      queryParameters: {
+        'selected_repositories_id': selectedRepoId,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final result = response.data['message'];
+      return result ?? 'FastApi Action  완료';
+    } else {
+      throw Exception('FastApi Action 요청 실패: ${response.statusCode}');
     }
   }
 }
