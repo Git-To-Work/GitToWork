@@ -10,6 +10,7 @@ import com.gittowork.domain.github.model.pullrequest.PullRequestUser;
 import com.gittowork.domain.github.model.repository.Repository;
 import com.gittowork.domain.github.repository.*;
 import com.gittowork.global.exception.GithubRepositoryNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -24,6 +25,7 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class GithubRestApiService {
 
@@ -732,28 +734,100 @@ public class GithubRestApiService {
      * 4. return: 파싱된 정보를 기반으로 생성된 GithubPullRequest 객체.
      */
     private GithubPullRequest parsePullRequest(Map<String, Object> prMap) {
+        if (prMap == null) {
+            throw new IllegalArgumentException("prMap cannot be null");
+        }
+
         @SuppressWarnings("unchecked")
-        Map<String, Object> baseMap = (Map<String, Object>) prMap.get("base");
+        Map<String, Object> baseMap = prMap.get("base") instanceof Map ? (Map<String, Object>) prMap.get("base") : Collections.emptyMap();
         @SuppressWarnings("unchecked")
-        Map<String, Object> baseRepo = (Map<String, Object>) baseMap.get("repo");
-        Integer repoId = (Integer) baseRepo.get("full_name");
-        int prId = ((Number) prMap.get("number")).intValue();
-        String url = (String) prMap.get("url");
-        String htmlUrl = (String) prMap.get("html_url");
-        String diffUrl = (String) prMap.get("diff_url");
-        String patchUrl = (String) prMap.get("patch_url");
-        String title = (String) prMap.get("title");
-        String body = (String) prMap.get("body");
-        int commentsCount = prMap.get("comments") != null ? ((Number) prMap.get("comments")).intValue() : 0;
-        int reviewCommentsCount = prMap.get("review_comments") != null ? ((Number) prMap.get("review_comments")).intValue() : 0;
-        int commitsCount = prMap.get("commits") != null ? ((Number) prMap.get("commits")).intValue() : 0;
-        @SuppressWarnings("unchecked")
-        Map<String, Object> userMap = (Map<String, Object>) prMap.get("user");
-        PullRequestUser user = parsePRUser(userMap);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> headMap = (Map<String, Object>) prMap.get("head");
-        PullRequestBranch head = parsePRBranch(headMap);
-        PullRequestBranch base = parsePRBranch(baseMap);
+        Map<String, Object> baseRepo = baseMap.get("repo") instanceof Map ? (Map<String, Object>) baseMap.get("repo") : Collections.emptyMap();
+
+        int repoId = 0;
+        Object repoObj = baseRepo.get("full_name");
+        if (repoObj instanceof Number) {
+            repoId = ((Number) repoObj).intValue();
+        } else if (repoObj instanceof String) {
+            try {
+                repoId = Integer.parseInt((String) repoObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        int prId = 0;
+        Object prIdObj = prMap.get("number");
+        if (prIdObj instanceof Number) {
+            prId = ((Number) prIdObj).intValue();
+        } else if (prIdObj instanceof String) {
+            try {
+                prId = Integer.parseInt((String) prIdObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        String url = prMap.get("url") instanceof String ? (String) prMap.get("url") : "";
+        String htmlUrl = prMap.get("html_url") instanceof String ? (String) prMap.get("html_url") : "";
+        String diffUrl = prMap.get("diff_url") instanceof String ? (String) prMap.get("diff_url") : "";
+        String patchUrl = prMap.get("patch_url") instanceof String ? (String) prMap.get("patch_url") : "";
+        String title = prMap.get("title") instanceof String ? (String) prMap.get("title") : "";
+        String body = prMap.get("body") instanceof String ? (String) prMap.get("body") : "";
+
+        int commentsCount = 0;
+        Object commentsObj = prMap.get("comments");
+        if (commentsObj instanceof Number) {
+            commentsCount = ((Number) commentsObj).intValue();
+        } else if (commentsObj instanceof String) {
+            try {
+                commentsCount = Integer.parseInt((String) commentsObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        int reviewCommentsCount = 0;
+        Object reviewCommentsObj = prMap.get("review_comments");
+        if (reviewCommentsObj instanceof Number) {
+            reviewCommentsCount = ((Number) reviewCommentsObj).intValue();
+        } else if (reviewCommentsObj instanceof String) {
+            try {
+                reviewCommentsCount = Integer.parseInt((String) reviewCommentsObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        int commitsCount = 0;
+        Object commitsObj = prMap.get("commits");
+        if (commitsObj instanceof Number) {
+            commitsCount = ((Number) commitsObj).intValue();
+        } else if (commitsObj instanceof String) {
+            try {
+                commitsCount = Integer.parseInt((String) commitsObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        Map<String, Object> userMap = prMap.get("user") instanceof Map ? (Map<String, Object>) prMap.get("user") : Collections.emptyMap();
+        PullRequestUser user = null;
+        try {
+            user = parsePRUser(userMap);
+        } catch (Exception e) {
+            log.error("Error parsing user in pull request: {}", e.getMessage());
+        }
+
+        Map<String, Object> headMap = prMap.get("head") instanceof Map ? (Map<String, Object>) prMap.get("head") : Collections.emptyMap();
+        PullRequestBranch head = null;
+        try {
+            head = parsePRBranch(headMap);
+        } catch (Exception e) {
+            log.error("Error parsing head branch in pull request: {}", e.getMessage());
+        }
+
+        PullRequestBranch base = null;
+        try {
+            base = parsePRBranch(baseMap);
+        } catch (Exception e) {
+            log.error("Error parsing base branch in pull request: {}", e.getMessage());
+        }
+
         return GithubPullRequest.builder()
                 .repoId(repoId)
                 .prId(prId)

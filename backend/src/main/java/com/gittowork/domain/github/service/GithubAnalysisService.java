@@ -35,6 +35,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -568,10 +569,10 @@ public class GithubAnalysisService {
             return paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".java"))
                     .mapToLong(path -> {
-                        try {
-                            return Files.lines(path).count();
+                        try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
+                            return lines.count();
                         } catch (IOException e) {
-                            log.error("Error reading file {}: {}", path, e.getMessage());
+                            log.error("Error reading file {} (skipping file): {}", path, e.getMessage());
                             return 0L;
                         }
                     }).sum();
