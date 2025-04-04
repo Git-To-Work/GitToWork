@@ -16,8 +16,10 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "user_alert_log")
 public class UserAlertLog {
+
     @Id
     @Column(name = "alert_id", nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @NotNull
