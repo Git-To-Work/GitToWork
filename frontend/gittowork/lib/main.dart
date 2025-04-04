@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 // Provider
 import 'package:provider/provider.dart';
@@ -25,8 +26,36 @@ import 'layouts/appbar_bottom_nav_layout.dart';
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
 GlobalKey<ScaffoldMessengerState>();
 
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
+
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // 백그라운드 푸시 수신 시 처리 로직
+  await Firebase.initializeApp();
+  debugPrint('백그라운드 메시지 수신: ${message.messageId}');
+}
+
+// 포그라운드 메시지 핸들러
+Future<void> _showForegroundNotification(RemoteMessage message) async {
+  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    'analysis_complete_channel',
+    '분석 완료 알림',
+    channelDescription: 'Github 및 자기소개서 분석 완료 알림',
+    importance: Importance.max,
+    priority: Priority.high,
+    icon: '@mipmap/ic_launcher', // 앱 아이콘 사용
+  );
+
+  const NotificationDetails notificationDetails = NotificationDetails(
+    android: androidDetails,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    message.hashCode,
+    message.notification?.title ?? '알림',
+    message.notification?.body ?? '알림 내용을 확인하세요.',
+    notificationDetails,
+    payload: message.data['alertType'], // alertType으로 구분 가능
+  );
 }
 
 Future<void> main() async {
@@ -35,16 +64,40 @@ Future<void> main() async {
   final storage = FlutterSecureStorage();
   final token = await storage.read(key: 'jwt_token'); // 저장된 JWT 토큰 읽어오기
 
-  // FCM 설정
+  // Firebase 초기화
   await Firebase.initializeApp();
-  // 안드로이드 알림 권한 확인(안드로이드 13 이상)
-  NotificationSettings settings = await FirebaseMessaging.instance.requestPermission(
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // FCM 권한 요청 (안드로이드 13 이상)
+  await FirebaseMessaging.instance.requestPermission(
     alert: true,
     badge: true,
     sound: true,
   );
 
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  // flutter_local_notifications 초기화 (안드로이드 설정)
+  const AndroidInitializationSettings androidInitSettings =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initSettings =
+  InitializationSettings(android: androidInitSettings);
+
+  await flutterLocalNotificationsPlugin.initialize(
+    initSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      // 로컬 알림 클릭 시 처리 (선택사항)
+      final alertType = response.payload;
+      if (alertType != null) {
+        debugPrint('알림 클릭됨, alertType: $alertType');
+        // 여기서 화면 이동 처리 가능
+      }
+    },
+  );
+
+  // FCM 포그라운드 메시지 수신 리스너 설정
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    debugPrint('포그라운드 메시지 수신: ${message.messageId}');
+    _showForegroundNotification(message);
+  });
 
   debugPrint('JWT 토큰: $token');
   runApp(
