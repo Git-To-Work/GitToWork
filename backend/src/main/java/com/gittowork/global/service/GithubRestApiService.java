@@ -185,7 +185,7 @@ public class GithubRestApiService {
 
             List<Repository> repositoriesToAdd = newRepositories.stream()
                     .filter(repo -> !existingRepoNames.contains(repo.getRepoName()))
-                    .collect(Collectors.toList());
+                    .toList();
 
             List<Repository> mergedRepositories = new ArrayList<>(existingRepo.getRepositories());
             mergedRepositories.addAll(repositoriesToAdd);
@@ -487,7 +487,15 @@ public class GithubRestApiService {
                     .orElse(Collections.emptyList());
 
             List<GithubIssue> parsedIssues = issuesData.stream()
-                    .map(this::parseIssue)
+                    .filter(Objects::nonNull) // issueMap 자체가 null인 경우 건너뛰기
+                    .map(issueMap -> {
+                        try {
+                            return parseIssue(issueMap);
+                        } catch (NullPointerException e) {
+                            throw new NullPointerException("Failed to parse issue: " + issueMap.toString());
+                        }
+                    })
+                    .filter(Objects::nonNull)
                     .toList();
 
             List<GithubIssue> newIssues = parsedIssues.stream()
@@ -500,7 +508,6 @@ public class GithubRestApiService {
         }
     }
 
-
     /**
      * 1. 메서드 설명: API 응답 데이터의 개별 이슈 정보를 파싱하여 GithubIssue 객체로 변환하는 헬퍼 메서드.
      * 2. 로직:
@@ -511,16 +518,24 @@ public class GithubRestApiService {
      * 4. return: 파싱된 정보를 기반으로 생성된 GithubIssue 객체.
      */
     private GithubIssue parseIssue(Map<String, Object> issueMap) {
-        int repoId = ((Number) issueMap.get("repo_id")).intValue();
-        long issueId = ((Number) issueMap.get("issue_id")).longValue();
-        String url = (String) issueMap.get("url");
-        String commentsUrl = (String) issueMap.get("comments_url");
-        String title = (String) issueMap.get("title");
-        String body = (String) issueMap.get("body");
-        int comments = ((Number) issueMap.get("comments")).intValue();
+        int repoId = Optional.ofNullable(issueMap.get("repo_id"))
+                .map(val -> ((Number) val).intValue())
+                .orElse(0);
+        long issueId = Optional.ofNullable(issueMap.get("issue_id"))
+                .map(val -> ((Number) val).longValue())
+                .orElse(0L);
+        String url = Optional.ofNullable((String) issueMap.get("url")).orElse("");
+        String commentsUrl = Optional.ofNullable((String) issueMap.get("comments_url")).orElse("");
+        String title = Optional.ofNullable((String) issueMap.get("title")).orElse("");
+        String body = Optional.ofNullable((String) issueMap.get("body")).orElse("");
+        int comments = Optional.ofNullable(issueMap.get("comments"))
+                .map(val -> ((Number) val).intValue())
+                .orElse(0);
+
         @SuppressWarnings("unchecked")
         Map<String, Object> userMap = (Map<String, Object>) issueMap.get("user");
-        IssueUser user = parseIssueUser(userMap);
+        IssueUser user = userMap != null ? parseIssueUser(userMap) : null;
+
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> labelsList = (List<Map<String, Object>>) issueMap.get("labels");
         List<IssueLabel> labels = Optional.ofNullable(labelsList)
@@ -528,12 +543,14 @@ public class GithubRestApiService {
                 .stream()
                 .map(this::parseLabel)
                 .collect(Collectors.toList());
+
         IssueUser assignee = null;
         if (issueMap.get("assignee") != null) {
             @SuppressWarnings("unchecked")
             Map<String, Object> assigneeMap = (Map<String, Object>) issueMap.get("assignee");
             assignee = parseIssueUser(assigneeMap);
         }
+
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> assigneesList = (List<Map<String, Object>>) issueMap.get("assignees");
         List<IssueUser> assignees = Optional.ofNullable(assigneesList)
@@ -541,6 +558,7 @@ public class GithubRestApiService {
                 .stream()
                 .map(this::parseIssueUser)
                 .collect(Collectors.toList());
+
         return GithubIssue.builder()
                 .repoId(repoId)
                 .issueId(issueId)
@@ -555,6 +573,7 @@ public class GithubRestApiService {
                 .comments(comments)
                 .build();
     }
+
 
     /**
      * 1. 메서드 설명: GitHub 이슈의 사용자 정보를 파싱하여 GithubIssueUser 객체로 변환하는 헬퍼 메서드.
