@@ -453,7 +453,7 @@ public class GithubAnalysisService {
 
         int nonJavaScore = (int) Math.max(0, BASE_SCORE - sonarTotalPenalty);
 
-        Map<String, Double> languageDistribution = fetchLanguageDistribution(projectKey);
+        Map<String, Double> languageDistribution = new HashMap<>(fetchLanguageDistribution(projectKey));
         File repoDir = new File("/tmp/repositories/" + projectKey);
         double javaLoc = calculateJavaNcloc(repoDir);
         if (javaLoc > 0) {
@@ -470,14 +470,14 @@ public class GithubAnalysisService {
         int overallScore = (int) Math.max(0, nonJavaScore - javaPenalty);
 
         String insights = String.format("""
-                        Non-Java Analysis:
-                          - Base Score (from SonarQube analysis): 100 - total penalty (%.2f) = %d
-                        Java Analysis (via PMD):
-                          - BLOCKER: %d violations, CRITICAL: %d violations, MAJOR: %d violations, MINOR: %d violations, INFO: %d violations
-                          - Total Java PMD penalty: %.2f => Java Quality Score: 100 - penalty = %.2f
-                        Overall Score: Non-Java Score (%d) - Java PMD penalty (%.2f) = %d
-                        Language Distribution (LOC): %s
-                        """,
+                    Non-Java Analysis:
+                      - Base Score (from SonarQube analysis): 100 - total penalty (%.2f) = %d
+                    Java Analysis (via PMD):
+                      - BLOCKER: %d violations, CRITICAL: %d violations, MAJOR: %d violations, MINOR: %d violations, INFO: %d violations
+                      - Total Java PMD penalty: %.2f => Java Quality Score: 100 - penalty = %.2f
+                    Overall Score: Non-Java Score (%d) - Java PMD penalty (%.2f) = %d
+                    Language Distribution (LOC): %s
+                    """,
                 sonarTotalPenalty, nonJavaScore,
                 javaPenaltyResult.getBlockerCount(), javaPenaltyResult.getCriticalCount(),
                 javaPenaltyResult.getMajorCount(), javaPenaltyResult.getMinorCount(), javaPenaltyResult.getInfoCount(),
@@ -495,6 +495,7 @@ public class GithubAnalysisService {
                 .projectMeasures(projectMeasures)
                 .build();
     }
+
 
     /**
      * 1. 메서드 설명: PMD 이슈 데이터를 조회하여 자바 코드에 대한 penalty와 violation 카운터를 계산한다. (로그 스케일 적용)
