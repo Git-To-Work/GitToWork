@@ -169,16 +169,6 @@ class _SignupDetailScreenState extends State<SignupDetailScreen> {
       'notificationAgreed': _agreeTerm3,
     };
 
-    debugPrint('회원가입 정보: ');
-    debugPrint('GitHub nickname: ${widget.nickname}');
-    debugPrint('이름: ${_nameController.text}');
-    debugPrint('생년월일: ${_birthController.text}');
-    debugPrint('경력: ${_careerController.text}');
-    debugPrint('핸드폰: ${_phoneController.text}');
-    debugPrint('약관1(필수): $_agreeTerm1');
-    debugPrint('약관2(필수): $_agreeTerm2');
-    debugPrint('약관3(선택): $_agreeTerm3');
-
     // business_interest_screen.dart로 이동
     Navigator.push(
       context,
