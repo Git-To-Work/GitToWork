@@ -5,6 +5,8 @@ import 'package:gittowork/services/github_api.dart';
 import 'package:gittowork/models/repository.dart';
 import 'package:gittowork/providers/search_provider.dart';
 
+import '../../providers/company_provider.dart';
+
 class SearchBarWithFilters extends StatefulWidget {
   const SearchBarWithFilters({super.key});
 
@@ -72,6 +74,17 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
+          onChanged: (value) {
+            Provider.of<SearchFilterProvider>(context, listen: false).updateKeyword(value);
+          },
+          onSubmitted: (value) async {
+            await Provider.of<CompanyProvider>(context, listen: false).loadCompaniesFromApi(
+              context: context,
+              page: '1',
+              size: '20',
+              reset: true,
+            );
+          },
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search, size: 28),
             hintText: "검색",
@@ -83,6 +96,7 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
           ),
           style: const TextStyle(fontSize: 18),
         ),
+
         const SizedBox(height: 16),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -199,7 +213,7 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
                             '개발 PM', '웹 풀스택 개발자', 'SW/솔루션', '인공지능/머신러닝'],
                               localTags, modalSetState: modalSetState),
                           _buildWrapChips([
-                            '전체', '신입', '1년', '2년', '3년', '4년', '5년',
+                            '신입', '1년', '2년', '3년', '4년', '5년',
                             '6년', '7년', '8년', '9년', '10년 이상'
                           ], localCareer, isSingle: true, onSingleSelected: (val) {
                             modalSetState(() {
@@ -214,13 +228,21 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16).copyWith(bottom: 60),
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async  {
                           final provider = Provider.of<SearchFilterProvider>(context, listen: false);
                           provider.updateSelectedRepo(localRepoName, localRepoId);
                           provider.updateCareer(localCareer);
                           provider.updateTechs(localTechs);
                           provider.updateTags(localTags);
                           provider.updateRegions(localRegions);
+                          debugPrint("🔍 선택된 레포지토리 ID: ${localRepoId}");
+                          debugPrint("🔍 선택된 레포지토리 이름: ${localRepoName}");
+                          await Provider.of<CompanyProvider>(context, listen: false).loadCompaniesFromApi(
+                            context: context,
+                            page: '1',
+                            size: '20',
+                            reset: true,
+                          );
                           Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(

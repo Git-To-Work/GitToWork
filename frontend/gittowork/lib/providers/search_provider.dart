@@ -8,6 +8,15 @@ class SearchFilterProvider extends ChangeNotifier {
   String get selectedRepoName => _selectedRepoName;
   String get selectedRepoId => _selectedRepoId;
 
+  // ✅ 검색어 필터 추가
+  String _keyword = '';
+  String get keyword => _keyword;
+
+  void updateKeyword(String keyword) {
+    _keyword = keyword;
+    notifyListeners();
+  }
+
   // ✅ 기타 필터 상태
   String selectedCareer;
   Set<String> selectedTechs;

@@ -90,17 +90,33 @@ class GitHubApi {
       '/api/github/create/analysis-by-repository',
       data: {'repositories': repositoryIndices},
     );
+
     final provider = Provider.of<GitHubAnalysisProvider>(context, listen: false);
+
     if (response.statusCode == 200) {
       final results = response.data['results'];
+
+      final selectedRepositoryId = results['selectedRepositoryId']; // ← 필드명 맞게 확인
+
+      if (selectedRepositoryId != null) {
+        const storage = FlutterSecureStorage();
+        await storage.write(
+          key: 'selected_repo_id',
+          value: selectedRepositoryId.toString(),
+        );
+        debugPrint("🔐 selected_repo_id 저장 완료: $selectedRepositoryId");
+      }
+
       provider.setAnalyzing(results);
+
       await CompanyApi.requestCompanyAnalysis();
+
       return RepositoryAnalysisResponse.fromJson(response.data);
     } else {
-      throw Exception(
-          '레포지토리 분석 요청 실패: ${response.statusCode}');
+      throw Exception('레포지토리 분석 요청 실패: ${response.statusCode}');
     }
   }
+
 
   /// 조합 레포지토리 삭제
   static Future<String> deleteRepositoryCombination(
@@ -123,7 +139,6 @@ class GitHubApi {
   }
 
   /// 분석 결과 조회
-  /// → BuildContext를 직접 사용하지 않고, Provider를 미리 캡처하여 async 호출 이후에도 안전하게 사용합니다.
   static Future<Map<String, dynamic>> fetchGithubAnalysis({
     required BuildContext context,
     required String selectedRepositoryId,
@@ -163,8 +178,7 @@ class GitHubApi {
         }
         else if(results['status']=='fail'){
           debugPrint("❌분석  실패❌");
-          provider.updateFromAnalysisResult(results);
-          provider.setStatus();
+          provider.setFail();
         }
         return results;
 
@@ -172,6 +186,7 @@ class GitHubApi {
         throw Exception('깃허브 분석 조회 실패: ${response.statusCode}');
       }
     } catch (e) {
+      provider.setFail();
       debugPrint("❌ [분석 데이터 조회 실패] $e");
       rethrow;
     }

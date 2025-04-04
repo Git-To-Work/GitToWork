@@ -79,7 +79,6 @@ class _CompanyListState extends State<CompanyList> {
     }
 
     return SizedBox(
-      height: 570,
       child: ListView.builder(
         controller: _scrollController,
         itemCount: companies.length + (_isLoading ? 1 : 0),
@@ -189,7 +188,7 @@ class _CompanyListState extends State<CompanyList> {
                                           maxLines: 1,
                                         ),
                                       ),
-                                      if (company["has_job_notice"] && company["status"] != null)
+                                      if ((company["has_job_notice"] ?? false) && company["status"] != null)
                                         Padding(
                                           padding: const EdgeInsets.only(left: 8),
                                           child: Container(
@@ -253,10 +252,12 @@ class _CompanyListState extends State<CompanyList> {
 
                   Container(
                     width: double.infinity,
+                    margin: const EdgeInsets.only(top: 4),
                     padding:
                     const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    child: Text(
-                      (company["tech_stacks"] as List<dynamic>?)
+                    child:
+                    Text(
+                      (company["techStacks"] as List<dynamic>?)
                           ?.join(", ") ??
                           "",
                       style: const TextStyle(fontSize: 16, color: Colors.grey),

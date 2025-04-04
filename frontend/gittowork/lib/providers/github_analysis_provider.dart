@@ -54,6 +54,16 @@ class GitHubAnalysisProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setFail() {
+    _status='fail';
+    _lastAnalysis = '';
+    _overallScore = '';
+    _activityMetrics = {};
+    _aiAnalysis = {};
+    _languageRatios = {};
+    notifyListeners();
+  }
+
   void setAnalyzing(Map<String, dynamic> result) {
     debugPrint("1232131312312321213312");
     _repoName = (result['selectedRepositories'] as List?)?.join(', ') ?? '';

@@ -9,7 +9,7 @@ class CompanyApi {
   /// 추천 기업 리스트 조회
   static Future<Map<String, dynamic>> fetchRecommendedCompanies({
     required BuildContext context,
-    String? keword,
+    String? keyword,
     int page = 1,
     int size = 20,
   }) async {
@@ -29,12 +29,12 @@ class CompanyApi {
         'techStacks': filterProvider.selectedTechs.toList(),
       if (filterProvider.selectedTags.isNotEmpty)
         'field': filterProvider.selectedTags.toList(),
-      if (filterProvider.selectedCareer != '전체')
+      if (filterProvider.selectedCareer.isNotEmpty)
         'career': int.tryParse(filterProvider.selectedCareer.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
       if (filterProvider.selectedRegions.isNotEmpty)
         'location': filterProvider.selectedRegions.toList(),
-      if (keword != null && keword.isNotEmpty)
-        'keword': keword,
+      if (keyword != null && keyword.isNotEmpty)
+        'keyword': keyword,
       'page': page,
       'size': size,
     };
@@ -52,6 +52,7 @@ class CompanyApi {
         if (results == null) {
           throw Exception('응답 데이터에 값이 없습니다.');
         }
+        debugPrint("[ 회사 데이터 ]: $results");
         return results as Map<String, dynamic>;
       } else {
         throw Exception('추천 기업 조회 실패: ${response.statusCode}');
@@ -61,6 +62,7 @@ class CompanyApi {
       rethrow;
     }
   }
+
 
 
 
@@ -190,7 +192,7 @@ class CompanyApi {
     final selectedRepoId = await secureStorage.read(key: 'selected_repo_id');
 
     final response = await ApiService.dio.get(
-      '/recommendation',
+      '/recommendation/analyze',
       queryParameters: {
         'selected_repositories_id': selectedRepoId,
       },
