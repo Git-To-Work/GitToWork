@@ -42,7 +42,7 @@ Future<void> _showForegroundNotification(RemoteMessage message) async {
     channelDescription: 'Github 및 자기소개서 분석 완료 알림',
     importance: Importance.max,
     priority: Priority.high,
-    icon: '@mipmap/ic_launcher', // 앱 아이콘 사용
+    icon: '@drawable/ic_stat_gittowork_default', // 앱 아이콘 사용
   );
 
   const NotificationDetails notificationDetails = NotificationDetails(
