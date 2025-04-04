@@ -95,4 +95,12 @@ public class SwaggerConfig {
                 .pathsToMatch("/firebase/**")
                 .build();
     }
+
+    @Bean
+    public GroupedOpenApi fortuneAPI() {
+        return GroupedOpenApi.builder()
+                .group("fortune API")
+                .pathsToMatch("/fortune/**")
+                .build();
+    }
 }
