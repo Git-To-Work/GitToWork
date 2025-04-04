@@ -35,6 +35,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -565,12 +567,17 @@ public class GithubAnalysisService {
             log.warn("Repository directory {} does not exist or is not a directory.", repoDir.getAbsolutePath());
             return 0.0;
         }
+
         try (Stream<Path> paths = Files.walk(repoDir.toPath())) {
             return paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".java"))
                     .mapToLong(path -> {
-                        try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
-                            return lines.count();
+                        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+                        decoder.onMalformedInput(CodingErrorAction.IGNORE);
+
+                        try (BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(Files.newInputStream(path), decoder))) {
+                            return reader.lines().count();
                         } catch (IOException e) {
                             log.error("Error reading file {} (skipping file): {}", path, e.getMessage());
                             return 0L;
@@ -581,6 +588,7 @@ public class GithubAnalysisService {
         }
         return 0.0;
     }
+
 
     /**
      * 1. 메서드 설명: SonarQube API를 호출하여 지정된 프로젝트의 측정 지표(coverage, bugs, code_smells, vulnerabilities, duplicated_lines_density)를 조회한다.
