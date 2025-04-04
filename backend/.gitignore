@@ -41,3 +41,6 @@ out/
 
 # Firebase Key
 /src/main/resources/gittowork-firebase-key.json
+
+# GPT Prompt
+/src/main/resources/application.yml
