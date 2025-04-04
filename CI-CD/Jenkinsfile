@@ -43,6 +43,7 @@ pipeline {
                         echo "Injecting backend openai yml credentials..."
                         sh '''
                             mkdir -p backend/src/main/resources
+                            chmod u+w backend/src/main/resources/application.yml
                             cp "$OPENAI_YML_FILE" backend/src/main/resources/application.yml
                         '''
                     }
