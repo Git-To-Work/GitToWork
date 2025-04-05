@@ -15,3 +15,5 @@ from .user_scraps import UserScraps
 from .cover_letter import CoverLetter
 from .cover_letter_analysis import CoverLetterAnalysis
 from .benefit_category import BenefitCategory
+from .task import Task
+from .notice_task import notice_task
