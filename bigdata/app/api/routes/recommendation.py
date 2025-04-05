@@ -43,16 +43,16 @@ def get_recommendation(
         user_id = current_user.user_id
         user_github_name = current_user.github_name
 
-        # GitHub access token 확인
-        if not current_user.github_access_token:
-            raise HTTPException(status_code=401, detail="GitHub access token not available")
-
         # MongoDB에서 github_analysis_result_for_recommend 컬렉션에서 user_id에 해당하는 모든 문서를 조회
         mongo_db = get_mongo_db()
         analysis_collection = mongo_db["github_analysis_result_for_recommend"]
-        analysis_docs = list(analysis_collection.find({"user_id": user_id}))
+
+        analysis_docs = list(analysis_collection.find({"user_id": user_id}, {"selected_repositories_id": 1}))
         if not analysis_docs:
             raise HTTPException(status_code=404, detail="No GitHub analysis result found for this user")
+
+        selected_repositories_ids = {doc.get("selected_repositories_id") for doc in analysis_docs if
+                             doc.get("selected_repositories_id")}
 
         # 현재 사용자가 좋아요, 스크랩, 블랙리스트한 기업들을 set으로 구성
         liked_companies_set = {ul.company.company_id for ul in current_user.user_likes}
@@ -63,10 +63,9 @@ def get_recommendation(
         user_search_detail_history = get_user_search_history(user_id, "user_search_detail_history")
 
         # 각 분석 결과 문서에서 selected_repositories_id와 analysis_result를 추출하여 추천 함수 호출
-        for doc in analysis_docs:
-            selected_repositories_id = doc.get("selected_repositories_id")
-            analysis_result = doc.get("analysis_result")
-            if not selected_repositories_id or not analysis_result:
+        for selected_repositories_id in selected_repositories_ids:
+            github_analysis_result_for_recommend = get_github_analysis_result_for_recommend(user_id, selected_repositories_id)
+            if not github_analysis_result_for_recommend:
                 continue
 
             run_hybrid_recommendation(
@@ -78,7 +77,7 @@ def get_recommendation(
                 blacklisted_companies_set,
                 scraped_companies_set,
                 user_search_detail_history,
-                analysis_result
+                github_analysis_result_for_recommend
             )
 
     except Exception as e:
