@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, TIMESTAMP, 
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
+from app.models.notice_task import notice_task
+
 class JobNotice(Base):
     __tablename__ = "job_notice"
 
@@ -16,3 +18,4 @@ class JobNotice(Base):
 
     company = relationship("Company", back_populates="job_notices")
     notice_tech_stacks = relationship("NoticeTechStack", back_populates="job_notice")
+    task = relationship("Task", secondary=notice_task, back_populates="job_notices")
