@@ -58,6 +58,7 @@ def get_companies(
     # 2. SQLAlchemy: 추천 결과에 포함된 회사들 조회 (JOIN JobNotice for 추가 필터)
     query = db.query(Company).join(JobNotice, JobNotice.company_id == Company.company_id, isouter=True)
     query = query.filter(Company.company_id.in_(recommended_ids))
+    query = query.filter(Company.company_id >= 1)
 
     # (a) field 필터: 회사의 공고와 연결된 Task의 task_name이 field와 같아야 함
     if field:

@@ -17,6 +17,9 @@ def read_company_detail(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    if company_id < 1:
+        raise HTTPException(status_code=400, detail="company_id는 1 이상이어야 합니다.")
+
     # 인증된 사용자 ID 추출
     user_id = current_user.user_id
 
