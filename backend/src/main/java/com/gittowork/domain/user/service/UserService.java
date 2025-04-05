@@ -243,9 +243,13 @@ public class UserService {
     @Transactional(readOnly = true)
     public GetMyInterestFieldResponse myInterestFields() {
         String username = getUserName();
+
         String[] fieldsNames = resolveInterestFieldNames(username);
+        int[] fieldsIds = resolveInterestFieldIds(username);
+
         return GetMyInterestFieldResponse.builder()
                 .interestsFields(fieldsNames)
+                .interestsFieldIds(fieldsIds)
                 .build();
     }
 
@@ -324,5 +328,15 @@ public class UserService {
         return interestFields.stream()
                 .map(Field::getFieldName)
                 .toArray(String[]::new);
+    }
+
+    private int[] resolveInterestFieldIds(String username) {
+        User user = userRepository.findByGithubName(username)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        return Arrays.stream(user.getInterestFields().replaceAll("[\\[\\]]", "").split(","))
+                .map(String::trim)
+                .mapToInt(Integer::parseInt)
+                .toArray();
     }
 }

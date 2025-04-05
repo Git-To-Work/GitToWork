@@ -10,4 +10,6 @@ import lombok.*;
 public class GetMyInterestFieldResponse {
 
     private String[] interestsFields;
+
+    private int[] interestsFieldIds;
 }
