@@ -1,10 +1,7 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 // Provider
 import 'package:provider/provider.dart';
@@ -22,83 +19,17 @@ import 'screens/onboarding/onboarding.dart';
 // 홈 화면 (자동 로그인 후 이동할 화면)
 import 'layouts/appbar_bottom_nav_layout.dart';
 
+import 'package:gittowork/services/company_api.dart';
+
 // GlobalKey for ScaffoldMessenger
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
 GlobalKey<ScaffoldMessengerState>();
-
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-FlutterLocalNotificationsPlugin();
-
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  debugPrint('백그라운드 메시지 수신: ${message.messageId}');
-}
-
-// 포그라운드 메시지 핸들러
-Future<void> _showForegroundNotification(RemoteMessage message) async {
-  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-    'analysis_complete_channel',
-    '분석 완료 알림',
-    channelDescription: 'Github 및 자기소개서 분석 완료 알림',
-    importance: Importance.max,
-    priority: Priority.high,
-    icon: '@drawable/ic_stat_gittowork_default', // 앱 아이콘 사용
-  );
-
-  const NotificationDetails notificationDetails = NotificationDetails(
-    android: androidDetails,
-  );
-
-  await flutterLocalNotificationsPlugin.show(
-    message.hashCode,
-    message.notification?.title ?? '알림',
-    message.notification?.body ?? '알림 내용을 확인하세요.',
-    notificationDetails,
-    payload: message.data['alertType'], // alertType으로 구분 가능
-  );
-}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   final storage = FlutterSecureStorage();
   final token = await storage.read(key: 'jwt_token'); // 저장된 JWT 토큰 읽어오기
-
-  // Firebase 초기화
-  await Firebase.initializeApp();
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // FCM 권한 요청 (안드로이드 13 이상)
-  await FirebaseMessaging.instance.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-
-  // flutter_local_notifications 초기화 (안드로이드 설정)
-  const AndroidInitializationSettings androidInitSettings =
-  AndroidInitializationSettings('@mipmap/ic_launcher');
-  const InitializationSettings initSettings =
-  InitializationSettings(android: androidInitSettings);
-
-  await flutterLocalNotificationsPlugin.initialize(
-    initSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) {
-      // 로컬 알림 클릭 시 처리 (선택사항)
-      final alertType = response.payload;
-      if (alertType != null) {
-        debugPrint('알림 클릭됨, alertType: $alertType');
-        // 여기서 화면 이동 처리 가능
-      }
-    },
-  );
-
-  // FCM 포그라운드 메시지 수신 리스너 설정
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    debugPrint('포그라운드 메시지 수신: ${message.messageId}');
-    _showForegroundNotification(message);
-  });
-
   debugPrint('JWT 토큰: $token');
   runApp(
     MultiProvider(
@@ -115,19 +46,59 @@ Future<void> main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   final String? initialToken;
   const MyApp({super.key, this.initialToken});
 
   @override
-  Widget build(BuildContext context) {
-    // 빌드가 완료된 후에 토큰 설정하도록 예약 (여기서는 async gap 없이 사용)
-    if (initialToken != null) {
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    if (widget.initialToken != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Provider.of<AuthProvider>(context, listen: false)
-            .setAccessToken(initialToken!);
+            .setAccessToken(widget.initialToken!);
       });
     }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  DateTime? _lastRequestTime;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.detached || state == AppLifecycleState.inactive) {
+      // 3분 제한 체크
+      final now = DateTime.now();
+      if (_lastRequestTime == null || now.difference(_lastRequestTime!).inMinutes >= 3) {
+        _lastRequestTime = now;
+        try {
+          debugPrint("🛑 앱 종료되어도 requestAction 실행됨.");
+          await CompanyApi.requestAction();
+        } catch (e) {
+          debugPrint("❌ requestAction 에러: $e");
+        }
+      } else {
+        debugPrint("⏱ 3분 내 요청 제한으로 requestAction 실행하지 않음.");
+      }
+    }
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Git To Work',
       scaffoldMessengerKey: scaffoldMessengerKey,
@@ -136,21 +107,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         fontFamily: 'Pretendard',
         textTheme: const TextTheme(
-          displayLarge: TextStyle(fontWeight: FontWeight.w500),
-          displayMedium: TextStyle(fontWeight: FontWeight.w500),
-          displaySmall: TextStyle(fontWeight: FontWeight.w500),
-          headlineLarge: TextStyle(fontWeight: FontWeight.w500),
-          headlineMedium: TextStyle(fontWeight: FontWeight.w500),
-          headlineSmall: TextStyle(fontWeight: FontWeight.w500),
-          titleLarge: TextStyle(fontWeight: FontWeight.w500),
-          titleMedium: TextStyle(fontWeight: FontWeight.w500),
-          titleSmall: TextStyle(fontWeight: FontWeight.w500),
-          bodyLarge: TextStyle(fontWeight: FontWeight.w500),
           bodyMedium: TextStyle(fontWeight: FontWeight.w500),
-          bodySmall: TextStyle(fontWeight: FontWeight.w500),
-          labelLarge: TextStyle(fontWeight: FontWeight.w500),
-          labelMedium: TextStyle(fontWeight: FontWeight.w500),
-          labelSmall: TextStyle(fontWeight: FontWeight.w500),
         ),
       ),
       home: const SplashScreen(),
@@ -171,17 +128,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // initState에서 Provider를 읽어 저장
     _authProvider = Provider.of<AuthProvider>(context, listen: false);
     _navigateAfterDelay();
   }
 
   Future<void> _navigateAfterDelay() async {
-    // 2초 스플래시 대기
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
-    // accessToken 존재 여부에 따라 화면 이동
     if (_authProvider.accessToken != null) {
       final success = await _authProvider.autoLoginWithToken();
       if (!mounted) return;
