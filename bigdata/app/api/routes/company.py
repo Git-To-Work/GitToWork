@@ -59,8 +59,6 @@ def get_companies(
     query = db.query(Company).join(JobNotice, JobNotice.company_id == Company.company_id, isouter=True)
     query = query.filter(Company.company_id.in_(recommended_ids))
 
-    # (a) field 필터: Company.field 관계를 활용하여 Field.field_name을 직접 참조
-
     # (a) field 필터: 회사의 공고와 연결된 Task의 task_name이 field와 같아야 함
     if field:
         # JobNotice와 Task를 JOIN (outer join을 사용하여, 없는 경우는 필터에서 제외)

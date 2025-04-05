@@ -3,6 +3,8 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
+from app.models.notice_task import notice_task
+
 class Task(Base):
     __tablename__ = "task"
 
@@ -10,4 +12,4 @@ class Task(Base):
     task_name = Column(String(100), nullable=False, unique=True)
 
     # JobNotice와의 양방향 관계
-    job_notices = relationship("JobNotice", back_populates="task")
+    job_notices = relationship("JobNotice", secondary=notice_task, back_populates="tasks")
