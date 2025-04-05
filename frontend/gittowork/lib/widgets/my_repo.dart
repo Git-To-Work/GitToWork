@@ -181,15 +181,10 @@ class _MyRepoState extends State<MyRepo> {
                         _combinations[_selectedIndex].selectedRepositoryId;
                     try {
                       debugPrint("분석 데이터 실행");
-                      final result = await GitHubApi.fetchGithubAnalysis(
+                      await GitHubApi.fetchGithubAnalysis(
                         context: context,
                         selectedRepositoryId: selectedRepoId,
                       );
-                      if (result['analyzing'] == true) {
-                        debugPrint("⌛ 아직 분석 중입니다.");
-                      } else {
-                        debugPrint("✅ 분석 결과 저장 완료");
-                      }
                     } catch (e) {
                       debugPrint("❌ 분석 데이터 불러오기 실패: $e");
                     }

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../providers/github_analysis_provider.dart';
 import 'api_service.dart';
 import '../models/repository.dart';
+import 'company_api.dart';
 
 class GitHubApi {
   /// 내 레포지토리 조회 API 호출
@@ -83,19 +84,39 @@ class GitHubApi {
 
   /// 레포지토리 분석 요청
   static Future<RepositoryAnalysisResponse> requestRepositoryAnalysis(
+      BuildContext context,
       List<int> repositoryIndices) async {
     final response = await ApiService.dio.post(
       '/api/github/create/analysis-by-repository',
       data: {'repositories': repositoryIndices},
     );
-    debugPrint("requestRepositoryAnalysis response: ${response.data}");
+
+    final provider = Provider.of<GitHubAnalysisProvider>(context, listen: false);
+
     if (response.statusCode == 200) {
+      final results = response.data['results'];
+
+      final selectedRepositoryId = results['selectedRepositoryId']; // ← 필드명 맞게 확인
+
+      if (selectedRepositoryId != null) {
+        const storage = FlutterSecureStorage();
+        await storage.write(
+          key: 'selected_repo_id',
+          value: selectedRepositoryId.toString(),
+        );
+        debugPrint("🔐 selected_repo_id 저장 완료: $selectedRepositoryId");
+      }
+
+      provider.setAnalyzing(results);
+
+      await CompanyApi.requestCompanyAnalysis();
+
       return RepositoryAnalysisResponse.fromJson(response.data);
     } else {
-      throw Exception(
-          '레포지토리 분석 요청 실패: ${response.statusCode}');
+      throw Exception('레포지토리 분석 요청 실패: ${response.statusCode}');
     }
   }
+
 
   /// 조합 레포지토리 삭제
   static Future<String> deleteRepositoryCombination(
@@ -118,17 +139,14 @@ class GitHubApi {
   }
 
   /// 분석 결과 조회
-  /// → BuildContext를 직접 사용하지 않고, Provider를 미리 캡처하여 async 호출 이후에도 안전하게 사용합니다.
   static Future<Map<String, dynamic>> fetchGithubAnalysis({
     required BuildContext context,
     required String selectedRepositoryId,
   }) async {
     debugPrint("[요청 시작] selectedRepositoryId: $selectedRepositoryId");
 
-    final provider =
-    Provider.of<GitHubAnalysisProvider>(context, listen: false);
-    final FlutterSecureStorage secureStorage =
-    const FlutterSecureStorage();
+    final provider = Provider.of<GitHubAnalysisProvider>(context, listen: false);
+    final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
     await secureStorage.write(
       key: 'selected_repo_id',
       value: selectedRepositoryId,
@@ -148,16 +166,27 @@ class GitHubApi {
       if (response.statusCode == 200) {
         final results = response.data['results'];
         debugPrint("[분석 결과 데이터] : $results");
-        provider.updateFromAnalysisResult(results);
-        return {'analyzing': false};
-      } else if (response.statusCode == 404) {
-        debugPrint("🕒 분석 중 상태입니다. (404)");
-        provider.setAnalyzing(true);
-        return {'analyzing': true};
+
+        if(results['status']=='complete'){
+          debugPrint("✅분석 성공✅");
+          provider.updateFromAnalysisResult(results);
+        }
+        else if(results['status']=='analyzing'){
+          debugPrint("🕒분석 진행중🕒");
+          provider.updateFromAnalysisResult(results);
+          provider.setStatus();
+        }
+        else if(results['status']=='fail'){
+          debugPrint("❌분석  실패❌");
+          provider.setFail();
+        }
+        return results;
+
       } else {
         throw Exception('깃허브 분석 조회 실패: ${response.statusCode}');
       }
     } catch (e) {
+      provider.setFail();
       debugPrint("❌ [분석 데이터 조회 실패] $e");
       rethrow;
     }

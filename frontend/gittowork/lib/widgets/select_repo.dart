@@ -75,7 +75,7 @@ class _SelectRepoDialogState extends State<SelectRepoDialog> {
 
     if (!isDuplicate) {
       try {
-        await GitHubApi.requestRepositoryAnalysis(selectedRepoIds);
+        await GitHubApi.requestRepositoryAnalysis(context, selectedRepoIds);
         if (!mounted) return;
       } catch (e) {
         if (!mounted) return;

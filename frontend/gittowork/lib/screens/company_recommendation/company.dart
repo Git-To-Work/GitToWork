@@ -61,7 +61,9 @@ class _CompanyScreenState extends State<CompanyScreen> {
               ],
             ),
 
-            CompanyList(), // 이곳에 _isHiring을 넘겨서 필터링할 수도 있어요!
+            Expanded(
+              child: CompanyList(),
+            ),
           ],
         ),
       ),

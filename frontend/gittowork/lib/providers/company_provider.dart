@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:gittowork/providers/search_provider.dart';
 import 'package:gittowork/services/company_api.dart';
+import 'package:provider/provider.dart';
 
 class CompanyProvider extends ChangeNotifier {
   List<Map<String, dynamic>> companies = [];
@@ -11,8 +13,10 @@ class CompanyProvider extends ChangeNotifier {
     bool reset = false,
   }) async {
     try {
+      final filterProvider = Provider.of<SearchFilterProvider>(context, listen: false);
       final result = await CompanyApi.fetchRecommendedCompanies(
         context: context,
+        keyword: filterProvider.keyword,
       );
 
       final newCompanies = (result['companies'] as List<dynamic>)

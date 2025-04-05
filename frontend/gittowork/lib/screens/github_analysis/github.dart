@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gittowork/widgets/app_bar.dart';
+import 'fail.dart';
 import 'repo.dart';
 import 'analysing.dart';
 import 'stats.dart';
@@ -25,12 +26,19 @@ class GitHubScreen extends StatelessWidget {
           Expanded(
             child: Consumer<GitHubAnalysisProvider>(
               builder: (context, provider, _) {
-                if (provider.isAnalyzing) {
+                if (provider.status=='analyzing') {
                   return const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 15.0),
                     child: AnalysingScreen(),
                   );
-                } else {
+                }
+                else if (provider.status=='fail') {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 15.0),
+                    child: FailScreen(),
+                  );
+                }
+                else {
                   return SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 15.0),
                     child: Column(
