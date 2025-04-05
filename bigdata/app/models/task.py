@@ -12,4 +12,4 @@ class Task(Base):
     task_name = Column(String(100), nullable=False, unique=True)
 
     # JobNotice와의 양방향 관계
-    job_notices = relationship("JobNotice", secondary=notice_task, back_populates="tasks")
+    job_notices = relationship("JobNotice", secondary=notice_task, back_populates="task")
