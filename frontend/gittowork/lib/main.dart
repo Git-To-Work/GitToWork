@@ -14,6 +14,7 @@ import 'package:gittowork/providers/quiz_provider.dart';
 import 'package:gittowork/providers/company_provider.dart';
 import 'package:gittowork/providers/company_detail_provider.dart';
 import 'package:gittowork/providers/search_provider.dart';
+import 'package:gittowork/providers/lucky_provider.dart';
 
 // 레이아웃 파일 (스플래시로 쓸 화면)
 import 'layouts/no_appbar_no_bottom_nav_layout.dart';
@@ -109,6 +110,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => CompanyProvider()),
         ChangeNotifierProvider(create: (_) => CompanyDetailProvider()),
         ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
+        ChangeNotifierProvider(create: (_) => LuckyProvider()),
       ],
       child: MyApp(initialToken: token),
     ),

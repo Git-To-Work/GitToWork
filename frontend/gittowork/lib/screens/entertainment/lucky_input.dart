@@ -1,27 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/lucky_provider.dart';
+import '../../services/lucky_api.dart';
 
-class LuckyInput extends StatelessWidget {
-  final TextEditingController birthDateController;
-  final String selectedTime;
-  final String selectedGender;
-  final Function(String) onTimeChanged;
-  final Function(String) onGenderChanged;
+class LuckyInput extends StatefulWidget {
   final VoidCallback onSubmit;
 
-  const LuckyInput({
-    super.key,
-    required this.birthDateController,
-    required this.selectedTime,
-    required this.selectedGender,
-    required this.onTimeChanged,
-    required this.onGenderChanged,
-    required this.onSubmit,
-  });
+  const LuckyInput({super.key, required this.onSubmit});
+
+  @override
+  State<LuckyInput> createState() => _LuckyInputState();
+}
+
+class _LuckyInputState extends State<LuckyInput> {
+  final TextEditingController _birthDateController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint("열림");
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final luckyProvider = Provider.of<LuckyProvider>(context, listen: false);
+      _birthDateController.text = luckyProvider.birthDate;
+      LuckyService.getFortuneUserInfoWithProvider(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final luckyProvider = Provider.of<LuckyProvider>(context);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -35,38 +44,34 @@ class LuckyInput extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // 생년월일 텍스트필드
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: _roundedTextField(
-              controller: birthDateController,
+              controller: _birthDateController,
               label: '생년월일',
-              hint: '예: 19990723',
+              hint: '예: 1999-07-23',
               keyboardType: TextInputType.number,
+              onChanged: (val) => luckyProvider.setBirthDate(val),
             ),
           ),
           const SizedBox(height: 12),
-          // 태어난 시간 및 성별 선택 row (태어난 시간 : 성별 = 3:2 비율)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                // 태어난 시간 BottomPicker (flex: 3)
                 Expanded(
                   flex: 3,
-                  child: _timeBottomPicker(context),
+                  child: _timeBottomPicker(context, luckyProvider),
                 ),
                 const SizedBox(width: 12),
-                // 성별 BottomPicker (flex: 2)
                 Expanded(
                   flex: 2,
-                  child: _genderBottomPicker(context),
+                  child: _genderBottomPicker(context, luckyProvider),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 26),
-          // 운세 보기 버튼
           SizedBox(
             width: double.infinity,
             height: 60,
@@ -81,7 +86,31 @@ class LuckyInput extends StatelessWidget {
                   ),
                 ),
               ),
-              onPressed: onSubmit,
+              onPressed: () async {
+                final luckyProvider = Provider.of<LuckyProvider>(context, listen: false);
+                luckyProvider.setAll(
+                  birthDate: _birthDateController.text,
+                  gender: luckyProvider.gender,
+                  birthTime: luckyProvider.birthTime,
+                );
+                debugPrint("[값 확인]  --> ${luckyProvider.birthDate} ${luckyProvider.gender} ${luckyProvider.birthTime}");
+
+                try {
+                  await LuckyService.saveFortuneUserInfo(context);
+                } catch (e) {
+                  debugPrint('❌ 유저 정보 저장 실패: $e');
+                }
+
+                try {
+                  await LuckyService.getTodayFortune(context);
+                } catch (e) {
+                  debugPrint('❌ 운세 조회 실패: $e');
+                }
+
+                // 3. 결과 출력 UI 전환
+                widget.onSubmit();
+              },
+
               child: const Text(
                 '운세 보기',
                 style: TextStyle(fontSize: 16),
@@ -94,7 +123,7 @@ class LuckyInput extends StatelessWidget {
   }
 
   Widget _roundedTextField({
-    TextEditingController? controller,
+    required TextEditingController controller,
     required String label,
     String? hint,
     ValueChanged<String>? onChanged,
@@ -103,10 +132,7 @@ class LuckyInput extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
+        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -114,11 +140,8 @@ class LuckyInput extends StatelessWidget {
           keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: hint,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
           style: const TextStyle(fontSize: 16),
         ),
@@ -126,47 +149,36 @@ class LuckyInput extends StatelessWidget {
     );
   }
 
-  Widget _genderBottomPicker(BuildContext context) {
+  Widget _genderBottomPicker(BuildContext context, LuckyProvider luckyProvider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '성별',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
+        const Text('성별', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         InkWell(
           onTap: () async {
-            // 바텀시트로 남성/여성 선택 (높이를 지정해서 띄움)
             final result = await showModalBottomSheet<String>(
               context: context,
-              builder: (BuildContext context) {
-                return SafeArea(
-                  child: SizedBox(
-                    height: 150, // 원하는 높이로 지정 (예: 150)
-                    child: Column(
-                      children: [
-                        ListTile(
-                          title: const Text('남성'),
-                          onTap: () {
-                            Navigator.pop(context, '남성');
-                          },
-                        ),
-                        ListTile(
-                          title: const Text('여성'),
-                          onTap: () {
-                            Navigator.pop(context, '여성');
-                          },
-                        ),
-                      ],
-                    ),
+              builder: (context) => SafeArea(
+                child: SizedBox(
+                  height: 150,
+                  child: Column(
+                    children: [
+                      ListTile(
+                        title: const Text('남성'),
+                        onTap: () => Navigator.pop(context, '남성'),
+                      ),
+                      ListTile(
+                        title: const Text('여성'),
+                        onTap: () => Navigator.pop(context, '여성'),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+              ),
             );
-
             if (result != null) {
-              onGenderChanged(result);
+              luckyProvider.setGender(result);
             }
           },
           child: Container(
@@ -179,7 +191,7 @@ class LuckyInput extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  selectedGender.isNotEmpty ? selectedGender : '눌러서 선택',
+                  luckyProvider.gender.isNotEmpty ? luckyProvider.gender : '눌러서 선택',
                   style: const TextStyle(fontSize: 16),
                 ),
                 const Icon(Icons.arrow_drop_down),
@@ -191,19 +203,14 @@ class LuckyInput extends StatelessWidget {
     );
   }
 
-
-  Widget _timeBottomPicker(BuildContext context) {
+  Widget _timeBottomPicker(BuildContext context, LuckyProvider luckyProvider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '태어난 시간',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
+        const Text('태어난 시간', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         InkWell(
           onTap: () async {
-            // 30분 단위 시간 옵션 생성 (00:00 ~ 23:30)
             List<String> timeOptions = [];
             for (int hour = 0; hour < 24; hour++) {
               timeOptions.add('${hour.toString().padLeft(2, '0')}:00');
@@ -212,34 +219,26 @@ class LuckyInput extends StatelessWidget {
 
             final result = await showModalBottomSheet<String>(
               context: context,
-              builder: (BuildContext context) {
-                return SafeArea(
-                  child: SizedBox(
-                    // 높이를 제한해서 스크롤 가능하도록 함
-                    height: 300,
-                    child: ListView.builder(
-                      itemCount: timeOptions.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          title: Text(timeOptions[index]),
-                          onTap: () {
-                            Navigator.pop(context, timeOptions[index]);
-                          },
-                        );
-                      },
+              builder: (context) => SafeArea(
+                child: SizedBox(
+                  height: 300,
+                  child: ListView.builder(
+                    itemCount: timeOptions.length,
+                    itemBuilder: (context, index) => ListTile(
+                      title: Text(timeOptions[index]),
+                      onTap: () => Navigator.pop(context, timeOptions[index]),
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             );
 
             if (result != null) {
-              onTimeChanged(result);
+              luckyProvider.setBirthTime(result);
             }
           },
           child: Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade400),
               borderRadius: BorderRadius.circular(12),
@@ -248,7 +247,7 @@ class LuckyInput extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  selectedTime.isNotEmpty ? selectedTime : '눌러서 선택',
+                  formatTimeRange(luckyProvider.birthTime),
                   style: const TextStyle(fontSize: 16),
                 ),
                 const Icon(Icons.arrow_drop_down),
@@ -258,5 +257,28 @@ class LuckyInput extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// 🔹 "11:00" -> "11:00 ~ 11:30"
+  String formatTimeRange(String time) {
+    if (time.isEmpty) return '눌러서 선택';
+
+    final parts = time.split(':');
+    final hour = int.parse(parts[0]);
+    final minute = int.parse(parts[1]);
+
+    final start = '$time';
+
+    int nextHour = hour;
+    int nextMinute = minute + 30;
+    if (nextMinute >= 60) {
+      nextMinute -= 60;
+      nextHour = (nextHour + 1) % 24;
+    }
+
+    final end =
+        '${nextHour.toString().padLeft(2, '0')}:${nextMinute.toString().padLeft(2, '0')}';
+
+    return '$start ~ $end';
   }
 }
