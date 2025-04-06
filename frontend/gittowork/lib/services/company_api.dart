@@ -210,16 +210,11 @@ class CompanyApi {
   }
 
   static requestAction() async {
-    final secureStorage = const FlutterSecureStorage();
-    final selectedRepoId = await secureStorage.read(key: 'selected_repo_id');
-
+    debugPrint("FastApi recommendation 요청");
     final response = await FastApiService.dio.get(
       '/recommendation',
-      queryParameters: {
-        'selected_repositories_id': selectedRepoId,
-      },
     );
-
+    debugPrint("✅ requestAction 성공 ${response.data}");
     if (response.statusCode == 200) {
       final result = response.data['message'];
       return result ?? 'FastApi Action  완료';
