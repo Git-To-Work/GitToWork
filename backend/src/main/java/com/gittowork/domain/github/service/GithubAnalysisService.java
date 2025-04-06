@@ -11,12 +11,7 @@ import com.gittowork.domain.github.model.commit.Commit;
 import com.gittowork.domain.github.model.repository.Repository;
 import com.gittowork.domain.github.model.sonar.MeasuresResponse;
 import com.gittowork.domain.github.model.sonar.SonarResponse;
-import com.gittowork.domain.github.repository.GithubAnalysisResultRepository;
-import com.gittowork.domain.github.repository.GithubCommitRepository;
-import com.gittowork.domain.github.repository.GithubIssueRepository;
-import com.gittowork.domain.github.repository.GithubPullRequestRepository;
-import com.gittowork.domain.github.repository.GithubRepoRepository;
-import com.gittowork.domain.github.repository.SelectedRepoRepository;
+import com.gittowork.domain.github.repository.*;
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.*;
@@ -40,6 +35,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -55,6 +53,7 @@ import java.util.stream.Stream;
 public class GithubAnalysisService {
 
     private final FirebaseService firebaseService;
+    private final AnalysisStatusRepository analysisStatusRepository;
     @Value("${sonar.host.url}")
     private String sonarHostUrl;
 
@@ -125,11 +124,15 @@ public class GithubAnalysisService {
     }
 
     /**
-     * 1. 메서드 설명: 선택된 repository들에 대해 SonarQube 분석 및 GitHub 관련 정보를 조회하여 최종 분석 결과를 저장한다.
+     * 1. 메서드 설명: 선택된 repository들에 대해 SonarQube 분석과 GitHub 관련 정보를 조회하여 최종 분석 결과를 생성 및 저장하며,
+     *    분석 도중 예외 발생 시 해당 AnalysisStatus를 fail 상태로 업데이트한다.
      * 2. 로직:
-     *    - userId에 해당하는 모든 repository를 조회한 후 선택된 repository들로 필터링한다.
-     *    - 각 repository에 대해 processRepository()를 호출하여 개별 분석 결과를 생성하고 통계값을 누적한다.
-     *    - 전체 언어 비율과 점수, 활동 지표(ActivityMetrics)를 계산한 후, GPT 서비스로 추가 분석하고 결과를 저장한다.
+     *    - userId에 해당하는 모든 repository를 조회한 후, 전달받은 selectedRepositoryIds에 해당하는 repository들을 필터링한다.
+     *    - 각 repository에 대해 processRepository()를 호출하여 개별 분석 결과를 생성하고, 통계값(언어 비율, 점수, 활동 지표)을 누적한다.
+     *    - 누적된 통계값을 기반으로 전체 언어 비율과 평균 점수(ActivityMetrics 포함)를 계산한다.
+     *    - 계산된 결과를 바탕으로 GPT 서비스를 이용한 추가 분석을 수행하고, 최종 분석 결과(GithubAnalysisResult)를 생성하여 저장한다.
+     *    - 분석이 정상적으로 완료되면, 해당 AnalysisStatus를 complete 상태로 업데이트하며, 도중 Exception이 발생하면 catch 블록에서
+     *      AnalysisStatus를 fail 상태로 업데이트한 후 예외를 재전파한다.
      * 3. param:
      *      int userId - 로컬 사용자 식별자.
      *      int[] selectedRepositoryIds - 분석 대상 repository들의 repoId 배열.
@@ -139,15 +142,12 @@ public class GithubAnalysisService {
         GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
 
+        Set<Integer> selectedRepoIdSet = Arrays.stream(selectedRepositoryIds)
+                .boxed()
+                .collect(Collectors.toSet());
+
         List<Repository> selectedRepositories = githubRepository.getRepositories().stream()
-                .filter(repo -> {
-                    for (int id : selectedRepositoryIds) {
-                        if (repo.getRepoId() == id) {
-                            return true;
-                        }
-                    }
-                    return false;
-                })
+                .filter(repo -> selectedRepoIdSet.contains(repo.getRepoId()))
                 .collect(Collectors.toList());
 
         SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndRepositories(userId, selectedRepositories)
@@ -160,56 +160,74 @@ public class GithubAnalysisService {
         AtomicInteger totalPRs = new AtomicInteger(0);
         AtomicInteger totalIssues = new AtomicInteger(0);
 
-        List<RepositoryResult> repositoryResults = selectedRepository.getRepositories().stream()
-                .map(repo -> processRepository(repo, totalLanguageRatio, totalOverallScore, totalStars, totalCommits, totalPRs, totalIssues))
-                .collect(Collectors.toList());
-
-        int totalLines = totalLanguageRatio.values().stream().mapToInt(Integer::intValue).sum();
-        Map<String, Double> languagePercentages = totalLanguageRatio.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> totalLines > 0 ? (entry.getValue() * 100.0 / totalLines) : 0.0
-                ));
-
-        int overallScoreMean = selectedRepository.getRepositories().isEmpty() ? 0 :
-                totalOverallScore.get() / selectedRepository.getRepositories().size();
-
-        ActivityMetrics activityMetrics = ActivityMetrics.builder()
-                .totalStars(totalStars.get())
-                .totalCommits(totalCommits.get())
-                .totalPRs(totalPRs.get())
-                .totalIssues(totalIssues.get())
-                .build();
-
-        GithubAnalysisResult githubAnalysisResult = GithubAnalysisResult.builder()
-                .userId(userId)
-                .analysisDate(LocalDateTime.now())
-                .selectedRepositoriesId(selectedRepository.getSelectedRepositoryId())
-                .selectedRepositories(selectedRepository.getRepositories())
-                .languageRatios(languagePercentages)
-                .repositories(repositoryResults)
-                .overallScore(overallScoreMean)
-                .primaryRole(null)
-                .roleScores(0)
-                .activityMetrics(activityMetrics)
-                .aiAnalysis(null)
-                .build();
-
         try {
-            GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
+            List<RepositoryResult> repositoryResults = selectedRepository.getRepositories().stream()
+                    .map(repo -> processRepository(repo, totalLanguageRatio, totalOverallScore, totalStars, totalCommits, totalPRs, totalIssues))
+                    .collect(Collectors.toList());
 
-            githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
-            githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
-            githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
+            int totalLines = totalLanguageRatio.values().stream().mapToInt(Integer::intValue).sum();
+            Map<String, Double> languagePercentages = totalLanguageRatio.entrySet().stream()
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> totalLines > 0 ? (entry.getValue() * 100.0 / totalLines) : 0.0
+                    ));
 
-            log.info("GithubAnalysisResult with gptAnalysisResult: {}", githubAnalysisResult);
+            int overallScoreMean = selectedRepository.getRepositories().isEmpty() ? 0 :
+                    totalOverallScore.get() / selectedRepository.getRepositories().size();
 
-        } catch (JsonProcessingException e) {
-            throw new GithubAnalysisException("Github analysis failed: " + e.getMessage());
+            ActivityMetrics activityMetrics = ActivityMetrics.builder()
+                    .totalStars(totalStars.get())
+                    .totalCommits(totalCommits.get())
+                    .totalPRs(totalPRs.get())
+                    .totalIssues(totalIssues.get())
+                    .build();
+
+            GithubAnalysisResult githubAnalysisResult = GithubAnalysisResult.builder()
+                    .userId(userId)
+                    .analysisDate(LocalDateTime.now())
+                    .selectedRepositoriesId(selectedRepository.getSelectedRepositoryId())
+                    .selectedRepositories(selectedRepository.getRepositories())
+                    .languageRatios(languagePercentages)
+                    .repositories(repositoryResults)
+                    .overallScore(overallScoreMean)
+                    .primaryRole(null)
+                    .roleScores(0)
+                    .activityMetrics(activityMetrics)
+                    .aiAnalysis(null)
+                    .build();
+
+            try {
+                GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
+                githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
+                githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
+                githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
+                log.info("GithubAnalysisResult with gptAnalysisResult: {}", githubAnalysisResult);
+            } catch (JsonProcessingException e) {
+                throw new GithubAnalysisException("Github analysis failed: " + e.getMessage());
+            }
+
+            githubAnalysisResultRepository.save(githubAnalysisResult);
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+            AnalysisStatus analysisStatus = analysisStatusRepository.findByUserAndSelectedRepositoriesId(user, selectedRepository.getSelectedRepositoryId())
+                    .orElseThrow(() -> new GithubAnalysisNotFoundException("Github analysis status not found"));
+
+            analysisStatus.setStatus(AnalysisStatus.Status.complete);
+            analysisStatusRepository.save(analysisStatus);
+
+        } catch (Exception e) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+            AnalysisStatus analysisStatus = analysisStatusRepository.findByUserAndSelectedRepositoriesId(user, selectedRepository.getSelectedRepositoryId())
+                    .orElseThrow(() -> new GithubAnalysisNotFoundException("Github analysis status not found"));
+            analysisStatus.setStatus(AnalysisStatus.Status.fail);
+            analysisStatusRepository.save(analysisStatus);
+            throw e;
         }
-
-        githubAnalysisResultRepository.save(githubAnalysisResult);
     }
+
 
     /**
      * 1. 메서드 설명: 단일 repository에 대해 SonarQube 분석과 GitHub 커밋/PR/Issue 정보를 조회하여 RepositoryResult를 생성한다.
@@ -438,7 +456,7 @@ public class GithubAnalysisService {
 
         int nonJavaScore = (int) Math.max(0, BASE_SCORE - sonarTotalPenalty);
 
-        Map<String, Double> languageDistribution = fetchLanguageDistribution(projectKey);
+        Map<String, Double> languageDistribution = new HashMap<>(fetchLanguageDistribution(projectKey));
         File repoDir = new File("/tmp/repositories/" + projectKey);
         double javaLoc = calculateJavaNcloc(repoDir);
         if (javaLoc > 0) {
@@ -455,14 +473,14 @@ public class GithubAnalysisService {
         int overallScore = (int) Math.max(0, nonJavaScore - javaPenalty);
 
         String insights = String.format("""
-                        Non-Java Analysis:
-                          - Base Score (from SonarQube analysis): 100 - total penalty (%.2f) = %d
-                        Java Analysis (via PMD):
-                          - BLOCKER: %d violations, CRITICAL: %d violations, MAJOR: %d violations, MINOR: %d violations, INFO: %d violations
-                          - Total Java PMD penalty: %.2f => Java Quality Score: 100 - penalty = %.2f
-                        Overall Score: Non-Java Score (%d) - Java PMD penalty (%.2f) = %d
-                        Language Distribution (LOC): %s
-                        """,
+                    Non-Java Analysis:
+                      - Base Score (from SonarQube analysis): 100 - total penalty (%.2f) = %d
+                    Java Analysis (via PMD):
+                      - BLOCKER: %d violations, CRITICAL: %d violations, MAJOR: %d violations, MINOR: %d violations, INFO: %d violations
+                      - Total Java PMD penalty: %.2f => Java Quality Score: 100 - penalty = %.2f
+                    Overall Score: Non-Java Score (%d) - Java PMD penalty (%.2f) = %d
+                    Language Distribution (LOC): %s
+                    """,
                 sonarTotalPenalty, nonJavaScore,
                 javaPenaltyResult.getBlockerCount(), javaPenaltyResult.getCriticalCount(),
                 javaPenaltyResult.getMajorCount(), javaPenaltyResult.getMinorCount(), javaPenaltyResult.getInfoCount(),
@@ -480,6 +498,7 @@ public class GithubAnalysisService {
                 .projectMeasures(projectMeasures)
                 .build();
     }
+
 
     /**
      * 1. 메서드 설명: PMD 이슈 데이터를 조회하여 자바 코드에 대한 penalty와 violation 카운터를 계산한다. (로그 스케일 적용)
@@ -548,14 +567,19 @@ public class GithubAnalysisService {
             log.warn("Repository directory {} does not exist or is not a directory.", repoDir.getAbsolutePath());
             return 0.0;
         }
+
         try (Stream<Path> paths = Files.walk(repoDir.toPath())) {
             return paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".java"))
                     .mapToLong(path -> {
-                        try {
-                            return Files.lines(path).count();
+                        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+                        decoder.onMalformedInput(CodingErrorAction.IGNORE);
+
+                        try (BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(Files.newInputStream(path), decoder))) {
+                            return reader.lines().count();
                         } catch (IOException e) {
-                            log.error("Error reading file {}: {}", path, e.getMessage());
+                            log.error("Error reading file {} (skipping file): {}", path, e.getMessage());
                             return 0L;
                         }
                     }).sum();
@@ -564,6 +588,7 @@ public class GithubAnalysisService {
         }
         return 0.0;
     }
+
 
     /**
      * 1. 메서드 설명: SonarQube API를 호출하여 지정된 프로젝트의 측정 지표(coverage, bugs, code_smells, vulnerabilities, duplicated_lines_density)를 조회한다.

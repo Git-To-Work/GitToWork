@@ -25,17 +25,20 @@ class _MyRepoState extends State<MyRepo> {
   Future<void> _loadCombinations() async {
     try {
       final combinations = await GitHubApi.fetchMyRepositoryCombinations();
+      if (!mounted) return;
       setState(() {
         _combinations = combinations;
         _selectedIndex = combinations.isNotEmpty ? 0 : -1;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('조합 레포지토리 불러오기 실패: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('조합 레포지토리 불러오기 실패: $e')),
+      );
     }
   }
 
@@ -80,8 +83,8 @@ class _MyRepoState extends State<MyRepo> {
                             },
                             child: Image.asset(
                               'assets/icons/Add.png',
-                              width: 24,
-                              height: 24,
+                              width: 30,
+                              height: 30,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -96,8 +99,8 @@ class _MyRepoState extends State<MyRepo> {
                             },
                             child: Image.asset(
                               'assets/icons/Edit.png',
-                              width: 24,
-                              height: 24,
+                              width: 28,
+                              height: 28,
                             ),
                           ),
                         ],
@@ -106,21 +109,18 @@ class _MyRepoState extends State<MyRepo> {
                   ),
                   const SizedBox(height: 10),
                   const Divider(
-                      thickness: 1,
-                      height: 20,
-                      color: Colors.black26),
-                  // 고정 높이 영역: 항상 300픽셀 영역 유지
+                      thickness: 1, height: 20, color: Colors.black26),
                   SizedBox(
                     height: 300,
                     child: _combinations.isEmpty
                         ? const Center(
-                        child: Text("조회된 조합 레포지토리가 없습니다."))
+                      child: Text("조회된 조합 레포지토리가 없습니다."),
+                    )
                         : ListView.builder(
                       shrinkWrap: true,
                       itemCount: _combinations.length,
                       itemBuilder: (context, index) {
-                        final bool isSelected =
-                            index == _selectedIndex;
+                        final isSelected = index == _selectedIndex;
                         final combination = _combinations[index];
                         final combinedNames =
                         combination.repositoryNames.join(', ');
@@ -157,7 +157,6 @@ class _MyRepoState extends State<MyRepo> {
                 ],
               ),
             ),
-            // 버튼 영역
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -172,11 +171,28 @@ class _MyRepoState extends State<MyRepo> {
                   padding: const EdgeInsets.symmetric(vertical: 20),
                 ),
                 child: const Text(
-                  '완료',
+                  '선택하기',
                   style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
-                onPressed: () {
-                  Navigator.of(context).pop(); // 창만 닫음
+                onPressed: () async {
+                  if (_selectedIndex >= 0 &&
+                      _selectedIndex < _combinations.length) {
+                    final selectedRepoId =
+                        _combinations[_selectedIndex].selectedRepositoryId;
+                    try {
+                      debugPrint("분석 데이터 실행");
+                      await GitHubApi.fetchGithubAnalysis(
+                        context: context,
+                        selectedRepositoryId: selectedRepoId,
+                      );
+                    } catch (e) {
+                      debugPrint("❌ 분석 데이터 불러오기 실패: $e");
+                    }
+                  } else {
+                    debugPrint("선택된 Repository가 없습니다.");
+                  }
+                  if (!mounted) return;
+                  Navigator.of(context).pop();
                 },
               ),
             ),

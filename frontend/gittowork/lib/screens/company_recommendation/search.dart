@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:gittowork/services/github_api.dart';
 import 'package:gittowork/models/repository.dart';
 import 'package:gittowork/providers/search_provider.dart';
+
+import '../../providers/company_provider.dart';
 
 class SearchBarWithFilters extends StatefulWidget {
   const SearchBarWithFilters({super.key});
@@ -12,10 +15,11 @@ class SearchBarWithFilters extends StatefulWidget {
 }
 
 class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
-  // My Repo 탭 관련 상태
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
   List<RepositoryCombination> _combinations = [];
-  List<String> _repoOptions = ['전체'];
-  String selectedRepo = '전체';
+  List<String> _repoOptions = [];
+  String selectedRepo = '';
   bool _isRepoLoading = true;
 
   @override
@@ -25,16 +29,36 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
   }
 
   Future<void> _loadRepoCombinations() async {
+    final storedRepoId = await _secureStorage.read(key: 'selected_repo_id');
+
     try {
       final combinations = await GitHubApi.fetchMyRepositoryCombinations();
-      final options = ['전체', ...combinations.map((c) => c.repositoryNames.join(', '))];
+      final options = combinations.map((c) => c.repositoryNames.join(', ')).toList();
+
+      String initialSelectedRepo = options.isNotEmpty ? options.first : '';
+      String initialSelectedRepoId = combinations.isNotEmpty ? combinations.first.selectedRepositoryId : '';
+
+      for (int i = 0; i < combinations.length; i++) {
+        if (combinations[i].selectedRepositoryId == storedRepoId) {
+          initialSelectedRepo = combinations[i].repositoryNames.join(', ');
+          initialSelectedRepoId = combinations[i].selectedRepositoryId;
+          break;
+        }
+      }
+
+      if (!mounted) return;
+
+      final provider = Provider.of<SearchFilterProvider>(context, listen: false);
+      provider.updateSelectedRepo(initialSelectedRepo, initialSelectedRepoId);
+
       setState(() {
         _combinations = combinations;
         _repoOptions = options;
-        selectedRepo = options.first;
+        selectedRepo = initialSelectedRepo;
         _isRepoLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isRepoLoading = false;
       });
@@ -49,8 +73,18 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 검색 텍스트 필드
         TextField(
+          onChanged: (value) {
+            Provider.of<SearchFilterProvider>(context, listen: false).updateKeyword(value);
+          },
+          onSubmitted: (value) async {
+            await Provider.of<CompanyProvider>(context, listen: false).loadCompaniesFromApi(
+              context: context,
+              page: '1',
+              size: '20',
+              reset: true,
+            );
+          },
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search, size: 28),
             hintText: "검색",
@@ -62,8 +96,8 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
           ),
           style: const TextStyle(fontSize: 18),
         ),
+
         const SizedBox(height: 16),
-        // 필터 버튼들
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -103,13 +137,13 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
   }
 
   void _showFilterModal(BuildContext context, String tabTitle) {
-    // Provider에서 이전에 적용된 필터 값을 가져옴 (기술스택, 직무, 경력, 지역)
     final searchProvider = Provider.of<SearchFilterProvider>(context, listen: false);
-    // 로컬 임시 변수로 복사 (모달 내 선택 변경시만 반영)
     String localCareer = searchProvider.selectedCareer;
     Set<String> localTechs = Set.from(searchProvider.selectedTechs);
     Set<String> localTags = Set.from(searchProvider.selectedTags);
     Set<String> localRegions = Set.from(searchProvider.selectedRegions);
+    String localRepoName = searchProvider.selectedRepoName;
+    String localRepoId = searchProvider.selectedRepoId;
 
     showModalBottomSheet(
       context: context,
@@ -122,37 +156,23 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
         final screenHeight = MediaQuery.of(context).size.height;
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter modalSetState) {
-            // 로컬 필터 UI 위젯 정의
-            Widget buildLocalCareerFilter() {
-              final options = [
-                '전체', '신입', '1년', '2년', '3년', '4년', '5년',
-                '6년', '7년', '8년', '9년', '10년 이상'
-              ];
-              return _buildWrapChips(options, localCareer, isSingle: true,
-                  onSingleSelected: (val) {
-                    modalSetState(() {
-                      localCareer = val;
-                    });
+            Widget buildRepoFilter() {
+              if (_isRepoLoading) return const Center(child: CircularProgressIndicator());
+              if (_repoOptions.isEmpty) return const Center(child: Text("조회된 조합 레포지토리가 없습니다."));
+              return _buildWrapChips(
+                _repoOptions,
+                localRepoName,
+                isSingle: true,
+                onSingleSelected: (val) {
+                  modalSetState(() {
+                    localRepoName = val;
+                    final index = _repoOptions.indexOf(val);
+                    if (index >= 0 && index < _combinations.length) {
+                      localRepoId = _combinations[index].selectedRepositoryId;
+                    }
                   });
-            }
-
-            Widget buildLocalTechFilter() {
-              final options = ['JavaScript', 'Python', 'Dart', 'Flutter', 'Spring', 'React', 'Node.js', 'Java'];
-              return _buildWrapChips(options, localTechs, modalSetState: modalSetState);
-            }
-
-            Widget buildLocalTagFilter() {
-              final options = [
-                '#4.5일제', '#재택근무', '#유연근무제', '#시차출근제', '#인센티브', '#코드리뷰',
-                '#반바지/슬리퍼 OK', '#자유복장', '#맛있는간식냠냠', '#맥북으로개발', '#닉네임사용', '#수평적조직',
-                '#반려동물', '#누적투자금100억이상', '#스톡옵션제공', '#도서구입비지원', '#택시비지원', '#병역특례', '#전공우대'
-              ];
-              return _buildWrapChips(options, localTags, modalSetState: modalSetState);
-            }
-
-            Widget buildLocalRegionFilter() {
-              final options = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '제주'];
-              return _buildWrapChips(options, localRegions, modalSetState: modalSetState);
+                },
+              );
             }
 
             return SizedBox(
@@ -172,52 +192,58 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
                       indicatorColor: Colors.black,
                       labelPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 10),
                       tabs: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 14),
-                          child: Tab(text: 'My Repo'),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 14),
-                          child: Tab(text: '기술스택'),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 14),
-                          child: Tab(text: '직무'),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 14),
-                          child: Tab(text: '경력'),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 14),
-                          child: Tab(text: '지역'),
-                        ),
+                        Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Tab(text: 'My Repo')),
+                        Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Tab(text: '기술스택')),
+                        Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Tab(text: '직무')),
+                        Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Tab(text: '경력')),
+                        Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Tab(text: '지역')),
                       ],
                     ),
                     const SizedBox(height: 10),
                     Expanded(
                       child: TabBarView(
                         children: [
-                          // My Repo 탭은 기존 UI 그대로 사용
-                          _buildRepoFilter(modalSetState),
-                          buildLocalTechFilter(),
-                          buildLocalTagFilter(),
-                          buildLocalCareerFilter(),
-                          buildLocalRegionFilter(),
+                          buildRepoFilter(),
+                          _buildWrapChips(['JavaScript', 'Python', 'Dart', 'Flutter', 'Spring',
+                            'React', 'Node.js', 'Java'], localTechs, modalSetState: modalSetState),
+                          _buildWrapChips(['빅데이터 엔지니어', 'DBA', '웹퍼블리셔', 'HW/임베디드',
+                            '게임 클라이언트 개발자', 'VR/AR/3D', 'devops/시스템 엔지니어', '기술지원',
+                            'iOS 개발자', 'QA 엔지니어', '블록체인', '안드로이드 개발자', '프론트엔드 개발자',
+                            '정보보안 담당자', '게임 서버 개발자', '서버/백엔드 개발자', '크로스플랫폼 앱개발자',
+                            '개발 PM', '웹 풀스택 개발자', 'SW/솔루션', '인공지능/머신러닝'],
+                              localTags, modalSetState: modalSetState),
+                          _buildWrapChips([
+                            '신입', '1년', '2년', '3년', '4년', '5년',
+                            '6년', '7년', '8년', '9년', '10년 이상'
+                          ], localCareer, isSingle: true, onSingleSelected: (val) {
+                            modalSetState(() {
+                              localCareer = val;
+                            });
+                          }),
+                          _buildWrapChips(['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '제주'],
+                              localRegions, modalSetState: modalSetState),
                         ],
                       ),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16).copyWith(bottom: 60),
                       child: ElevatedButton(
-                        onPressed: () {
-                          // 적용하기 버튼 클릭 시 Provider에 로컬 필터 값을 업데이트
+                        onPressed: () async  {
                           final provider = Provider.of<SearchFilterProvider>(context, listen: false);
+                          provider.updateSelectedRepo(localRepoName, localRepoId);
                           provider.updateCareer(localCareer);
                           provider.updateTechs(localTechs);
                           provider.updateTags(localTags);
                           provider.updateRegions(localRegions);
-                          Navigator.pop(context); // 모달 닫기
+                          debugPrint("🔍 선택된 레포지토리 ID: ${localRepoId}");
+                          debugPrint("🔍 선택된 레포지토리 이름: ${localRepoName}");
+                          await Provider.of<CompanyProvider>(context, listen: false).loadCompaniesFromApi(
+                            context: context,
+                            page: '1',
+                            size: '20',
+                            reset: true,
+                          );
+                          Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.black,
@@ -244,37 +270,15 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
 
   int _getInitialIndex(String tabTitle) {
     switch (tabTitle) {
-      case 'My Repo':
-        return 0;
-      case '기술스택':
-        return 1;
-      case '직무':
-        return 2;
-      case '경력':
-        return 3;
-      case '지역':
-        return 4;
-      default:
-        return 0;
+      case 'My Repo': return 0;
+      case '기술스택': return 1;
+      case '직무': return 2;
+      case '경력': return 3;
+      case '지역': return 4;
+      default: return 0;
     }
   }
 
-  // My Repo 탭 UI (기존 Chip 방식)
-  Widget _buildRepoFilter(StateSetter modalSetState) {
-    if (_isRepoLoading) {
-      return const Center(child: CircularProgressIndicator());
-    } else if (_repoOptions.isEmpty) {
-      return const Center(child: Text("조회된 조합 레포지토리가 없습니다."));
-    } else {
-      return _buildWrapChips(_repoOptions, selectedRepo, isSingle: true, onSingleSelected: (val) {
-        modalSetState(() {
-          selectedRepo = val;
-        });
-      });
-    }
-  }
-
-  // 기존 나머지 필터 UI (Provider와는 별도로, 모달 내 로컬 값으로 대체됨)
   Widget _buildWrapChips(
       List<String> options,
       dynamic selected, {
@@ -291,32 +295,35 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
           final isSelected = isSingle ? (selected == text) : (selected.contains(text));
           return isSingle
               ? ChoiceChip(
-            showCheckmark: false,
             label: Text(text),
             selected: isSelected,
+            showCheckmark: false,
             selectedColor: const Color(0xFF3D3D3D),
             backgroundColor: const Color(0xFFF0F0F0),
-            labelStyle: TextStyle(fontSize: 16, color: isSelected ? Colors.white : Colors.black),
-            onSelected: (_) {
-              if (onSingleSelected != null) onSingleSelected(text);
-            },
+            labelStyle: TextStyle(
+              fontSize: 16,
+              color: isSelected ? Colors.white : Colors.black,
+            ),
+            onSelected: (_) => onSingleSelected?.call(text),
           )
               : FilterChip(
-            showCheckmark: false,
             label: Text(text),
             selected: isSelected,
+            showCheckmark: false,
             selectedColor: const Color(0xFF3D3D3D),
             backgroundColor: const Color(0xFFF0F0F0),
-            labelStyle: TextStyle(fontSize: 16, color: isSelected ? Colors.white : Colors.black),
-            onSelected: (selectedVal) {
+            labelStyle: TextStyle(
+              fontSize: 16,
+              color: isSelected ? Colors.white : Colors.black,
+            ),
+            onSelected: (bool val) {
               modalSetState?.call(() {
-                if (selectedVal) {
+                if (val) {
                   selected.add(text);
                 } else {
                   selected.remove(text);
                 }
               });
-              setState(() {});
             },
           );
         }).toList(),

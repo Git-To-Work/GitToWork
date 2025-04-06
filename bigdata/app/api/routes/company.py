@@ -10,14 +10,14 @@ from pymongo import MongoClient
 import os
 
 from app.core.deps import get_db, get_current_user
-from app.models import Company, JobNotice, NoticeTechStack, TechStack, Field
+from app.models import Company, JobNotice, NoticeTechStack, TechStack, Field, Task
 from app.utils.response import success_response
 
 router = APIRouter()
 @router.get("/select/companies", response_model=dict)
 def get_companies(
         selected_repositories_id: str,
-        techStacks: Optional[List[str]] = Query(None),
+        tech_stacks: Optional[List[str]] = Query(None),
         field: Optional[str] = None,  # 필드 조건 (예: field_name substring)
         career: Optional[int] = None,  # 경력 조건
         keyword: Optional[str] = None,  # 회사명 또는 채용 공고 제목에 포함된 키워드
@@ -58,10 +58,12 @@ def get_companies(
     # 2. SQLAlchemy: 추천 결과에 포함된 회사들 조회 (JOIN JobNotice for 추가 필터)
     query = db.query(Company).join(JobNotice, JobNotice.company_id == Company.company_id, isouter=True)
     query = query.filter(Company.company_id.in_(recommended_ids))
+    query = query.filter(Company.company_id >= 1)
 
-    # (a) field 필터: Company.field 관계를 활용하여 Field.field_name을 직접 참조
+    # (a) field 필터: 회사의 공고와 연결된 Task의 task_name이 field와 같아야 함
     if field:
-        query = query.filter(Company.field.has(Field.field_name.ilike(f"%{field}%")))
+        # JobNotice와 Task를 JOIN (outer join을 사용하여, 없는 경우는 필터에서 제외)
+        query = query.join(Task, JobNotice.task).filter(Task.task_name == field)
 
     # (b) career 필터: 채용 공고의 min_career, max_career 조건
     if career is not None:
@@ -72,14 +74,11 @@ def get_companies(
             )
         )
 
-    # (c) keyword 필터: 회사명 또는 채용 공고 제목에 keyword 포함
+    # (c) keyword 필터: 회사명에 keyword 포함
     if keyword:
         like_pattern = f"%{keyword}%"
         query = query.filter(
-            or_(
-                Company.company_name.ilike(like_pattern),
-                JobNotice.job_notice_title.ilike(like_pattern)
-            )
+            Company.company_name.ilike(like_pattern)
         )
 
     # (d) location 필터: 입력된 지역 배열 중 하나라도 JobNotice.location과 일치
@@ -88,14 +87,14 @@ def get_companies(
             or_(*[JobNotice.location.ilike(f"%{loc}%") for loc in location])
         )
 
-    # (e) techStacks 필터: JOIN NoticeTechStack와 TechStack, tech_stack_name이 techStacks에 포함
-    if techStacks and len(techStacks) > 0:
+    # (e) techstacks 필터: JOIN NoticeTechStack와 TechStack, tech_stack_name이 techstacks에 포함
+    if tech_stacks and len(tech_stacks) > 0:
         query = query.join(
             NoticeTechStack, NoticeTechStack.job_notice_id == JobNotice.job_notice_id, isouter=True
         ).join(
             TechStack, TechStack.tech_stack_id == NoticeTechStack.tech_stack_id, isouter=True
         ).filter(
-            TechStack.tech_stack_name.in_(techStacks)
+            TechStack.tech_stack_name.in_(tech_stacks)
         )
 
     # 중복 제거
@@ -125,7 +124,7 @@ def get_companies(
         if user_id and hasattr(company, "user_scraps"):
             scraped = any(us.user_id == user_id for us in company.user_scraps)
 
-        # techStacks: 회사의 모든 채용 공고에서 NoticeTechStack을 순회하여 기술 스택 이름 수집
+        # techstacks: 회사의 모든 채용 공고에서 NoticeTechStack을 순회하여 기술 스택 이름 수집
         tech_stack_set = set()
         if hasattr(company, "job_notices"):
             for job in company.job_notices:
@@ -148,7 +147,7 @@ def get_companies(
             "field_id": company.field_id,
             "field_name": field_name,
             "scraped": scraped,
-            "techStacks": tech_stack_list,
+            "tech_stacks": tech_stack_list,
             "hasJobNotice": has_job_notice
         })
 

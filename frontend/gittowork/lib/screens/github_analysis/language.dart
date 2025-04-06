@@ -1,15 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/github_analysis_provider.dart';
 
 class LanguageScreen extends StatelessWidget {
   const LanguageScreen({super.key});
 
-  Widget buildBox(String text,
-      {Color? color,
+  /// 언어 코드 → 라벨 변환 함수
+  String getLanguageLabel(String key) {
+    const languageMap = {
+      'java': 'JAVA',
+      'js': 'Java Script',
+      'javascript': 'Java Script',
+      'ts': 'Type Script',
+      'cs': 'C#',
+      'py': 'Python',
+      'python': 'Python',
+      'php': 'PHP',
+      'cpp': 'C/C++',
+      'c++': 'C/C++',
+      'html': 'HTML',
+      'css': 'CSS',
+      'xml': 'XML',
+      'go': 'Go',
+      'kt': 'Kotlin',
+      'kotlin': 'Kotlin',
+      'swift': 'Swift',
+      'ruby': 'Ruby',
+      'groovy': 'Groovy',
+      'plsql': 'PL/SQL',
+      'scala': 'Scala',
+    };
+
+    final lowerKey = key.toLowerCase();
+    return languageMap[lowerKey] ?? key; // fallback: 원래 값
+  }
+
+  Widget buildBox(
+      String text, {
+        double fontSize = 16,
+        Color? color,
         Gradient? gradient,
         String? percentText,
-        Alignment percentAlign = Alignment.topRight}) {
+        Alignment percentAlign = Alignment.topRight,
+      }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 4.0), // 그림자를 위한 여백 추가
+      margin: const EdgeInsets.only(bottom: 4.0),
       child: Stack(
         children: [
           Container(
@@ -19,7 +55,7 @@ class LanguageScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(8.0),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.25), // 좀 더 진한 그림자
+                  color: Colors.black.withOpacity(0.25),
                   blurRadius: 4,
                   offset: const Offset(0, 4),
                 ),
@@ -30,11 +66,7 @@ class LanguageScreen extends StatelessWidget {
                 text,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: text == 'Python'
-                      ? 32
-                      : text == 'Java Script'
-                      ? 24
-                      : 16,
+                  fontSize: fontSize,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -60,10 +92,21 @@ class LanguageScreen extends StatelessWidget {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     const gap = 14.0;
+
+    final languageRatios = Provider.of<GitHubAnalysisProvider>(context).languageRatios;
+
+    final sortedEntries = languageRatios.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top3 = sortedEntries.take(3).toList();
+    final others = sortedEntries.skip(3);
+    final otherPercent = others.fold<double>(0, (sum, e) => sum + e.value);
+
+    final lan1 = top3.length > 0 ? top3[0] : const MapEntry('N/A', 0.0);
+    final lan2 = top3.length > 1 ? top3[1] : const MapEntry('N/A', 0.0);
+    final lan3 = top3.length > 2 ? top3[2] : const MapEntry('N/A', 0.0);
 
     return Container(
       width: double.infinity,
@@ -71,70 +114,60 @@ class LanguageScreen extends StatelessWidget {
       margin: const EdgeInsets.all(8.0),
       child: Row(
         children: [
-          // Python
           Expanded(
             flex: 1,
             child: buildBox(
-              'Python',
+              getLanguageLabel(lan1.key),
+              fontSize: 32,
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF87A6EF),
-                  Color(0xFFB2C6F5),
-                ],
+                colors: [Color(0xFF87A6EF), Color(0xFFB2C6F5)],
                 stops: [0.5, 1.0],
               ),
-              percentText: '70%',
+              percentText: '${lan1.value.toStringAsFixed(1)}%',
               percentAlign: Alignment.topRight,
             ),
           ),
           SizedBox(width: gap),
-          // 오른쪽 영역
           Expanded(
             flex: 1,
             child: Column(
               children: [
-                // Java Script
                 Expanded(
                   flex: 5,
                   child: buildBox(
-                    'Java Script',
+                    getLanguageLabel(lan2.key),
+                    fontSize: 24,
                     gradient: const LinearGradient(
                       begin: Alignment.bottomLeft,
                       end: Alignment.topRight,
-                      colors: [
-                        Color(0xFF7ADB7F),
-                        Color(0xFFA7DEA9),
-                      ],
+                      colors: [Color(0xFF7ADB7F), Color(0xFFA7DEA9)],
                       stops: [0.46, 1.0],
                     ),
-                    percentText: '70%',
+                    percentText: '${lan2.value.toStringAsFixed(1)}%',
                     percentAlign: Alignment.bottomLeft,
                   ),
                 ),
                 SizedBox(height: gap),
-                // JAVA와 other
                 Expanded(
                   flex: 3,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      double height = constraints.maxHeight;
+                      final height = constraints.maxHeight;
                       return Row(
                         children: [
                           Expanded(
                             child: buildBox(
-                              'JAVA',
+                              getLanguageLabel(lan3.key),
+                              fontSize: 16,
                               gradient: const LinearGradient(
                                 begin: Alignment.bottomCenter,
                                 end: Alignment.topCenter,
-                                colors: [
-                                  Color(0xFFF3A57B),
-                                  Color(0xFFFFD0B7),
-                                ],
+                                colors: [Color(0xFFF3A57B), Color(0xFFFFD0B7)],
                                 stops: [0.44, 1.0],
                               ),
-                              percentText: '10%',
+                              percentText: '${lan3.value.toStringAsFixed(1)}%',
                               percentAlign: Alignment.topLeft,
                             ),
                           ),
@@ -143,17 +176,15 @@ class LanguageScreen extends StatelessWidget {
                             width: height,
                             height: height,
                             child: buildBox(
-                              'other',
+                              'Other',
+                              fontSize: 16,
                               gradient: const LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFFFAEA71),
-                                  Color(0xFFFAEA71),
-                                ],
+                                colors: [Color(0xFFFAEA71), Color(0xFFFAEA71)],
                                 stops: [0.59, 1.0],
                               ),
-                              percentText: '5%',
+                              percentText: '${otherPercent.toStringAsFixed(1)}%',
                               percentAlign: Alignment.topLeft,
                             ),
                           ),

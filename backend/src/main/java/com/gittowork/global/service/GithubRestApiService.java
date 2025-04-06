@@ -10,6 +10,7 @@ import com.gittowork.domain.github.model.pullrequest.PullRequestUser;
 import com.gittowork.domain.github.model.repository.Repository;
 import com.gittowork.domain.github.repository.*;
 import com.gittowork.global.exception.GithubRepositoryNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -24,6 +25,7 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class GithubRestApiService {
 
@@ -185,7 +187,7 @@ public class GithubRestApiService {
 
             List<Repository> repositoriesToAdd = newRepositories.stream()
                     .filter(repo -> !existingRepoNames.contains(repo.getRepoName()))
-                    .collect(Collectors.toList());
+                    .toList();
 
             List<Repository> mergedRepositories = new ArrayList<>(existingRepo.getRepositories());
             mergedRepositories.addAll(repositoriesToAdd);
@@ -487,7 +489,15 @@ public class GithubRestApiService {
                     .orElse(Collections.emptyList());
 
             List<GithubIssue> parsedIssues = issuesData.stream()
-                    .map(this::parseIssue)
+                    .filter(Objects::nonNull) // issueMap 자체가 null인 경우 건너뛰기
+                    .map(issueMap -> {
+                        try {
+                            return parseIssue(issueMap);
+                        } catch (NullPointerException e) {
+                            throw new NullPointerException("Failed to parse issue: " + issueMap.toString());
+                        }
+                    })
+                    .filter(Objects::nonNull)
                     .toList();
 
             List<GithubIssue> newIssues = parsedIssues.stream()
@@ -500,7 +510,6 @@ public class GithubRestApiService {
         }
     }
 
-
     /**
      * 1. 메서드 설명: API 응답 데이터의 개별 이슈 정보를 파싱하여 GithubIssue 객체로 변환하는 헬퍼 메서드.
      * 2. 로직:
@@ -511,36 +520,97 @@ public class GithubRestApiService {
      * 4. return: 파싱된 정보를 기반으로 생성된 GithubIssue 객체.
      */
     private GithubIssue parseIssue(Map<String, Object> issueMap) {
-        int repoId = ((Number) issueMap.get("repo_id")).intValue();
-        long issueId = ((Number) issueMap.get("issue_id")).longValue();
-        String url = (String) issueMap.get("url");
-        String commentsUrl = (String) issueMap.get("comments_url");
-        String title = (String) issueMap.get("title");
-        String body = (String) issueMap.get("body");
-        int comments = ((Number) issueMap.get("comments")).intValue();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> userMap = (Map<String, Object>) issueMap.get("user");
-        IssueUser user = parseIssueUser(userMap);
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> labelsList = (List<Map<String, Object>>) issueMap.get("labels");
-        List<IssueLabel> labels = Optional.ofNullable(labelsList)
-                .orElse(Collections.emptyList())
-                .stream()
-                .map(this::parseLabel)
-                .collect(Collectors.toList());
-        IssueUser assignee = null;
-        if (issueMap.get("assignee") != null) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> assigneeMap = (Map<String, Object>) issueMap.get("assignee");
-            assignee = parseIssueUser(assigneeMap);
+        if (issueMap == null) {
+            throw new IllegalArgumentException("issueMap cannot be null");
         }
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> assigneesList = (List<Map<String, Object>>) issueMap.get("assignees");
-        List<IssueUser> assignees = Optional.ofNullable(assigneesList)
-                .orElse(Collections.emptyList())
-                .stream()
-                .map(this::parseIssueUser)
-                .collect(Collectors.toList());
+
+        int repoId = Optional.ofNullable(issueMap.get("repo_id"))
+                .filter(val -> val instanceof Number)
+                .map(val -> ((Number) val).intValue())
+                .orElse(0);
+        long issueId = Optional.ofNullable(issueMap.get("issue_id"))
+                .filter(val -> val instanceof Number)
+                .map(val -> ((Number) val).longValue())
+                .orElse(0L);
+        String url = Optional.ofNullable(issueMap.get("url"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElse("");
+        String commentsUrl = Optional.ofNullable(issueMap.get("comments_url"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElse("");
+        String title = Optional.ofNullable(issueMap.get("title"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElse("");
+        String body = Optional.ofNullable(issueMap.get("body"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElse("");
+        int comments = Optional.ofNullable(issueMap.get("comments"))
+                .filter(val -> val instanceof Number)
+                .map(val -> ((Number) val).intValue())
+                .orElse(0);
+
+        IssueUser user = null;
+        Object userObj = issueMap.get("user");
+        if (userObj instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> userMap = (Map<String, Object>) userObj;
+            try {
+                user = parseIssueUser(userMap);
+            } catch (Exception e) {
+            }
+        }
+
+        List<IssueLabel> labels = Collections.emptyList();
+        Object labelsObj = issueMap.get("labels");
+        if (labelsObj instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> labelsList = (List<Map<String, Object>>) labelsObj;
+            labels = labelsList.stream()
+                    .filter(Objects::nonNull)
+                    .map(labelMap -> {
+                        try {
+                            return parseLabel(labelMap);
+                        } catch (Exception e) {
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+
+        IssueUser assignee = null;
+        Object assigneeObj = issueMap.get("assignee");
+        if (assigneeObj instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> assigneeMap = (Map<String, Object>) assigneeObj;
+            try {
+                assignee = parseIssueUser(assigneeMap);
+            } catch (Exception e) {
+            }
+        }
+
+        List<IssueUser> assignees = Collections.emptyList();
+        Object assigneesObj = issueMap.get("assignees");
+        if (assigneesObj instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> assigneesList = (List<Map<String, Object>>) assigneesObj;
+            assignees = assigneesList.stream()
+                    .filter(Objects::nonNull)
+                    .map(item -> {
+                        try {
+                            return parseIssueUser(item);
+                        } catch (Exception e) {
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+
         return GithubIssue.builder()
                 .repoId(repoId)
                 .issueId(issueId)
@@ -664,28 +734,100 @@ public class GithubRestApiService {
      * 4. return: 파싱된 정보를 기반으로 생성된 GithubPullRequest 객체.
      */
     private GithubPullRequest parsePullRequest(Map<String, Object> prMap) {
+        if (prMap == null) {
+            throw new IllegalArgumentException("prMap cannot be null");
+        }
+
         @SuppressWarnings("unchecked")
-        Map<String, Object> baseMap = (Map<String, Object>) prMap.get("base");
+        Map<String, Object> baseMap = prMap.get("base") instanceof Map ? (Map<String, Object>) prMap.get("base") : Collections.emptyMap();
         @SuppressWarnings("unchecked")
-        Map<String, Object> baseRepo = (Map<String, Object>) baseMap.get("repo");
-        Integer repoId = (Integer) baseRepo.get("full_name");
-        int prId = ((Number) prMap.get("number")).intValue();
-        String url = (String) prMap.get("url");
-        String htmlUrl = (String) prMap.get("html_url");
-        String diffUrl = (String) prMap.get("diff_url");
-        String patchUrl = (String) prMap.get("patch_url");
-        String title = (String) prMap.get("title");
-        String body = (String) prMap.get("body");
-        int commentsCount = prMap.get("comments") != null ? ((Number) prMap.get("comments")).intValue() : 0;
-        int reviewCommentsCount = prMap.get("review_comments") != null ? ((Number) prMap.get("review_comments")).intValue() : 0;
-        int commitsCount = prMap.get("commits") != null ? ((Number) prMap.get("commits")).intValue() : 0;
-        @SuppressWarnings("unchecked")
-        Map<String, Object> userMap = (Map<String, Object>) prMap.get("user");
-        PullRequestUser user = parsePRUser(userMap);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> headMap = (Map<String, Object>) prMap.get("head");
-        PullRequestBranch head = parsePRBranch(headMap);
-        PullRequestBranch base = parsePRBranch(baseMap);
+        Map<String, Object> baseRepo = baseMap.get("repo") instanceof Map ? (Map<String, Object>) baseMap.get("repo") : Collections.emptyMap();
+
+        int repoId = 0;
+        Object repoObj = baseRepo.get("full_name");
+        if (repoObj instanceof Number) {
+            repoId = ((Number) repoObj).intValue();
+        } else if (repoObj instanceof String) {
+            try {
+                repoId = Integer.parseInt((String) repoObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        int prId = 0;
+        Object prIdObj = prMap.get("number");
+        if (prIdObj instanceof Number) {
+            prId = ((Number) prIdObj).intValue();
+        } else if (prIdObj instanceof String) {
+            try {
+                prId = Integer.parseInt((String) prIdObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        String url = prMap.get("url") instanceof String ? (String) prMap.get("url") : "";
+        String htmlUrl = prMap.get("html_url") instanceof String ? (String) prMap.get("html_url") : "";
+        String diffUrl = prMap.get("diff_url") instanceof String ? (String) prMap.get("diff_url") : "";
+        String patchUrl = prMap.get("patch_url") instanceof String ? (String) prMap.get("patch_url") : "";
+        String title = prMap.get("title") instanceof String ? (String) prMap.get("title") : "";
+        String body = prMap.get("body") instanceof String ? (String) prMap.get("body") : "";
+
+        int commentsCount = 0;
+        Object commentsObj = prMap.get("comments");
+        if (commentsObj instanceof Number) {
+            commentsCount = ((Number) commentsObj).intValue();
+        } else if (commentsObj instanceof String) {
+            try {
+                commentsCount = Integer.parseInt((String) commentsObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        int reviewCommentsCount = 0;
+        Object reviewCommentsObj = prMap.get("review_comments");
+        if (reviewCommentsObj instanceof Number) {
+            reviewCommentsCount = ((Number) reviewCommentsObj).intValue();
+        } else if (reviewCommentsObj instanceof String) {
+            try {
+                reviewCommentsCount = Integer.parseInt((String) reviewCommentsObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        int commitsCount = 0;
+        Object commitsObj = prMap.get("commits");
+        if (commitsObj instanceof Number) {
+            commitsCount = ((Number) commitsObj).intValue();
+        } else if (commitsObj instanceof String) {
+            try {
+                commitsCount = Integer.parseInt((String) commitsObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        Map<String, Object> userMap = prMap.get("user") instanceof Map ? (Map<String, Object>) prMap.get("user") : Collections.emptyMap();
+        PullRequestUser user = null;
+        try {
+            user = parsePRUser(userMap);
+        } catch (Exception e) {
+            log.error("Error parsing user in pull request: {}", e.getMessage());
+        }
+
+        Map<String, Object> headMap = prMap.get("head") instanceof Map ? (Map<String, Object>) prMap.get("head") : Collections.emptyMap();
+        PullRequestBranch head = null;
+        try {
+            head = parsePRBranch(headMap);
+        } catch (Exception e) {
+            log.error("Error parsing head branch in pull request: {}", e.getMessage());
+        }
+
+        PullRequestBranch base = null;
+        try {
+            base = parsePRBranch(baseMap);
+        } catch (Exception e) {
+            log.error("Error parsing base branch in pull request: {}", e.getMessage());
+        }
+
         return GithubPullRequest.builder()
                 .repoId(repoId)
                 .prId(prId)

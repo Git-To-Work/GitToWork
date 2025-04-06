@@ -4,12 +4,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gittowork.domain.coverletter.entity.CoverLetterAnalysis;
+import com.gittowork.domain.fortune.dto.response.GetTodayFortuneResponse;
+import com.gittowork.domain.fortune.model.SajuResult;
 import com.gittowork.domain.github.entity.GithubAnalysisResult;
 import com.gittowork.global.config.GptConfig;
 import com.gittowork.global.exception.CoverLetterAnalysisException;
 import com.gittowork.global.exception.JsonParsingException;
+import com.gittowork.global.properties.OpenAIProperties;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -20,21 +23,13 @@ import java.util.Map;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class GptService {
 
-    private final String API_URL = "https://api.openai.com/v1/chat/completions";
     private final GptConfig gptConfig;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-
-    @Autowired
-    public GptService(GptConfig gptConfig,
-                      RestTemplate restTemplate,
-                      ObjectMapper objectMapper) {
-        this.gptConfig = gptConfig;
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
-    }
+    private final OpenAIProperties openAIProperties;
 
     /**
      * 1. 메서드 설명: OpenAI의 ChatGPT API를 호출하여 GitHub 데이터를 분석하는 결과를 JSON 문자열로 받고,
@@ -50,7 +45,7 @@ public class GptService {
      */
     public GithubAnalysisResult githubDataAnalysis(GithubAnalysisResult githubAnalysisResult, int maxToken) throws JsonProcessingException {
         String prompt = generateGithubAnalysisPrompt(githubAnalysisResult);
-        String systemMsg = "아래 프롬프트의 지침에 따라 GitHub 데이터를 분석하고, 결과를 JSON 형식으로 출력 예시에 맞게 출력해 주세요.";
+        String systemMsg = openAIProperties.getPrompts().getGithubAnalysis().getSystemMsg();
         String responseBody = callGptApi(systemMsg, prompt, maxToken);
         return githubAnalysisResultParser(responseBody);
     }
@@ -68,11 +63,29 @@ public class GptService {
      */
     public CoverLetterAnalysis coverLetterAnalysis(String content, int maxToken) {
         String prompt = generateCoverLetterAnalysisPrompt(content);
-        String systemMsg = "당신은 자기소개서 분석 전문가입니다. 아래에 PDF에서 추출된 자기소개서 텍스트가 제공될 것입니다. "
-                + "단, PDF 추출 과정에서 일부 내용이 누락되거나 불완전할 수 있습니다. 이런 경우, 문맥에 맞게 누락된 부분을 보완하여 "
-                + "전체 자기소개서의 내용을 분석해 주세요. 분석 시에는 출력 예시의 8가지 역량에 대한 점수와 전반적인 강점 및 약점을 포괄적으로 평가해 주시기 바랍니다.";
+        String systemMsg = openAIProperties.getPrompts().getCoverLetterAnalysis().getSystemMsg();
         String responseBody = callGptApi(systemMsg, prompt, maxToken);
         return coverLetterAnalysisResultParser(responseBody);
+    }
+
+    /**
+     * 1. 메서드 설명: OpenAI의 ChatGPT API를 호출하여 사주 명리학 데이터를 기반으로 오늘의 운세를 생성하는 결과를 JSON 문자열로 받고,
+     *    이를 GetTodayFortuneResponse 객체로 파싱하여 반환하는 메서드.
+     * 2. 로직:
+     *    - 사주 명리학에 따른 오늘의 운세 생성을 위해, generateTodayFortunePrompt()를 호출하여 사용자 메시지에 해당하는 프롬프트를 생성한다.
+     *    - 제공된 사주 데이터 및 성별, 환경 등의 요소를 반영한 시스템 메시지를 정의한다.
+     *    - 시스템 메시지와 프롬프트, 최대 토큰 수(maxToken)를 이용하여 callGptApi()를 호출한다.
+     *    - GPT API의 응답(JSON 문자열)을 todayFortuneResultParser()를 통해 파싱하여 GetTodayFortuneResponse 객체로 반환한다.
+     * 3. param:
+     *      sajuResult - 사주 명리학 계산 결과를 담은 SajuResult 객체.
+     *      maxToken - GPT API 호출 시 사용할 최대 토큰 수.
+     * 4. return: 오늘의 운세 정보를 담은 GetTodayFortuneResponse 객체.
+     */
+    public GetTodayFortuneResponse todayFortune(SajuResult sajuResult, int maxToken) {
+        String prompt = generateTodayFortunePrompt(sajuResult);
+        String systemMsg = openAIProperties.getPrompts().getTodayFortune().getSystemMsg();
+        String responseBody = callGptApi(systemMsg, prompt, maxToken);
+        return  todayFortuneResultParser(responseBody);
     }
 
     /**
@@ -111,11 +124,11 @@ public class GptService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
         try {
-            ResponseEntity<String> response = restTemplate.exchange(API_URL, HttpMethod.POST, entity, String.class);
+            String url = openAIProperties.getUrl();
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
             String responseBody = response.getBody();
             log.info("GPT API response: {}", responseBody);
 
-            // JSON 파싱하여 choices -> message -> content 추출
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode rootNode = objectMapper.readTree(responseBody);
             JsonNode contentNode = rootNode.path("choices").get(0).path("message").path("content");
@@ -137,33 +150,8 @@ public class GptService {
      * 4. return: 생성된 프롬프트 문자열.
      */
     private String generateGithubAnalysisPrompt(GithubAnalysisResult githubAnalysisResult) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("## 다음 GitHub 분석 결과 데이터를 바탕으로, 사용자가 선택한 저장소들의 정보를 종합하여 아래 항목들에 대해 분석해주세요.\n\n");
-        prompt.append("1. primaryRole: 저장소 데이터를 분석하여 사용자가 가장 적합한 IT 직무(예: Backend, Frontend, Devops Engineer 등)를 도출해주세요.\n");
-        prompt.append("2. roleScores: 도출된 primaryRole을 수행할 수 있는 능력을 0에서 100점 사이로 산정해주세요.\n");
-        prompt.append("3. aiAnalysis:\n");
-        prompt.append("   - analysis_summary: 전체 저장소 분석 결과에 대한 요약을 한글로 작성해주세요.\n");
-        prompt.append("   - improvement_suggestions: 개선방안을 한글로 작성해주세요.\n\n");
-        prompt.append("### 출력 예시는 다음과 같이 JSON 형태로 작성해주세요.\n\n");
-        prompt.append("{\n");
-        prompt.append("  \"primaryRole\": \"Backend\",\n");
-        prompt.append("  \"roleScores\": 88,\n");
-        prompt.append("  \"aiAnalysis\": {\n");
-        prompt.append("    \"analysis_summary\": [\n");
-        prompt.append("      \"선택된 저장소들은 주로 백엔드 기술(특히 Python과 Django)을 활용한 프로젝트들이 많아 보입니다.\",\n");
-        prompt.append("      \"안정적인 코드 관리와 높은 생산성을 보이고 있습니다.\",\n");
-        prompt.append("      \"저장소 내 커밋 빈도와 이슈 관리 결과, 백엔드 개발에 적합한 역량을 확인할 수 있습니다.\"\n");
-        prompt.append("    ],\n");
-        prompt.append("    \"improvement_suggestions\": [\n");
-        prompt.append("      \"테스트 커버리지 확장을 통한 코드 안정성 강화가 요구됩니다.\",\n");
-        prompt.append("      \"문서화 및 코드 리뷰 프로세스 개선이 필요합니다.\",\n");
-        prompt.append("      \"프론트엔드와의 연계성을 고려한 통합적인 시스템 설계가 중요합니다.\"\n");
-        prompt.append("    ]\n");
-        prompt.append("  }\n");
-        prompt.append("}\n");
-        prompt.append("## 분석에 사용할 데이터:\n");
-        prompt.append(githubAnalysisResult.toString());
-        return prompt.toString();
+        String prompt = openAIProperties.getPrompts().getGithubAnalysis().getUserMsg();
+        return String.format(prompt, githubAnalysisResult.toString());
     }
 
     /**
@@ -175,33 +163,21 @@ public class GptService {
      * 4. return: 생성된 프롬프트 문자열.
      */
     private String generateCoverLetterAnalysisPrompt(String content) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("\n");
-        prompt.append("분석 결과는 다음 두 가지 부분으로 구성되어야 합니다:\n");
-        prompt.append("1. 8가지 역량의 각 항목(globalCapability, challengeSpirit, sincerity, communicationSkill, ");
-        prompt.append("achievementOrientation, responsibility, honesty, creativity)은 1부터 10까지의 정수로 평가합니다.\n");
-        prompt.append("2. 전반적인 분석은 'analysisResult' 문자열으로 작성되어야 하며, ");
-        prompt.append("강점, 약점 및 개선방안을 포함한 분석 결과를 문장으로 요약해 주세요.\n");
-        prompt.append("\n");
-        prompt.append("출력 형식은 아래 JSON 예시와 정확히 일치해야 하며, 추가적인 설명이나 텍스트는 포함하지 않아야 합니다.\n");
-        prompt.append("\n");
-        prompt.append("## 출력 예시\n");
-        prompt.append("{\n");
-        prompt.append("    \"analysisResult\": ");
-        prompt.append("      \"분석 결과 요약 1\",\n");
-        prompt.append("    \"globalCapability\": 8,\n");
-        prompt.append("    \"challengeSpirit\": 9,\n");
-        prompt.append("    \"sincerity\": 7,\n");
-        prompt.append("    \"communicationSkill\": 8,\n");
-        prompt.append("    \"achievementOrientation\": 6,\n");
-        prompt.append("    \"responsibility\": 9,\n");
-        prompt.append("    \"honesty\": 8,\n");
-        prompt.append("    \"creativity\": 9,\n");
-        prompt.append("}\n");
-        prompt.append("\n");
-        prompt.append("## 분석에 사용할 자기소개서 텍스트:\n");
-        prompt.append(content);
-        return prompt.toString();
+        String prompt = openAIProperties.getPrompts().getCoverLetterAnalysis().getUserMsg();
+        return String.format(prompt, content);
+    }
+
+    /**
+     * 1. 메서드 설명: 사주 데이터를 기반으로 GPT API에 보낼 프롬프트를 생성하는 메서드.
+     * 2. 로직:
+     *    - 오늘의 운세 추출에 필요한 사주 데이터와 출력 예시를 포함한 프롬프트 문자열을 구성한다.
+     * 3. param:
+     *      SajuResult - 오늘의 운세 추출에 필요한 사주 데이터가 담긴 객체.
+     * 4. return: 생성된 프롬프트 문자열.
+     */
+    private String generateTodayFortunePrompt(SajuResult sajuResult) {
+        String prompt = openAIProperties.getPrompts().getTodayFortune().getUserMsg();
+        return String.format(prompt, sajuResult.toString());
     }
 
     /**
@@ -233,6 +209,22 @@ public class GptService {
             return objectMapper.readValue(jsonString, CoverLetterAnalysis.class);
         } catch (IOException e) {
             throw new JsonParsingException("CoverLetterAnalysis JSON 파싱 중 오류 발생");
+        }
+    }
+
+    /**
+     * 1. 메서드 설명: JSON 문자열을 파싱하여 GetTodayFortuneResponse 객체로 변환하는 메서드.
+     * 2. 로직:
+     *    - ObjectMapper를 사용하여 입력받은 JSON 문자열을 GetTodayFortuneResponse 객체로 역직렬화한다.
+     * 3. param:
+     *      jsonString - 분석 결과를 담은 JSON 문자열.
+     * 4. return: 역직렬화된 GetTodayFortuneResponse 객체.
+     */
+    private GetTodayFortuneResponse todayFortuneResultParser(String jsonString) {
+        try {
+            return objectMapper.readValue(jsonString, GetTodayFortuneResponse.class);
+        } catch (IOException e) {
+            throw new JsonParsingException("TodayFortune JSON 파싱 중 오류 발생");
         }
     }
 }

@@ -106,6 +106,27 @@ class UserApi {
     }
   }
 
+  // FCM 토큰
+  static Future<bool> updateFcmToken(String token) async {
+    try {
+      final response = await ApiService.dio.post(
+        '/api/firebase/create/fcm-token',
+        data: {'fcmToken': token},
+      );
+      if (response.statusCode == 200) {
+        debugPrint('FCM 토큰 등록/수정 성공: ${response.data}');
+        return true;
+      } else {
+        debugPrint('FCM 토큰 등록/수정 실패(서버 에러): ${response.statusCode}');
+        return false;
+      }
+    } catch (error) {
+      debugPrint('FCM 토큰 등록/수정 실패(예외 발생): $error');
+      return false;
+    }
+  }
+
+
   // 스크랩 기업 조회
   static Future<List<Company>> fetchScrapCompanies() async {
     final response = await ApiService.dio.get(

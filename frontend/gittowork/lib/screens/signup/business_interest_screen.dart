@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import '../../layouts/appbar_bottom_nav_layout.dart';
 import '../../services/user_api.dart'; // 수정: user_api.dart 사용
@@ -109,25 +110,35 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
     if (widget.isSignUp) {
       widget.signupParams?['interestsFields'] = selectedFieldIds;
       final isSignupSuccess = await UserApi.sendSignupData(widget.signupParams!);
-      if (isSignupSuccess) {
-        final isUpdated = await UserApi.updateInterestFields(selectedFieldIds);
-        if (isUpdated) {
-          Navigator.pop(context, selectedFieldIds);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('관심 분야 업데이트 실패')),
-          );
-        }
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
-              (route) => false,
-        );
-      } else {
+      if (!isSignupSuccess) {
+        // 회원가입 실패 처리
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('회원가입에 실패했습니다.')),
         );
+        return;
       }
+
+      // (3) 회원가입 성공 시 -> 알림(약관3) 동의하면 FCM 토큰 등록
+      if (widget.signupParams?['notificationAgreed'] == true) {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          await UserApi.updateFcmToken(token);
+        }
+      }
+
+      // (4) 관심 분야 업데이트
+      final isUpdated = await UserApi.updateInterestFields(selectedFieldIds);
+      if (!isUpdated) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('관심 분야 업데이트 실패')),
+        );
+      }
+      // (5) 가입 및 관심 분야 설정이 끝났으므로 메인 화면으로 이동
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
+            (route) => false,
+      );
     } else {
       final isUpdated = await UserApi.updateInterestFields(selectedFieldIds);
 

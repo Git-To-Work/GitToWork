@@ -30,45 +30,79 @@ public class GithubService {
     private final SelectedRepoRepository selectedRepoRepository;
     private final GithubRestApiService githubRestApiService;
     private final GithubAnalysisService githubAnalysisService;
+    private final AnalysisStatusRepository analysisStatusRepository;
 
     /**
      * 1. 메서드 설명: 선택된 Repository의 Github 분석 결과를 조회하여,
-     *    각 Repository의 분석 정보(전체 점수, 언어 수준, 활동 지표, AI 분석 결과 등)를 기반으로
-     *    최종 분석 결과 DTO(GetGithubAnalysisByRepositoryResponse)를 생성하여 반환하는 API.
+     *    분석 상태가 complete인 경우 각 Repository의 분석 정보(전체 점수, 언어 수준, 활동 지표, AI 분석 결과 등)를 기반으로
+     *    최종 분석 결과 DTO(GetGithubAnalysisByRepositoryResponse)를 생성하여 반환하며,
+     *    complete가 아닌 경우 현재 분석 상태와 적절한 메시지를 담은 DTO(GetGithubAnalysisStatusResponse)를 반환하는 API.
      * 2. 로직:
-     *    - selectedRepositoryId를 기반으로 GithubAnalysisResult를 조회한다.
-     *    - 전체 점수를 기준으로 overallScore(문자 등급)를 산출한다.
-     *    - 각 RepositoryResult의 languageLevel 맵의 엔트리들을 병합하여, 키별 평균값을 계산한다.
-     *    - 각 언어의 평균값을 기준으로 1~10 점수로 변환한 languageScore 맵을 생성한다.
-     *    - Repository 이름 리스트, 분석 날짜, 언어 비율, 활동 지표, AI 분석 결과 등을 포함하여
-     *      최종 응답 DTO를 빌더 패턴으로 생성한다.
-     * 3. param: int selectedRepositoryId - 분석 대상 Repository의 식별자.
-     * 4. return: GetGithubAnalysisByRepositoryResponse - 분석 결과 정보를 담은 DTO.
+     *    - selectedRepositoryId를 기반으로 AnalysisStatus를 조회한다.
+     *    - AnalysisStatus가 complete인 경우:
+     *         - 해당 selectedRepositoryId의 최신 GithubAnalysisResult를 조회한다.
+     *         - 전체 점수를 기준으로 overallScore(문자 등급)를 산출한다.
+     *         - 분석 날짜, 언어 비율, Repository 이름 리스트, 활동 지표, AI 분석 결과 등을 포함하여
+     *           최종 응답 DTO(GetGithubAnalysisByRepositoryResponse)를 빌더 패턴으로 생성하여 반환한다.
+     *    - AnalysisStatus가 pending, analyzing, fail 등 complete가 아닌 경우:
+     *         - 현재 분석 상태에 따른 적절한 메시지를 생성하고,
+     *           상태와 메시지를 담은 DTO(GetGithubAnalysisStatusResponse)를 빌더 패턴으로 생성하여 반환한다.
+     * 3. param: String selectedRepositoryId - 분석 대상 Repository의 식별자.
+     * 4. return:
+     *         - AnalysisStatus가 complete인 경우: GetGithubAnalysisByRepositoryResponse (분석 결과 정보를 담은 DTO)
+     *         - 그 외 경우: GetGithubAnalysisStatusResponse (분석 상태와 메시지를 담은 DTO)
      */
     @Transactional(readOnly = true)
-    public GetGithubAnalysisByRepositoryResponse getGithubAnalysisByRepository(String selectedRepositoryId) {
-        GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
-                .findFirstBySelectedRepositoriesIdOrderByAnalysisDateDesc(selectedRepositoryId)
-                .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Result not found"));
+    public Object getGithubAnalysisByRepository(String selectedRepositoryId) {
+        AnalysisStatus analysisStatus = analysisStatusRepository
+                .findBySelectedRepositoriesId(selectedRepositoryId)
+                .orElseThrow(() -> new GithubAnalysisNotFoundException("Github analysis status not found"));
 
-        int overallScoreValue = githubAnalysisResult.getOverallScore();
-        String overallScore = overallScoreValue > 90 ? "A+"
-                : overallScoreValue > 80 ? "A"
-                : overallScoreValue > 70 ? "B+"
-                : overallScoreValue > 60 ? "B"
-                : overallScoreValue > 50 ? "C+"
-                : overallScoreValue > 40 ? "C" : "D";
+        if (analysisStatus.getStatus() == AnalysisStatus.Status.complete) {
+            GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
+                    .findFirstBySelectedRepositoriesIdOrderByAnalysisDateDesc(selectedRepositoryId)
+                    .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Result not found"));
 
-        return GetGithubAnalysisByRepositoryResponse.builder()
-                .analysisDate(githubAnalysisResult.getAnalysisDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
-                .languageRatios(githubAnalysisResult.getLanguageRatios())
-                .selectedRepositories(githubAnalysisResult.getSelectedRepositories().stream()
-                        .map(Repository::getRepoName)
-                        .collect(Collectors.toList()))
-                .overallScore(overallScore)
-                .activityMetrics(githubAnalysisResult.getActivityMetrics())
-                .aiAnalysis(githubAnalysisResult.getAiAnalysis())
-                .build();
+            int overallScoreValue = githubAnalysisResult.getOverallScore();
+            String overallScore = overallScoreValue > 90 ? "A+"
+                    : overallScoreValue > 80 ? "A"
+                    : overallScoreValue > 70 ? "B+"
+                    : overallScoreValue > 60 ? "B"
+                    : overallScoreValue > 50 ? "C+"
+                    : overallScoreValue > 40 ? "C" : "D";
+
+            return GetGithubAnalysisByRepositoryResponse.builder()
+                    .status(analysisStatus.getStatus().name())
+                    .selectedRepositoryId(selectedRepositoryId)
+                    .analysisDate(githubAnalysisResult.getAnalysisDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                    .languageRatios(githubAnalysisResult.getLanguageRatios())
+                    .selectedRepositories(githubAnalysisResult.getSelectedRepositories().stream()
+                            .map(Repository::getRepoName)
+                            .collect(Collectors.toList()))
+                    .overallScore(overallScore)
+                    .activityMetrics(githubAnalysisResult.getActivityMetrics())
+                    .aiAnalysis(githubAnalysisResult.getAiAnalysis())
+                    .build();
+        } else {
+            String message = switch (analysisStatus.getStatus()) {
+                case pending -> "분석이 아직 시작되지 않았습니다.";
+                case analyzing -> "분석이 진행 중입니다.";
+                case fail -> "분석에 실패하였습니다.";
+                default -> "분석 상태를 확인할 수 없습니다.";
+            };
+
+            SelectedRepository selectedRepository = selectedRepoRepository.findById(selectedRepositoryId)
+                    .orElseThrow(() -> new GithubRepositoryNotFoundException("Selected repository not found"));
+
+            return GetGithubAnalysisStatusResponse.builder()
+                    .status(analysisStatus.getStatus().name())
+                    .selectedRepositoryId(selectedRepositoryId)
+                    .selectedRepositories(selectedRepository.getRepositories().stream()
+                            .map(Repository::getRepoName)
+                            .collect(Collectors.toList()))
+                    .message(message)
+                    .build();
+        }
     }
 
     /**
@@ -97,21 +131,42 @@ public class GithubService {
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github Repository not found"));
         List<Repository> userRepositories = userGithubRepository.getRepositories();
 
-        List<Integer> repositoryList = Arrays.stream(repositories)
+        List<Integer> selectedRepoIds = Arrays.stream(repositories)
                 .boxed()
                 .toList();
-        List<String> repositoryNames = userRepositories.stream()
-                .filter(repository -> repositoryList.contains(repository.getRepoId()))
+
+        List<String> selectedRepoNames = userRepositories.stream()
+                .filter(repo -> selectedRepoIds.contains(repo.getRepoId()))
                 .map(Repository::getRepoName)
                 .collect(Collectors.toList());
 
-        boolean analysisStarted = githubRestApiService.checkNewGithubEvents(githubAccessToken, userName, userId, repositoryNames);
+        boolean analysisStarted = githubRestApiService.checkNewGithubEvents(githubAccessToken, userName, userId, selectedRepoNames);
+        String selectedRepositoryId = null;
         if (analysisStarted) {
             githubAnalysisService.saveUserGithubRepositoryInfo(githubAccessToken, userName, userId);
             githubAnalysisService.githubAnalysisByRepository(repositories, userName);
+
+            List<Repository> selectedRepositories = userRepositories.stream()
+                    .filter(repo -> selectedRepoIds.contains(repo.getRepoId()))
+                    .collect(Collectors.toList());
+
+            SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndRepositories(userId, selectedRepositories)
+                    .orElseThrow(() -> new GithubRepositoryNotFoundException("Github Repository Combination Not Found"));
+
+            AnalysisStatus analysisStatus = analysisStatusRepository.findByUserAndSelectedRepositoriesId(user, selectedRepository.getSelectedRepositoryId())
+                    .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Status Not Found"));
+
+            analysisStatus.setStatus(AnalysisStatus.Status.analyzing);
+
+            selectedRepositoryId = analysisStatus.getSelectedRepositoriesId();
+
+            analysisStatusRepository.save(analysisStatus);
         }
+
         return CreateGithubAnalysisByRepositoryResponse.builder()
                 .analysisStarted(analysisStarted)
+                .selectedRepositoryId(selectedRepositoryId)
+                .selectedRepositories(selectedRepoNames)
                 .message(analysisStarted ? "분석이 시작되었습니다." : "마지막 분석 이후로 추가 이벤트가 없습니다.")
                 .build();
     }
@@ -163,6 +218,15 @@ public class GithubService {
                         .build());
 
         String selectedRepositoryId = selectedRepoRepository.save(selectedRepository).getSelectedRepositoryId();
+
+        analysisStatusRepository.save(
+                AnalysisStatus.builder()
+                        .user(user)
+                        .selectedRepositoriesId(selectedRepositoryId)
+                        .status(AnalysisStatus.Status.pending)
+                        .build()
+        );
+
         return SaveSelectedRepositoriesResponse.builder()
                 .selectedRepositoryId(selectedRepositoryId)
                 .message("레포지토리 선택 저장 요청 처리 완료")
