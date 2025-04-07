@@ -9,32 +9,36 @@ class LuckyResult extends StatelessWidget {
   Widget build(BuildContext context) {
     final lucky = Provider.of<LuckyProvider>(context);
 
-    final categories = [
-      _FortuneItem(
+    final selected = lucky.selected;
+    final Map<FortuneType, _FortuneItem> fortuneMap = {
+      FortuneType.all: _FortuneItem(
         title: '종합 운세',
         icon: Icons.stars,
         color: Colors.indigo,
         value: lucky.overall,
       ),
-      _FortuneItem(
+      FortuneType.study: _FortuneItem(
         title: '학업/일 운',
         icon: Icons.school,
         color: Colors.blue,
         value: lucky.study,
       ),
-      _FortuneItem(
+      FortuneType.love: _FortuneItem(
         title: '애정 운',
         icon: Icons.favorite,
         color: Colors.pink,
         value: lucky.love,
       ),
-      _FortuneItem(
+      FortuneType.wealth: _FortuneItem(
         title: '재물 운',
         icon: Icons.attach_money,
-        color: Colors.green,
+        color: const Color(0xFFDAA520),
         value: lucky.wealth,
       ),
-    ].where((item) => item.value.trim().isNotEmpty).toList();
+    };
+
+    final currentItem = fortuneMap[selected];
+    final hasResult = currentItem != null && currentItem.value.trim().isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -51,29 +55,50 @@ class LuckyResult extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
+      child: lucky.loading
+          ? const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: CircularProgressIndicator(),
+        ),
+      )
+          : Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 타이틀
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                lucky.fortuneDate.isNotEmpty
-                    ? '${lucky.fortuneDate}의 운세'
-                    : '오늘의 운세',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+          Padding(
+            padding: const EdgeInsets.only(left: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  lucky.fortuneDate.isNotEmpty
+                      ? '${lucky.fortuneDate}의 운세'
+                      : '오늘의 운세',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const Icon(Icons.share),
-            ],
+                const Icon(Icons.share),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
 
-          // 내부 운세 카드들
-          ...categories.map((item) => _buildFortuneCard(item)).toList(),
+          const SizedBox(height: 6),
+
+          // 운세 결과가 없을 때
+          if (!hasResult)
+            const Padding(
+              padding: EdgeInsets.only(top: 20),
+              child: Text(
+                '운세를 조회해보세요 🔮',
+                style: TextStyle(fontSize: 15, color: Colors.grey),
+              ),
+            ),
+
+          // 선택된 운세 보여주기
+          if (hasResult) _buildFortuneCard(currentItem!),
         ],
       ),
     );
@@ -89,31 +114,35 @@ class LuckyResult extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: item.color.withOpacity(0.25)),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(item.icon, color: item.color),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: item.color,
-                  ),
+          Row(
+            children: [
+              Icon(item.icon, color: item.color),
+              const SizedBox(width: 6),
+              Text(
+                item.title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: item.color,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  item.value,
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              item.value,
+              style: const TextStyle(
+                fontSize: 17,
+                height: 1.6,
+              ),
             ),
           ),
+
         ],
       ),
     );

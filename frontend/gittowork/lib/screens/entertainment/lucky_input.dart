@@ -93,7 +93,8 @@ class _LuckyInputState extends State<LuckyInput> {
                   gender: luckyProvider.gender,
                   birthTime: luckyProvider.birthTime,
                 );
-                debugPrint("[값 확인]  --> ${luckyProvider.birthDate} ${luckyProvider.gender} ${luckyProvider.birthTime}");
+
+                luckyProvider.setLoading();
 
                 try {
                   await LuckyService.saveFortuneUserInfo(context);
@@ -106,9 +107,6 @@ class _LuckyInputState extends State<LuckyInput> {
                 } catch (e) {
                   debugPrint('❌ 운세 조회 실패: $e');
                 }
-
-                // 3. 결과 출력 UI 전환
-                widget.onSubmit();
               },
 
               child: const Text(
@@ -212,10 +210,27 @@ class _LuckyInputState extends State<LuckyInput> {
         InkWell(
           onTap: () async {
             List<String> timeOptions = [];
+
             for (int hour = 0; hour < 24; hour++) {
-              timeOptions.add('${hour.toString().padLeft(2, '0')}:00');
-              timeOptions.add('${hour.toString().padLeft(2, '0')}:30');
+              for (int minute = 0; minute < 60; minute += 30) {
+                final startHour = hour;
+                final startMinute = minute;
+
+                int endHour = hour;
+                int endMinute = minute + 30;
+
+                if (endMinute >= 60) {
+                  endMinute = 0;
+                  endHour = (hour + 1) % 24; // 23:30 → 00:00
+                }
+
+                final start = '${startHour.toString().padLeft(2, '0')}:${startMinute.toString().padLeft(2, '0')}';
+                final end = '${endHour.toString().padLeft(2, '0')}:${endMinute.toString().padLeft(2, '0')}';
+
+                timeOptions.add('$start ~ $end');
+              }
             }
+
 
             final result = await showModalBottomSheet<String>(
               context: context,
@@ -263,11 +278,12 @@ class _LuckyInputState extends State<LuckyInput> {
   String formatTimeRange(String time) {
     if (time.isEmpty) return '눌러서 선택';
 
-    final parts = time.split(':');
+    // '11:00 ~ 11:30' 형식에서 시작 시간만 추출
+    final start = time.split(' ~ ')[0];
+
+    final parts = start.split(':');
     final hour = int.parse(parts[0]);
     final minute = int.parse(parts[1]);
-
-    final start = '$time';
 
     int nextHour = hour;
     int nextMinute = minute + 30;
@@ -276,9 +292,8 @@ class _LuckyInputState extends State<LuckyInput> {
       nextHour = (nextHour + 1) % 24;
     }
 
-    final end =
-        '${nextHour.toString().padLeft(2, '0')}:${nextMinute.toString().padLeft(2, '0')}';
-
+    final end = '${nextHour.toString().padLeft(2, '0')}:${nextMinute.toString().padLeft(2, '0')}';
     return '$start ~ $end';
   }
+
 }
