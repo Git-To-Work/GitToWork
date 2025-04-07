@@ -200,10 +200,10 @@ def run_hybrid_recommendation(db: Session,
     #############################################
     # 6. 협업 필터링 점수 계산 (CF) via Surprise (SVD)
     #############################################
-    interaction_by_company = {}
-    vectorizer_cf = TfidfVectorizer()
+    # 1. 모든 job의 기술 스택 텍스트와 해당 job의 회사 ID를 한 번에 수집
+    job_texts = []
+    job_company_ids = []
     for job in jobs:
-        # 기술 스택 정보 추출 (DB에서 저장된 필드 사용)
         if hasattr(job, "notice_tech_stacks"):
             tech_stacks = [nts.tech_stack.tech_stack_name for nts in job.notice_tech_stacks
                            if nts.tech_stack and nts.tech_stack.tech_stack_name]
@@ -212,14 +212,28 @@ def run_hybrid_recommendation(db: Session,
         job_text = " ".join(tech_stacks)
         if not job_text.strip():
             continue
-        tfidf_mat = vectorizer_cf.fit_transform([user_profile_text, job_text])
-        sim = cosine_similarity(tfidf_mat[0:1], tfidf_mat[1:2])[0][0]
-        comp_id = job.company_id
+        job_texts.append(job_text)
+        job_company_ids.append(job.company_id)
+
+    # 2. TfidfVectorizer를 한 번 학습하여 모든 job 텍스트에 대해 벡터 생성
+    vectorizer_cf = TfidfVectorizer()
+    job_tfidf_matrix = vectorizer_cf.fit_transform(job_texts)
+
+    # 3. 사용자 프로필 텍스트에 대해 동일 벡터라이저를 사용하여 벡터 생성
+    user_vector_cf = vectorizer_cf.transform([user_profile_text])
+
+    # 4. 배치로 사용자와 모든 job의 코사인 유사도 계산
+    cf_similarities = cosine_similarity(user_vector_cf, job_tfidf_matrix).flatten()
+
+    # 5. 기업별 상호작용 점수 집계: 동일 기업에 속하는 job들의 유사도 합산
+    interaction_by_company = {}
+    for comp_id, sim in zip(job_company_ids, cf_similarities):
         if comp_id:
             interaction_by_company[comp_id] = interaction_by_company.get(comp_id, 0.0) + sim
 
     max_sim_cf = max(interaction_by_company.values()) if interaction_by_company else 1.0
 
+    # 6. (user, company, rating) 데이터 구성: 좋아요/블랙리스트 신호 반영
     cf_data_list = []
     for comp_id in companies.keys():
         base_sim = interaction_by_company.get(comp_id, 0.0)
@@ -232,6 +246,7 @@ def run_hybrid_recommendation(db: Session,
         cf_data_list.append([user_github_name, comp_id, rating])
     df_cf = pd.DataFrame(cf_data_list, columns=["user", "item", "rating"])
 
+    # 7. Surprise 라이브러리를 이용해 SVD 모델 학습 및 CF 점수 예측
     reader = Reader(rating_scale=(1, 5))
     data_surprise_cf = Dataset.load_from_df(df_cf[["user", "item", "rating"]], reader)
     trainset = data_surprise_cf.build_full_trainset()
@@ -250,13 +265,11 @@ def run_hybrid_recommendation(db: Session,
     content_norm = min_max_normalize(content_scores)
     cf_norm = min_max_normalize(cf_scores)
 
-    # 하이브리드 결합 가중치 (여기서는 0.9 : 0.1)
     ALPHA = 0.9
     BETA = 0.1
 
     final_recommendations = []
     for comp_id in companies.keys():
-        # 블랙리스트에 속하는 기업은 최종 결과에서 제외합니다.
         if comp_id in blacklisted_companies_set:
             continue
         norm_content = content_norm.get(comp_id, 0.0)
