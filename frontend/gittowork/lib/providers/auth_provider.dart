@@ -26,6 +26,11 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void setUserProfile(UserProfile profile) {
+    _userProfile = profile;
+    notifyListeners();
+  }
+
   Future<bool> autoLoginWithToken() async {
     if (_accessToken == null) return false;
     final result = await AuthApi.loginWithExistingToken(_accessToken!);
@@ -81,7 +86,7 @@ class AuthProvider with ChangeNotifier {
     }
     try {
       debugPrint("회원정보 조회 성공 : $_accessToken");
-      final profile = await UserApi.fetchUserProfile(_accessToken!);
+      final profile = await UserApi.fetchUserProfile();
       _userProfile = profile;
       notifyListeners();
     } catch (e) {

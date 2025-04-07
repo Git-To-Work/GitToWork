@@ -7,7 +7,6 @@ class UserProfile {
   final String birthDt;
   final int experience;
   final String avatarUrl;
-  final List<String> interestFields; // 조회 시 String 배열만 사용
   final bool notificationAgreed;
 
   UserProfile({
@@ -19,22 +18,21 @@ class UserProfile {
     required this.birthDt,
     required this.experience,
     required this.avatarUrl,
-    required this.interestFields,
     required this.notificationAgreed,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    final results = json['results'] as Map<String, dynamic>;
     return UserProfile(
-      userId: json['userId'],
-      email: json['email'],
-      name: json['name'],
-      nickname: json['nickname'],
-      phone: json['phone'],
-      birthDt: json['birthDt'],
-      experience: json['experience'],
-      avatarUrl: json['avatarUrl'],
-      interestFields: (json['interestFields'] as List<dynamic>).map((e) => e.toString()).toList(),
-      notificationAgreed: json['notificationAgreed'],
+      userId: results['userId'],
+      email: results['email'],
+      name: results['name'],
+      nickname: results['nickname'],
+      phone: results['phone'],
+      birthDt: results['birthDt'],
+      experience: results['experience'],
+      avatarUrl: results['avatarUrl'],
+      notificationAgreed: results['notificationAgreed'],
     );
   }
 }
