@@ -813,12 +813,14 @@ public class GithubRestApiService {
      * 4. return: 파싱된 정수 값 또는 실패 시 0.
      */
     private int parseIntValue(Object value) {
-        if (value instanceof Number) {
-            return ((Number) value).intValue();
-        } else if (value instanceof String) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        } else if (value instanceof String string) {
             try {
-                return Integer.parseInt((String) value);
-            } catch (NumberFormatException ignored) {
+                return Integer.parseInt(string);
+            } catch (NumberFormatException e) {
+                log.warn("Number format exception: {}", string);
+                throw new NumberFormatException("Number format exception: " + string);
             }
         }
         return 0;
@@ -833,7 +835,7 @@ public class GithubRestApiService {
      * 4. return: 문자열 또는 빈 문자열.
      */
     private String getStringValue(Object value) {
-        return value instanceof String ? (String) value : "";
+        return value instanceof String string ? string : "";
     }
 
     /**
