@@ -51,8 +51,17 @@ public class CoverLetterAnalysisService {
         if (file == null || file.isEmpty() || file.getOriginalFilename() == null) {
             throw new EmptyFileException("Empty file input");
         }
+
+        File tempFile = null;
         try {
-            File tempFile = File.createTempFile(file.getOriginalFilename(), ".pdf");
+            String originalFilename = file.getOriginalFilename();
+            String sanitizedPrefix = originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+
+            if (sanitizedPrefix.length() < 3) {
+                sanitizedPrefix = sanitizedPrefix + "___";
+            }
+
+            tempFile = File.createTempFile(sanitizedPrefix, ".pdf");
             file.transferTo(tempFile);
 
             String content;
@@ -61,19 +70,26 @@ public class CoverLetterAnalysisService {
             }
 
             CoverLetterAnalysis analysisResult = gptService.coverLetterAnalysis(content, 500);
-
             log.info(analysisResult.toString());
 
             analysisResult.setFile(coverLetter);
             analysisResult.setUser(user);
             coverLetterAnalysisRepository.save(analysisResult);
 
-            firebaseService.sendMessage(user, "자기소개서 분석 완료", user.getGithubName() + "님, 자기소개서 분석이 완료되었습니다. \n 지금 바로 확인하세요!", "CoverLetterAnalysis");
-
+            firebaseService.sendMessage(user, "자기소개서 분석 완료",
+                    user.getGithubName() + "님, 자기소개서 분석이 완료되었습니다. \n 지금 바로 확인하세요!",
+                    "CoverLetterAnalysis");
         } catch (IOException e) {
             throw new EmptyFileException("Empty file input");
         } catch (FirebaseMessagingException e) {
             throw new FirebaseMessageException("Firebase message send failed");
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                if (!tempFile.delete()) {
+                    log.warn("Temporary file {} could not be deleted", tempFile.getAbsolutePath());
+                }
+            }
         }
     }
+
 }
