@@ -356,6 +356,10 @@ public class GithubService {
                                 .stream()
                                 .map(Repository::getRepoName)
                                 .collect(Collectors.toList()))
+                        .repositoryIds(selectedRepository.getRepositories()
+                                .stream()
+                                .map(Repository::getRepoId)
+                                .collect(Collectors.toList()))
                         .build())
                 .collect(Collectors.toList());
 
