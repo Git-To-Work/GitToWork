@@ -1,6 +1,9 @@
 package com.gittowork.domain.authentication.controller;
 
 import com.gittowork.domain.authentication.dto.request.SignInGithubRequest;
+import com.gittowork.domain.authentication.dto.response.AutoLogInGithubResponse;
+import com.gittowork.domain.authentication.dto.response.LogOutGithubResponse;
+import com.gittowork.domain.authentication.dto.response.SignInGithubResponse;
 import com.gittowork.domain.authentication.service.GithubAuthenticationService;
 import com.gittowork.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,20 +28,20 @@ public class GithubAuthenticationController {
 
     @Operation(summary = "Github OAuth", description = "깃허브 추가")
     @PostMapping("/create/signin")
-    public ApiResponse<?> signInGithub(@NotNull @RequestBody SignInGithubRequest signInGithubRequest) {
+    public ApiResponse<SignInGithubResponse> signInGithub(@NotNull @RequestBody SignInGithubRequest signInGithubRequest) {
         log.info("signInGithubRequest: {}", signInGithubRequest.getCode());
         return ApiResponse.success(HttpStatus.OK, githubAuthenticationService.signInGithub(signInGithubRequest.getCode()));
     }
 
     @Operation(summary = "Github Auto Login", description = "깃허브 자동 로그인")
     @PostMapping("/create/login")
-    public ApiResponse<?> autoLogInGithub() {
+    public ApiResponse<AutoLogInGithubResponse> autoLogInGithub() {
         return ApiResponse.success(HttpStatus.OK, githubAuthenticationService.autoLogInGithub());
     }
 
     @Operation(summary = "Github logout", description = "깃허브 로그아웃")
     @PostMapping("/create/logout")
-    public ApiResponse<?> logOutGithub() {
+    public ApiResponse<LogOutGithubResponse> logOutGithub() {
         return ApiResponse.success(HttpStatus.OK, githubAuthenticationService.logout());
     }
 

@@ -8,7 +8,6 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class InteractionGetRequest {
-    public int page = 0;
-    public int size = 20;
-
+    private int page = 0;
+    private int size = 20;
 }

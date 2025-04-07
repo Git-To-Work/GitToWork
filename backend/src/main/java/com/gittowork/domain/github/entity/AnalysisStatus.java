@@ -19,7 +19,7 @@ import org.hibernate.annotations.OnDeleteAction;
 public class AnalysisStatus {
 
     public enum Status {
-        pending, analyzing, fail, complete
+        PENDING, ANALYZING, COMPLETE, FAIL
     }
 
     @Id

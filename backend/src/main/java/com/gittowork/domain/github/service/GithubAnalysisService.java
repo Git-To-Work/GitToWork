@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -74,6 +75,14 @@ public class GithubAnalysisService {
     private final GithubIssueRepository githubIssueRepository;
     private final RestTemplate restTemplate;
 
+    private static final String USER_NOT_FOUND = "User not found";
+
+    private static final String SEVERITY_BLOCKER = "BLOCKER";
+    private static final String SEVERITY_CRITICAL = "CRITICAL";
+    private static final String SEVERITY_MAJOR = "MAJOR";
+    private static final String SEVERITY_MINOR = "MINOR";
+    private static final String SEVERITY_INFO = "INFO";
+
     /**
      * 1. 메서드 설명: 비동기로 선택된 repository에 대해 GitHub 분석을 수행하는 API.
      * 2. 로직:
@@ -87,7 +96,7 @@ public class GithubAnalysisService {
     @Async
     public void githubAnalysisByRepository(int[] selectedRepositories, String userName) {
         User user = userRepository.findByGithubName(userName)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
         analysisSelectedRepositories(user.getId(), selectedRepositories);
 
         try {
@@ -196,38 +205,52 @@ public class GithubAnalysisService {
                     .aiAnalysis(null)
                     .build();
 
-            try {
-                GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
-                githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
-                githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
-                githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
-                log.info("GithubAnalysisResult with gptAnalysisResult: {}", githubAnalysisResult);
-            } catch (JsonProcessingException e) {
-                throw new GithubAnalysisException("Github analysis failed: " + e.getMessage());
-            }
+            GithubAnalysisResult updatedResult  = getGptAnalysis(githubAnalysisResult);
 
-            githubAnalysisResultRepository.save(githubAnalysisResult);
+            githubAnalysisResultRepository.save(updatedResult);
 
             User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+                    .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
             AnalysisStatus analysisStatus = analysisStatusRepository.findByUserAndSelectedRepositoriesId(user, selectedRepository.getSelectedRepositoryId())
                     .orElseThrow(() -> new GithubAnalysisNotFoundException("Github analysis status not found"));
 
-            analysisStatus.setStatus(AnalysisStatus.Status.complete);
+            analysisStatus.setStatus(AnalysisStatus.Status.COMPLETE);
             analysisStatusRepository.save(analysisStatus);
 
         } catch (Exception e) {
             User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+                    .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
             AnalysisStatus analysisStatus = analysisStatusRepository.findByUserAndSelectedRepositoriesId(user, selectedRepository.getSelectedRepositoryId())
                     .orElseThrow(() -> new GithubAnalysisNotFoundException("Github analysis status not found"));
-            analysisStatus.setStatus(AnalysisStatus.Status.fail);
+            analysisStatus.setStatus(AnalysisStatus.Status.FAIL);
             analysisStatusRepository.save(analysisStatus);
             throw e;
         }
     }
 
+    /**
+     * 1. 메서드 설명: 주어진 GithubAnalysisResult 객체에 대해 GPT 분석을 수행하여 primaryRole, roleScores, aiAnalysis 값을 업데이트한다.
+     * 2. 로직:
+     *    - gptService의 githubDataAnalysis 메서드를 호출하여 GPT 분석 결과를 받아온다.
+     *    - GPT 분석 결과로부터 primaryRole, roleScores, aiAnalysis 값을 추출하여 원본 GithubAnalysisResult 객체에 설정한다.
+     *    - 업데이트된 객체를 로그에 기록한 후 반환한다.
+     * 3. param:
+     *      GithubAnalysisResult githubAnalysisResult - GPT 분석 전의 GithubAnalysisResult 객체.
+     * 4. return: primaryRole, roleScores, aiAnalysis가 업데이트된 GithubAnalysisResult 객체.
+     */
+    private GithubAnalysisResult getGptAnalysis(GithubAnalysisResult githubAnalysisResult) {
+        try {
+            GithubAnalysisResult gptAnalysisResult = gptService.githubDataAnalysis(githubAnalysisResult, 500);
+            githubAnalysisResult.setPrimaryRole(gptAnalysisResult.getPrimaryRole());
+            githubAnalysisResult.setRoleScores(gptAnalysisResult.getRoleScores());
+            githubAnalysisResult.setAiAnalysis(gptAnalysisResult.getAiAnalysis());
+            log.info("GithubAnalysisResult with gptAnalysisResult: {}", githubAnalysisResult);
+            return githubAnalysisResult;
+        } catch (JsonProcessingException e) {
+            throw new GithubAnalysisException("Github analysis failed: " + e.getMessage());
+        }
+    }
 
     /**
      * 1. 메서드 설명: 단일 repository에 대해 SonarQube 분석과 GitHub 커밋/PR/Issue 정보를 조회하여 RepositoryResult를 생성한다.
@@ -326,7 +349,7 @@ public class GithubAnalysisService {
             totalPRs.addAndGet(prCount);
             totalIssues.addAndGet(issueCount);
             return result;
-        } catch (Exception e) {
+        } catch (InterruptedException | IOException e) {
             log.error("Exception while analyzing repository: {}", repositoryPathUrl, e);
             throw new SonarAnalysisException("SonarQube analysis failed: " + e.getMessage());
         }
@@ -511,38 +534,47 @@ public class GithubAnalysisService {
     private JavaPenaltyResult calculateJavaPenalty(String projectKey) {
         String pmdIssuesUrl = sonarHostUrl + "/api/issues/search?componentKeys=" + projectKey + "&engineId=pmd";
         HttpEntity<String> request = setHttpRequest(sonarAnalysisToken);
-        ResponseEntity<Map> issuesResponse = restTemplate.exchange(pmdIssuesUrl, HttpMethod.GET, request, Map.class);
+        ResponseEntity<Map<String, Object>> issuesResponse = restTemplate.exchange(
+                pmdIssuesUrl,
+                HttpMethod.GET,
+                request,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+        );
 
-        int blockerCount = 0, criticalCount = 0, majorCount = 0, minorCount = 0, infoCount = 0;
+        int blockerCount = 0;
+        int criticalCount = 0;
+        int majorCount = 0;
+        int minorCount = 0;
+        int infoCount = 0;
         if (issuesResponse.getBody() != null && issuesResponse.getBody().containsKey("issues")) {
             List<Map<String, Object>> issues = (List<Map<String, Object>>) issuesResponse.getBody().get("issues");
             for (Map<String, Object> issue : issues) {
                 String severity = (String) issue.get("severity");
                 switch (severity) {
-                    case "BLOCKER" -> blockerCount++;
-                    case "CRITICAL" -> criticalCount++;
-                    case "MAJOR" -> majorCount++;
-                    case "MINOR" -> minorCount++;
-                    case "INFO" -> infoCount++;
-                    default -> { }
+                    case SEVERITY_BLOCKER -> blockerCount++;
+                    case SEVERITY_CRITICAL -> criticalCount++;
+                    case SEVERITY_MAJOR -> majorCount++;
+                    case SEVERITY_MINOR -> minorCount++;
+                    case SEVERITY_INFO -> infoCount++;
+                    default -> log.warn("Unexpected severity encountered: {}", severity);
                 }
             }
         }
 
         Map<String, Double> severityWeights = Map.of(
-                "BLOCKER", 3.0,
-                "CRITICAL", 2.0,
-                "MAJOR", 1.2,
-                "MINOR", 0.5,
-                "INFO", 0.2
+                SEVERITY_BLOCKER, 3.0,
+                SEVERITY_CRITICAL, 2.0,
+                SEVERITY_MAJOR, 1.2,
+                SEVERITY_MINOR, 0.5,
+                SEVERITY_INFO, 0.2
         );
 
         double javaPenalty = 0.0;
-        javaPenalty += severityWeights.get("BLOCKER") * Math.log(blockerCount + 1);
-        javaPenalty += severityWeights.get("CRITICAL") * Math.log(criticalCount + 1);
-        javaPenalty += severityWeights.get("MAJOR") * Math.log(majorCount + 1);
-        javaPenalty += severityWeights.get("MINOR") * Math.log(minorCount + 1);
-        javaPenalty += severityWeights.get("INFO") * Math.log(infoCount + 1);
+        javaPenalty += severityWeights.get(SEVERITY_BLOCKER) * Math.log(blockerCount + 1);
+        javaPenalty += severityWeights.get(SEVERITY_CRITICAL) * Math.log(criticalCount + 1);
+        javaPenalty += severityWeights.get(SEVERITY_MAJOR) * Math.log(majorCount + 1);
+        javaPenalty += severityWeights.get(SEVERITY_MINOR) * Math.log(minorCount + 1);
+        javaPenalty += severityWeights.get(SEVERITY_INFO) * Math.log(infoCount + 1);
 
         return JavaPenaltyResult.builder()
                 .penalty(javaPenalty)
