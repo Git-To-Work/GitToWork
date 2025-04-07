@@ -12,4 +12,5 @@ import java.util.List;
 public class RepositoryCombination {
     private String selectedRepositoryId;
     private List<String> repositoryNames;
+    private List<Integer> repositoryIds;
 }
