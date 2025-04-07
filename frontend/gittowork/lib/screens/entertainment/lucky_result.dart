@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart'; // 🔹 공유 기능 import
 import '../../providers/lucky_provider.dart';
 
 class LuckyResult extends StatelessWidget {
@@ -65,7 +66,7 @@ class LuckyResult extends StatelessWidget {
           : Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 타이틀
+          // 타이틀 + 공유 버튼
           Padding(
             padding: const EdgeInsets.only(left: 10),
             child: Row(
@@ -80,7 +81,20 @@ class LuckyResult extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Icon(Icons.share),
+                IconButton(
+                  icon: const Icon(Icons.share),
+                  onPressed: () {
+                    if (hasResult && currentItem != null) {
+                      final text = '''
+[${currentItem.title}]
+${currentItem.value}
+
+🔮 운세 날짜: ${lucky.fortuneDate}
+''';
+                      Share.share(text);
+                    }
+                  },
+                ),
               ],
             ),
           ),
@@ -97,7 +111,7 @@ class LuckyResult extends StatelessWidget {
               ),
             ),
 
-          // 선택된 운세 보여주기
+          // 운세 결과 카드
           if (hasResult) _buildFortuneCard(currentItem!),
         ],
       ),
@@ -138,11 +152,10 @@ class LuckyResult extends StatelessWidget {
               item.value,
               style: const TextStyle(
                 fontSize: 17,
-                height: 1.6,
+                height: 1.6, // 줄간격 조절
               ),
             ),
           ),
-
         ],
       ),
     );
