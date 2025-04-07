@@ -4,6 +4,7 @@ import 'package:gittowork/screens/my_page/my_page_components/terms_service_scree
 import '../../../models/user_profile.dart';
 import '../company_interaction_screen.dart';
 import '../my_info_edit_screen.dart';
+import '../my_page_screen.dart';
 
 class MyPageList extends StatelessWidget {
   final UserProfile userProfile;
@@ -21,15 +22,23 @@ class MyPageList extends StatelessWidget {
     final tiles = [
       _MyPageListTile(
         title: '나의 정보 관리',
-        onTap: () {
-          Navigator.push(
+        onTap: () async {
+          // 1) 정보 수정 화면으로 이동, 결과(bool) 받기
+          final result = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
               builder: (_) => MyInfoEditScreen(
                 userProfile: userProfile,
                 interestField: interestField, // 관심 분야 정보 함께 전달
-              ),            ),
+              ),
+            ),
           );
+
+          // 2) 만약 true가 넘어왔다면, MyPageScreen의 loadProfileAgain() 호출
+          if (result == true) {
+            final parentState = context.findAncestorStateOfType<MyPageScreenState>();
+            parentState?.loadProfileAgain();
+          }
         },
       ),
       _MyPageListTile(
@@ -63,7 +72,7 @@ class MyPageList extends StatelessWidget {
         children.add(
           Container(
             height: 1,
-            color: Colors.grey.shade300, // 원하는 구분선 색
+            color: Colors.grey.shade300,
           ),
         );
       }
@@ -83,16 +92,13 @@ class MyPageList extends StatelessWidget {
           boxShadow: const [
             BoxShadow(
               color: Colors.black26,
-              offset: Offset(0, 2), // 그림자 수직 이동
-              blurRadius: 6,       // 그림자 번짐 정도
+              offset: Offset(0, 2),
+              blurRadius: 6,
             ),
           ],
         ),
-        // 메뉴(타일)들과 구분선을 표시
-        child: Column(
-          children: children,
-        ),
-      )
+        child: Column(children: children),
+      ),
     );
   }
 }
@@ -112,7 +118,7 @@ class _MyPageListTile extends StatelessWidget {
       // 각 메뉴의 세로 간격
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: ListTile(
-        contentPadding: EdgeInsets.zero, // ListTile 기본 패딩 제거
+        contentPadding: EdgeInsets.zero,
         title: Text(
           title,
           style: const TextStyle(

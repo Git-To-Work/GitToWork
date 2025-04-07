@@ -11,8 +11,6 @@ import 'edit_components/user_info_form.dart';
 import 'edit_components/notification_switch.dart';
 import 'package:bottom_picker/bottom_picker.dart';
 
-import 'my_page_screen.dart';
-
 class MyInfoEditScreen extends StatefulWidget {
   /// [userProfile]는 사용자 프로필 정보 (관심 분야 이름 없음)
   final UserProfile userProfile;
@@ -151,15 +149,7 @@ class _MyInfoEditScreenState extends State<MyInfoEditScreen> {
       } else {
         await UserApi.updateFcmToken('');
       }
-      if(!mounted){
-        return;
-      }
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const MyPageScreen(), // 실제 MyPageScreen 생성자에 맞게 수정
-        ),
-      );
+      Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('회원 정보 수정에 실패했습니다. 다시 시도해주세요.')),

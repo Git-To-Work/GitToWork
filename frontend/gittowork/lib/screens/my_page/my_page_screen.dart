@@ -16,10 +16,10 @@ class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
 
   @override
-  State<MyPageScreen> createState() => _MyPageScreenState();
+  State<MyPageScreen> createState() => MyPageScreenState();
 }
 
-class _MyPageScreenState extends State<MyPageScreen> {
+class MyPageScreenState extends State<MyPageScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -55,6 +55,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> loadProfileAgain() async {
+    // 프로필 다시 불러오는 로직
+    // e.g. await authProvider.fetchUserProfile() or similar
+    await _loadProfileAndInterest(); // 혹은 로직 직접 작성
+    setState(() {});
   }
 
 
