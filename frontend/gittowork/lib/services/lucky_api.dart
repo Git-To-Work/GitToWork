@@ -67,7 +67,7 @@ class LuckyService {
     final birthTm = luckyProvider.birthTime;
 
     final response = await ApiService.dio.post(
-      '/api/fortune/select/today',
+      '/api/fortune/create/today',
       data: {
         'birthDt': birthDt,
         'sex': sex,
