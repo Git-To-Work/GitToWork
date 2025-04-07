@@ -53,11 +53,6 @@ class _LuckyScreenState extends State<LuckyScreen> {
 
             // 입력 폼
             LuckyInput(
-              birthDateController: birthDateController,
-              selectedTime: selectedTime,
-              selectedGender: selectedGender,
-              onTimeChanged: (val) => setState(() => selectedTime = val),
-              onGenderChanged: (val) => setState(() => selectedGender = val),
               onSubmit: () => setState(() => showResult = true),
             ),
 
