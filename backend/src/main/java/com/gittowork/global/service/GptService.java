@@ -28,8 +28,9 @@ public class GptService {
 
     private final GptConfig gptConfig;
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
     private final OpenAIProperties openAIProperties;
+
+    private ObjectMapper objectMapper;
 
     /**
      * 1. 메서드 설명: OpenAI의 ChatGPT API를 호출하여 GitHub 데이터를 분석하는 결과를 JSON 문자열로 받고,
@@ -129,7 +130,7 @@ public class GptService {
             String responseBody = response.getBody();
             log.info("GPT API response: {}", responseBody);
 
-            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper = new ObjectMapper();
             JsonNode rootNode = objectMapper.readTree(responseBody);
             JsonNode contentNode = rootNode.path("choices").get(0).path("message").path("content");
             String content = contentNode.asText();

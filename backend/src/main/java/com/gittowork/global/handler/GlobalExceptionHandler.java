@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
     @Setter
     @Getter
     @Builder
-    private static class ErrorResponse {
+    public static class ErrorResponse {
         private final String message;
         private final String code;
 
@@ -44,7 +44,6 @@ public class GlobalExceptionHandler {
             this.message = message;
             this.code = code;
         }
-
     }
 
     private ResponseEntity<ErrorResponse> buildErrorResponse(HttpStatus status, String code, String message) {
@@ -56,175 +55,175 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(UserNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(UserNotFoundException e) {
         log.warn("User not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
 
     @ExceptionHandler(GithubSignInException.class)
-    public ResponseEntity<?> exceptionHandler(GithubSignInException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(GithubSignInException e) {
         log.warn("Github sign in: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.UNAUTHORIZED.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), message);
     }
 
     @ExceptionHandler(AutoLogInException.class)
-    public ResponseEntity<?> exceptionHandler(AutoLogInException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(AutoLogInException e) {
         log.warn("Auto log in: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.UNAUTHORIZED.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), message);
     }
 
     @ExceptionHandler(AccessTokenNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(AccessTokenNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(AccessTokenNotFoundException e) {
         log.warn("Access token not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.UNAUTHORIZED.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED.getCode(), message);
     }
 
     @ExceptionHandler(DataNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(DataNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(DataNotFoundException e) {
         log.warn("Data not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
 
     @ExceptionHandler(CompanyNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(CompanyNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(CompanyNotFoundException e) {
         log.warn("Company Not Found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
 
     @ExceptionHandler(UserInteractionNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(UserInteractionNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(UserInteractionNotFoundException e) {
         log.warn("User Interaction Not Found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
 
     @ExceptionHandler(InteractionDuplicateException.class)
-    public ResponseEntity<?> exceptionHandler(InteractionDuplicateException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(InteractionDuplicateException e) {
         log.warn("Interaction Duplicate Exception: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.DUPLICATE.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.CONFLICT, ErrorCode.DUPLICATE.getCode(), message);
     }
 
     @ExceptionHandler(GithubRepositoryNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(GithubRepositoryNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(GithubRepositoryNotFoundException e) {
         log.warn("Github repository not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
 
     @ExceptionHandler(GithubCommitsNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(GithubCommitsNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(GithubCommitsNotFoundException e) {
         log.warn("Github commits not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
 
     @ExceptionHandler(SonarAnalysisException.class)
-    public ResponseEntity<?> exceptionHandler(SonarAnalysisException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(SonarAnalysisException e) {
         log.warn("Sonar Analysis failed: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(GithubAnalysisException.class)
-    public ResponseEntity<?> exceptionHandler(GithubAnalysisException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(GithubAnalysisException e) {
         log.warn("Github analysis failed: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(GithubAnalysisNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(GithubAnalysisNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(GithubAnalysisNotFoundException e) {
         log.warn("Github analysis not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
 
     @ExceptionHandler(EmptyFileException.class)
-    public ResponseEntity<?> exceptionHandler(EmptyFileException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(EmptyFileException e) {
         log.warn("Empty file: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.INVALID_ARGUMENT.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ARGUMENT.getCode(), message);
     }
 
     @ExceptionHandler(S3UploadException.class)
-    public ResponseEntity<?> exceptionHandler(S3UploadException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(S3UploadException e) {
         log.warn("S3 upload failed: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(FileExtensionException.class)
-    public ResponseEntity<?> exceptionHandler(FileExtensionException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(FileExtensionException e) {
         log.warn("File extension not supported: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.INVALID_ARGUMENT.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ARGUMENT.getCode(), message);
     }
 
     @ExceptionHandler(CoverLetterNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(CoverLetterNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(CoverLetterNotFoundException e) {
         log.warn("Cover letter not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
 
     @ExceptionHandler(S3DeleteException.class)
-    public ResponseEntity<?> exceptionHandler(S3DeleteException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(S3DeleteException e) {
         log.warn("S3 delete failed: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(CoverLetterAnalysisNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(CoverLetterAnalysisNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(CoverLetterAnalysisNotFoundException e) {
         log.warn("Cover letter analysis not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
     }
 
     @ExceptionHandler(CoverLetterAnalysisException.class)
-    public ResponseEntity<?> exceptionHandler(CoverLetterAnalysisException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(CoverLetterAnalysisException e) {
         log.warn("Cover letter analysis not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(JsonParsingException.class)
-    public ResponseEntity<?> exceptionHandler(JsonParsingException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(JsonParsingException e) {
         log.warn("Json parsing failed: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(SelectedRepositoryDuplicatedException.class)
-    public ResponseEntity<?> exceptionHandler(SelectedRepositoryDuplicatedException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(SelectedRepositoryDuplicatedException e) {
         log.warn("Selected repository duplicated: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.DUPLICATE.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.DUPLICATE.getCode(), message);
     }
 
     @ExceptionHandler(WrongQuizTypeException.class)
-    public ResponseEntity<?> exceptionHandler(WrongQuizTypeException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(WrongQuizTypeException e) {
         log.warn("Wrong quiz type: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.INVALID_ARGUMENT.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ARGUMENT.getCode(), message);
     }
 
     @ExceptionHandler(FirebaseMessageException.class)
-    public ResponseEntity<?> exceptionHandler(FirebaseMessageException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(FirebaseMessageException e) {
         log.warn("FirebaseMessageException: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.INTERNAL_SERVER_ERROR.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(FortuneInfoNotFoundException.class)
-    public ResponseEntity<?> exceptionHandler(FortuneInfoNotFoundException e) {
+    public ResponseEntity<ErrorResponse> exceptionHandler(FortuneInfoNotFoundException e) {
         log.warn("Fortune info not found: {}", e.getMessage());
         String message = e.getMessage() == null ? ErrorCode.NOT_FOUND.getMessage() : e.getMessage();
         return buildErrorResponse(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND.getCode(), message);
