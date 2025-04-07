@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface JobNoticeRepository extends JpaRepository<JobNotice, Integer> {
-    List<JobNotice> findByCompanyId(Integer CompanyId);
+    List<JobNotice> findByCompanyId(Integer companyId);
 }

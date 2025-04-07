@@ -2,6 +2,8 @@ package com.gittowork.domain.github.service;
 
 import com.gittowork.domain.github.dto.response.*;
 import com.gittowork.domain.github.entity.*;
+import com.gittowork.domain.github.model.analysis.RepositoryCombination;
+import com.gittowork.domain.github.model.repository.Repo;
 import com.gittowork.domain.github.model.repository.Repository;
 import com.gittowork.domain.github.repository.*;
 import com.gittowork.domain.user.entity.User;
@@ -32,77 +34,120 @@ public class GithubService {
     private final GithubAnalysisService githubAnalysisService;
     private final AnalysisStatusRepository analysisStatusRepository;
 
+    private static final String USER_NOT_FOUND = "User not found";
+
     /**
-     * 1. 메서드 설명: 선택된 Repository의 Github 분석 결과를 조회하여,
-     *    분석 상태가 complete인 경우 각 Repository의 분석 정보(전체 점수, 언어 수준, 활동 지표, AI 분석 결과 등)를 기반으로
-     *    최종 분석 결과 DTO(GetGithubAnalysisByRepositoryResponse)를 생성하여 반환하며,
-     *    complete가 아닌 경우 현재 분석 상태와 적절한 메시지를 담은 DTO(GetGithubAnalysisStatusResponse)를 반환하는 API.
+     * 1. 메서드 설명: 주어진 selectedRepositoryId에 대해 Github 분석 응답(GithubAnalysisResponse)을 반환한다.
+     *    분석 상태가 COMPLETE인 경우 분석 결과를 조회하여 상세 응답(GetGithubAnalysisByRepositoryResponse)을 반환하고,
+     *    그렇지 않은 경우 상태 메시지를 포함한 응답(GetGithubAnalysisStatusResponse)을 반환한다.
      * 2. 로직:
-     *    - selectedRepositoryId를 기반으로 AnalysisStatus를 조회한다.
-     *    - AnalysisStatus가 complete인 경우:
-     *         - 해당 selectedRepositoryId의 최신 GithubAnalysisResult를 조회한다.
-     *         - 전체 점수를 기준으로 overallScore(문자 등급)를 산출한다.
-     *         - 분석 날짜, 언어 비율, Repository 이름 리스트, 활동 지표, AI 분석 결과 등을 포함하여
-     *           최종 응답 DTO(GetGithubAnalysisByRepositoryResponse)를 빌더 패턴으로 생성하여 반환한다.
-     *    - AnalysisStatus가 pending, analyzing, fail 등 complete가 아닌 경우:
-     *         - 현재 분석 상태에 따른 적절한 메시지를 생성하고,
-     *           상태와 메시지를 담은 DTO(GetGithubAnalysisStatusResponse)를 빌더 패턴으로 생성하여 반환한다.
-     * 3. param: String selectedRepositoryId - 분석 대상 Repository의 식별자.
-     * 4. return:
-     *         - AnalysisStatus가 complete인 경우: GetGithubAnalysisByRepositoryResponse (분석 결과 정보를 담은 DTO)
-     *         - 그 외 경우: GetGithubAnalysisStatusResponse (분석 상태와 메시지를 담은 DTO)
+     *    - 분석 상태(AnalysisStatus)를 조회하고, 상태에 따라 COMPLETE 또는 NOT COMPLETE 처리 로직을 분기한다.
+     * 3. param:
+     *      String selectedRepositoryId - 선택된 repository의 식별자.
+     * 4. return: GithubAnalysisResponse 객체.
      */
     @Transactional(readOnly = true)
-    public Object getGithubAnalysisByRepository(String selectedRepositoryId) {
+    public GithubAnalysisResponse getGithubAnalysisByRepository(String selectedRepositoryId) {
         AnalysisStatus analysisStatus = analysisStatusRepository
                 .findBySelectedRepositoriesId(selectedRepositoryId)
                 .orElseThrow(() -> new GithubAnalysisNotFoundException("Github analysis status not found"));
 
-        if (analysisStatus.getStatus() == AnalysisStatus.Status.complete) {
-            GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
-                    .findFirstBySelectedRepositoriesIdOrderByAnalysisDateDesc(selectedRepositoryId)
-                    .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Result not found"));
-
-            int overallScoreValue = githubAnalysisResult.getOverallScore();
-            String overallScore = overallScoreValue > 90 ? "A+"
-                    : overallScoreValue > 80 ? "A"
-                    : overallScoreValue > 70 ? "B+"
-                    : overallScoreValue > 60 ? "B"
-                    : overallScoreValue > 50 ? "C+"
-                    : overallScoreValue > 40 ? "C" : "D";
-
-            return GetGithubAnalysisByRepositoryResponse.builder()
-                    .status(analysisStatus.getStatus().name())
-                    .selectedRepositoryId(selectedRepositoryId)
-                    .analysisDate(githubAnalysisResult.getAnalysisDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
-                    .languageRatios(githubAnalysisResult.getLanguageRatios())
-                    .selectedRepositories(githubAnalysisResult.getSelectedRepositories().stream()
-                            .map(Repository::getRepoName)
-                            .collect(Collectors.toList()))
-                    .overallScore(overallScore)
-                    .activityMetrics(githubAnalysisResult.getActivityMetrics())
-                    .aiAnalysis(githubAnalysisResult.getAiAnalysis())
-                    .build();
-        } else {
-            String message = switch (analysisStatus.getStatus()) {
-                case pending -> "분석이 아직 시작되지 않았습니다.";
-                case analyzing -> "분석이 진행 중입니다.";
-                case fail -> "분석에 실패하였습니다.";
-                default -> "분석 상태를 확인할 수 없습니다.";
-            };
-
-            SelectedRepository selectedRepository = selectedRepoRepository.findById(selectedRepositoryId)
-                    .orElseThrow(() -> new GithubRepositoryNotFoundException("Selected repository not found"));
-
-            return GetGithubAnalysisStatusResponse.builder()
-                    .status(analysisStatus.getStatus().name())
-                    .selectedRepositoryId(selectedRepositoryId)
-                    .selectedRepositories(selectedRepository.getRepositories().stream()
-                            .map(Repository::getRepoName)
-                            .collect(Collectors.toList()))
-                    .message(message)
-                    .build();
+        if (analysisStatus.getStatus() == AnalysisStatus.Status.COMPLETE) {
+            return buildCompleteResponse(selectedRepositoryId, analysisStatus);
         }
+        return buildNotCompleteResponse(selectedRepositoryId, analysisStatus);
+    }
+
+    /**
+     * 1. 메서드 설명: COMPLETE 상태인 경우, 분석 결과를 조회하여 상세 응답(GetGithubAnalysisByRepositoryResponse)을 생성한다.
+     * 2. 로직:
+     *    - GithubAnalysisResult를 조회하고, overallScore를 계산하며, 날짜 포맷과 repository 이름 목록을 생성한 후 응답 객체를 빌드한다.
+     * 3. param:
+     *      String selectedRepositoryId - 선택된 repository의 식별자.
+     *      AnalysisStatus analysisStatus - 분석 상태 객체.
+     * 4. return: GithubAnalysisResponse (상세 분석 결과 응답) 객체.
+     */
+    private GithubAnalysisResponse buildCompleteResponse(String selectedRepositoryId, AnalysisStatus analysisStatus) {
+        GithubAnalysisResult githubAnalysisResult = githubAnalysisResultRepository
+                .findFirstBySelectedRepositoriesIdOrderByAnalysisDateDesc(selectedRepositoryId)
+                .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Result not found"));
+
+        String overallScore = calculateOverallScore(githubAnalysisResult.getOverallScore());
+        List<String> repoNames = githubAnalysisResult.getSelectedRepositories().stream()
+                .map(Repository::getRepoName)
+                .collect(Collectors.toList());
+        String analysisDate = githubAnalysisResult.getAnalysisDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+        return GetGithubAnalysisByRepositoryResponse.builder()
+                .status(analysisStatus.getStatus().name())
+                .selectedRepositoryId(selectedRepositoryId)
+                .analysisDate(analysisDate)
+                .languageRatios(githubAnalysisResult.getLanguageRatios())
+                .selectedRepositories(repoNames)
+                .overallScore(overallScore)
+                .activityMetrics(githubAnalysisResult.getActivityMetrics())
+                .aiAnalysis(githubAnalysisResult.getAiAnalysis())
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: COMPLETE 상태가 아닌 경우, 선택된 repository의 상세 정보와 분석 상태 메시지를 포함한 응답(GetGithubAnalysisStatusResponse)을 생성한다.
+     * 2. 로직:
+     *    - 분석 상태에 따른 메시지를 결정하고, 선택된 repository의 이름 목록을 생성한 후 응답 객체를 빌드한다.
+     * 3. param:
+     *      String selectedRepositoryId - 선택된 repository의 식별자.
+     *      AnalysisStatus analysisStatus - 분석 상태 객체.
+     * 4. return: GithubAnalysisResponse (분석 상태 응답) 객체.
+     */
+    private GithubAnalysisResponse buildNotCompleteResponse(String selectedRepositoryId, AnalysisStatus analysisStatus) {
+        String message = getNotCompleteMessage(analysisStatus.getStatus());
+        SelectedRepository selectedRepository = selectedRepoRepository.findById(selectedRepositoryId)
+                .orElseThrow(() -> new GithubRepositoryNotFoundException("Selected repository not found"));
+        List<String> repoNames = selectedRepository.getRepositories().stream()
+                .map(Repository::getRepoName)
+                .collect(Collectors.toList());
+
+        return GetGithubAnalysisStatusResponse.builder()
+                .status(analysisStatus.getStatus().name())
+                .selectedRepositoryId(selectedRepositoryId)
+                .selectedRepositories(repoNames)
+                .message(message)
+                .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 주어진 overallScoreValue를 기준으로 점수를 등급 문자열로 변환한다.
+     * 2. 로직:
+     *    - 점수 범위에 따라 "A+", "A", "B+", "B", "C+", "C", 또는 "D"를 반환한다.
+     * 3. param:
+     *      int overallScoreValue - 전체 점수 값.
+     * 4. return: 등급 문자열.
+     */
+    private String calculateOverallScore(int overallScoreValue) {
+        if (overallScoreValue > 90) return "A+";
+        if (overallScoreValue > 80) return "A";
+        if (overallScoreValue > 70) return "B+";
+        if (overallScoreValue > 60) return "B";
+        if (overallScoreValue > 50) return "C+";
+        if (overallScoreValue > 40) return "C";
+        return "D";
+    }
+
+    /**
+     * 1. 메서드 설명: 분석 상태(Status)에 따라 해당하는 메시지를 반환한다.
+     * 2. 로직:
+     *    - 상태가 PENDING, ANALYZING, FAIL인 경우에 따라 메시지를 반환하고, 그 외의 경우 기본 메시지를 반환한다.
+     * 3. param:
+     *      AnalysisStatus.Status status - 분석 상태.
+     * 4. return: 상태에 따른 메시지 문자열.
+     */
+    private String getNotCompleteMessage(AnalysisStatus.Status status) {
+        return switch (status) {
+            case PENDING -> "분석이 아직 시작되지 않았습니다.";
+            case ANALYZING -> "분석이 진행 중입니다.";
+            case FAIL -> "분석에 실패하였습니다.";
+            default -> "분석 상태를 확인할 수 없습니다.";
+        };
     }
 
     /**
@@ -123,7 +168,7 @@ public class GithubService {
     public CreateGithubAnalysisByRepositoryResponse createGithubAnalysisByRepositoryResponse(int[] repositories) {
         String userName = getUserName();
         User user = userRepository.findByGithubName(userName)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
         int userId = user.getId();
         String githubAccessToken = user.getGithubAccessToken();
 
@@ -148,7 +193,7 @@ public class GithubService {
 
             List<Repository> selectedRepositories = userRepositories.stream()
                     .filter(repo -> selectedRepoIds.contains(repo.getRepoId()))
-                    .collect(Collectors.toList());
+                    .toList();
 
             SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndRepositories(userId, selectedRepositories)
                     .orElseThrow(() -> new GithubRepositoryNotFoundException("Github Repository Combination Not Found"));
@@ -156,7 +201,7 @@ public class GithubService {
             AnalysisStatus analysisStatus = analysisStatusRepository.findByUserAndSelectedRepositoriesId(user, selectedRepository.getSelectedRepositoryId())
                     .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Status Not Found"));
 
-            analysisStatus.setStatus(AnalysisStatus.Status.analyzing);
+            analysisStatus.setStatus(AnalysisStatus.Status.ANALYZING);
 
             selectedRepositoryId = analysisStatus.getSelectedRepositoriesId();
 
@@ -189,7 +234,7 @@ public class GithubService {
     public SaveSelectedRepositoriesResponse saveSelectedGithubRepository(int[] selectedGithubRepositoryIds) {
         String username = getUserName();
         User user = userRepository.findByGithubName(username)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
         int userId = user.getId();
         GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
@@ -223,7 +268,7 @@ public class GithubService {
                 AnalysisStatus.builder()
                         .user(user)
                         .selectedRepositoriesId(selectedRepositoryId)
-                        .status(AnalysisStatus.Status.pending)
+                        .status(AnalysisStatus.Status.PENDING)
                         .build()
         );
 
@@ -266,7 +311,7 @@ public class GithubService {
     public GetMyRepositoryResponse getMyRepository() {
         String username = getUserName();
         User user = userRepository.findByGithubName(username)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
         int userId = user.getId();
         GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
@@ -300,7 +345,7 @@ public class GithubService {
     public GetMyRepositoryCombinationResponse getMyRepositoryCombination() {
         String username = getUserName();
         User user = userRepository.findByGithubName(username)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
         int userId = user.getId();
 
         List<RepositoryCombination> repoComb = selectedRepoRepository.findAllByUserId(userId)
@@ -334,7 +379,7 @@ public class GithubService {
     @Transactional
     public MessageOnlyResponse deleteSelectedGithubRepository(String selectedGithubRepositoryIds) {
         int userId = userRepository.findByGithubName(getUserName())
-                .orElseThrow(() -> new UserNotFoundException("User not found"))
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND))
                 .getId();
 
         SelectedRepository selectedRepository = selectedRepoRepository.findByUserIdAndSelectedRepositoryId(userId, selectedGithubRepositoryIds)
@@ -354,7 +399,7 @@ public class GithubService {
     @Transactional
     public MessageOnlyResponse updateGithubData() {
         User user = userRepository.findByGithubName(getUserName())
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
         String githubAccessToken = user.getGithubAccessToken();
         String userName = getUserName();
