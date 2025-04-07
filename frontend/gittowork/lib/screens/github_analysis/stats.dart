@@ -8,6 +8,8 @@ class StatsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    debugPrint('화면 너비: $screenWidth');
     return Consumer<GitHubAnalysisProvider>(
       builder: (context, provider, child) {
         final totalStars = provider.activityMetrics['totalStars'] ?? 342;
@@ -15,7 +17,7 @@ class StatsScreen extends StatelessWidget {
         final totalPRs = provider.activityMetrics['totalPRs'] ?? 86;
         final totalIssues = provider.activityMetrics['totalIssues'] ?? 124;
         final grade = provider.overallScore;
-        final gradePercent = provider.getGradePercent(); // percent 변환 함수
+        final gradePercent = provider.getGradePercent();
 
         return Container(
           width: double.infinity,
@@ -77,22 +79,24 @@ class StatsScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              CircularPercentIndicator(
-                radius: 45,
-                lineWidth: 6,
-                percent: gradePercent,
-                backgroundColor: Colors.grey.shade300,
-                progressColor: Colors.black,
-                circularStrokeCap: CircularStrokeCap.round,
-                center: Text(
-                  grade,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+
+              if (screenWidth > 400)
+                CircularPercentIndicator(
+                  radius: 45,
+                  lineWidth: 6,
+                  percent: gradePercent,
+                  backgroundColor: Colors.grey.shade300,
+                  progressColor: Colors.black,
+                  circularStrokeCap: CircularStrokeCap.round,
+                  center: Text(
+                    grade,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         );
