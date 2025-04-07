@@ -84,12 +84,13 @@ public class CoverLetterAnalysisService {
         } catch (FirebaseMessagingException e) {
             throw new FirebaseMessageException("Firebase message send failed");
         } finally {
-            if (tempFile != null && tempFile.exists()) {
-                if (!tempFile.delete()) {
-                    log.warn("Temporary file {} could not be deleted", tempFile.getAbsolutePath());
+            if (tempFile != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(tempFile.toPath());
+                } catch (IOException ex) {
+                    log.warn("Temporary file {} could not be deleted: {}", tempFile.getAbsolutePath(), ex.getMessage());
                 }
             }
         }
     }
-
 }
