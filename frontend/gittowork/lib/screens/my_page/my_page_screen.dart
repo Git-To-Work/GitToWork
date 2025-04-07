@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// 경로는 실제 프로젝트 구조에 맞춰 조정
 import '../../../providers/auth_provider.dart';
 import '../../../models/user_profile.dart';
+import '../../../models/interest_field.dart';
+import '../../../services/user_api.dart';
 
 // 나머지 컴포넌트 위젯들
 import 'my_page_components/my_page_header.dart';
@@ -22,23 +23,30 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  UserProfile? _userProfile;
+  InterestField? _interestField;
+
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _loadProfileAndInterest();
   }
 
-  Future<void> _loadProfile() async {
-    final authProvider = context.read<AuthProvider>();
+  Future<void> _loadProfileAndInterest() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      await authProvider.fetchUserProfile();
+      final fetchedProfile = await UserApi.fetchUserProfile();
+      final fetchedInterest = await UserApi.fetchUserInterestField();
+
+      // 2) 화면(State)에서 직접 관리
+      _userProfile = fetchedProfile;
+      _interestField = fetchedInterest;
     } catch (e) {
-      debugPrint('Error fetching user profile: $e');
+      debugPrint('Error fetching user profile or interest: $e');
       setState(() {
         _errorMessage = '사용자 정보를 불러오는 데 실패했습니다.';
       });
@@ -48,6 +56,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +74,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             Text(_errorMessage!),
             const SizedBox(height: 8),
             ElevatedButton(
-              onPressed: _loadProfile,
+              onPressed: _loadProfileAndInterest,
               child: const Text('재시도'),
             ),
           ],
@@ -104,8 +113,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
 
             // 2) 리스트 영역
-            MyPageList(userProfile: userProfile,),
-
+            MyPageList(
+              userProfile: _userProfile!,
+              interestField: _interestField!,
+            ),
             // 3) 하단 로그아웃 / 회원탈퇴
             MyPageFooter(),
           ],

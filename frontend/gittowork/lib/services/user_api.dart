@@ -1,22 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import '../models/company.dart';
+import '../models/interest_field.dart';
 import '../models/user_profile.dart';
 import '../screens/signup/business_interest_screen.dart';
 import 'api_service.dart';
 
 class UserApi {
-  static Future<UserProfile> fetchUserProfile(String accessToken) async {
-    // authorization 헤더 설정 제거 (ApiService 인터셉터에서 처리)
-    final response = await ApiService.dio.get('/api/user/select/profile');
-    if (response.statusCode == 200) {
-      final data = response.data;
-      final result = data['results'];
-      return UserProfile.fromJson(result);
-    } else {
-      throw Exception('Failed to load user profile: ${response.statusCode}');
-    }
-  }
-
   /// 회원가입 정보 전송 메서드
   static Future<bool> sendSignupData(Map<dynamic, dynamic> signupParams) async {
     try {
@@ -67,27 +56,29 @@ class UserApi {
     }
   }
 
-  static Future<bool> updateInterestFields(List<int> interestFields) async {
-    try {
-      final response = await ApiService.dio.put(
-        '/api/user/update/interest-field',
-        data: {"interestsFields": interestFields},
-      );
-      debugPrint('관심 분야 업데이트 요청 data : $interestFields');
-      if (response.statusCode == 200) {
-        debugPrint('관심 분야 업데이트 성공: ${response.statusCode}');
-        return true;
-      } else {
-        debugPrint('관심 분야 업데이트 실패: ${response.statusCode}');
-        return false;
-      }
-    } catch (e) {
-      debugPrint('관심 분야 업데이트 에러: $e');
-      return false;
+  /// 사용자 프로필 조회 (관심 분야 제외)
+  static Future<UserProfile> fetchUserProfile() async {
+    final response = await ApiService.dio.get('/api/user/select/profile');
+    if (response.statusCode == 200) {
+      return UserProfile.fromJson(response.data);
+    } else {
+      throw Exception('사용자 프로필 조회 실패: ${response.statusCode}');
     }
   }
 
-  static Future<bool> updateUserProfile(Map<dynamic, dynamic> updateParams) async {
+  /// 관심 분야(ID, 이름) 조회
+  static Future<InterestField> fetchUserInterestField() async {
+    final response = await ApiService.dio.get('/api/user/select/my-interest-field');
+    if (response.statusCode == 200) {
+      return InterestField.fromJson(response.data);
+    } else {
+      throw Exception('관심 분야 조회 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 사용자 프로필 수정
+  /// (예: name, birthDt, experience, phone, notificationAgreed)
+  static Future<bool> updateUserProfile(Map<String, dynamic> updateParams) async {
     try {
       final response = await ApiService.dio.put(
         '/api/user/update/profile',
@@ -102,6 +93,27 @@ class UserApi {
       }
     } catch (error) {
       debugPrint('회원 정보 수정 실패(예외 발생): $error');
+      return false;
+    }
+  }
+
+  /// 관심 분야 수정 (ID 목록만 전송)
+  static Future<bool> updateInterestFields(List<int> interestFieldIds) async {
+    try {
+      final response = await ApiService.dio.put(
+        '/api/user/update/interest-field',
+        data: {'interestsFields': interestFieldIds},
+      );
+      debugPrint('관심 분야 업데이트 요청: $interestFieldIds');
+      if (response.statusCode == 200) {
+        debugPrint('관심 분야 업데이트 성공');
+        return true;
+      } else {
+        debugPrint('관심 분야 업데이트 실패(서버 에러): ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('관심 분야 업데이트 예외 발생: $e');
       return false;
     }
   }

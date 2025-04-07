@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gittowork/models/interest_field.dart';
 import 'package:gittowork/screens/my_page/my_page_components/terms_service_screen.dart';
 import '../../../models/user_profile.dart';
 import '../company_interaction_screen.dart';
@@ -6,10 +7,12 @@ import '../my_info_edit_screen.dart';
 
 class MyPageList extends StatelessWidget {
   final UserProfile userProfile;
+  final InterestField interestField;
 
   const MyPageList({
     super.key,
     required this.userProfile,
+    required this.interestField,
   });
 
   @override
@@ -22,8 +25,10 @@ class MyPageList extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => MyInfoEditScreen(userProfile: userProfile),
-            ),
+              builder: (_) => MyInfoEditScreen(
+                userProfile: userProfile,
+                interestField: interestField, // 관심 분야 정보 함께 전달
+              ),            ),
           );
         },
       ),
