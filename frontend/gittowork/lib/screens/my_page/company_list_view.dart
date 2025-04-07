@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-
 import 'package:gittowork/models/company.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/company_api.dart';
 
 class CompanyListView extends StatefulWidget {
   final List<Company> companies;
@@ -118,24 +120,7 @@ class _CompanyListViewState extends State<CompanyListView> {
                         ),
                       const SizedBox(width: 8),
                       GestureDetector(
-                        onTap: () async {
-                          try {
-                            // 회사 스크랩 토글 로직 (예시)
-                            if (company.scrapped) {
-                              // 서버 연동 -> unscrap
-                              // ex) await CompanyApi.unscrapCompany(company.companyId);
-                            } else {
-                              // 서버 연동 -> scrap
-                              // ex) await CompanyApi.scrapCompany(company.companyId);
-                            }
-
-                            setState(() {
-                              company.scrapped = !company.scrapped;
-                            });
-                          } catch (e) {
-                            debugPrint("❌ 스크랩 토글 실패: $e");
-                          }
-                        },
+                        onTap: () => _toggleScrap(company),
                         child: Image.asset(
                           company.scrapped
                               ? 'assets/icons/Saved.png'
@@ -171,5 +156,49 @@ class _CompanyListViewState extends State<CompanyListView> {
         ),
       ],
     );
+  }
+  /// 스크랩/언스크랩 처리 함수
+  Future<void> _toggleScrap(Company company) async {
+    try {
+      if (company.scrapped) {
+        // 이미 스크랩 상태면 → 언스크랩
+        await CompanyApi.unscrapCompany(company.companyId);
+        setState(() => company.scrapped = false);
+        setState(() {
+          widget.companies.removeWhere((c) => c.companyId == company.companyId);
+        });
+
+        // SharedPreferences “recent_companies” 목록에서도 해당 회사ID scrapped=false로 변경
+        await _updateRecentCompanyScrapState(company.companyId, false);
+      } else {
+        // 스크랩
+        await CompanyApi.scrapCompany(company.companyId);
+        setState(() => company.scrapped = true);
+
+        await _updateRecentCompanyScrapState(company.companyId, true);
+      }
+    } catch (e) {
+      debugPrint("❌ 스크랩 토글 실패: $e");
+    }
+  }
+
+  /// SharedPreferences에 저장된 '최근 본 기업' 데이터 중,
+  /// 해당 `companyId`의 `scrapped` 필드를 `newScrapped`로 갱신
+  Future<void> _updateRecentCompanyScrapState(int companyId, bool newScrapped) async {
+    final prefs = await SharedPreferences.getInstance();
+    final recentList = prefs.getStringList('recent_companies') ?? [];
+
+    for (int i = 0; i < recentList.length; i++) {
+      final jsonMap = jsonDecode(recentList[i]) as Map<String, dynamic>;
+
+      // Company.fromJson 구조에 맞춰서 companyId나 키 이름 확인
+      if (jsonMap['companyId'] == companyId) {
+        jsonMap['scrapped'] = newScrapped;
+        recentList[i] = jsonEncode(jsonMap);
+        break;
+      }
+    }
+
+    await prefs.setStringList('recent_companies', recentList);
   }
 }
