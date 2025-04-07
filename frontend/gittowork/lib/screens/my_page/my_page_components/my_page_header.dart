@@ -14,7 +14,7 @@ class MyPageHeader extends StatelessWidget {
         text: TextSpan(
           children: [
             TextSpan(
-              text: '${userProfile.nickname}님\n',
+              text: '${userProfile.name}님\n',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 28,
