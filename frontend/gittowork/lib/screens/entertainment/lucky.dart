@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gittowork/widgets/app_bar_back.dart';
+import 'package:provider/provider.dart';
+import '../../providers/lucky_provider.dart';
 import 'lucky_input.dart';
 import 'lucky_result.dart';
 
@@ -15,8 +17,6 @@ class _LuckyScreenState extends State<LuckyScreen> {
   final categories = ['전체', '학업', '애정', '재물'];
 
   final TextEditingController birthDateController = TextEditingController();
-  String selectedTime = '13:00 ~ 13:30';
-  String selectedGender = '여성';
   bool showResult = false;
 
   @override
@@ -53,17 +53,12 @@ class _LuckyScreenState extends State<LuckyScreen> {
 
             // 입력 폼
             LuckyInput(
-              birthDateController: birthDateController,
-              selectedTime: selectedTime,
-              selectedGender: selectedGender,
-              onTimeChanged: (val) => setState(() => selectedTime = val),
-              onGenderChanged: (val) => setState(() => selectedGender = val),
               onSubmit: () => setState(() => showResult = true),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
-            if (showResult) const LuckyResult(),
+            LuckyResult(),
           ],
         ),
       ),
@@ -81,7 +76,7 @@ class _LuckyScreenState extends State<LuckyScreen> {
     ];
 
     final categoryColors = [
-      const Color(0xFF00C853),
+      Colors.indigo,
       const Color(0xFF2196F3),
       const Color(0xFFFF4081),
       const Color(0xFFDAA520),
@@ -90,7 +85,13 @@ class _LuckyScreenState extends State<LuckyScreen> {
     final selectedColor = categoryColors[index];
 
     return GestureDetector(
-      onTap: () => setState(() => selectedCategoryIndex = index),
+      onTap: () {
+        setState(() {
+          selectedCategoryIndex = index;
+        });
+        Provider.of<LuckyProvider>(context, listen: false).setSelected(selectedCategoryIndex);
+      },
+
       child: Container(
         height: 90,
         decoration: BoxDecoration(

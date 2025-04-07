@@ -1,4 +1,4 @@
-package com.gittowork.domain.github.dto.response;
+package com.gittowork.domain.github.model.repository;
 
 import lombok.*;
 

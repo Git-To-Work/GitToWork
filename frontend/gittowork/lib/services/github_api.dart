@@ -167,16 +167,16 @@ class GitHubApi {
         final results = response.data['results'];
         debugPrint("[분석 결과 데이터] : $results");
 
-        if(results['status']=='complete'){
+        if(results['status']=='COMPLETE'){
           debugPrint("✅분석 성공✅");
           provider.updateFromAnalysisResult(results);
         }
-        else if(results['status']=='analyzing'){
+        else if(results['status']=='ANALYZING'){
           debugPrint("🕒분석 진행중🕒");
           provider.updateFromAnalysisResult(results);
           provider.setStatus();
         }
-        else if(results['status']=='fail'){
+        else if(results['status']=='FAIL'){
           debugPrint("❌분석  실패❌");
           provider.setFail();
         }

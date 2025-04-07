@@ -8,11 +8,12 @@ import com.gittowork.domain.fortune.entity.FortuneInfo;
 import com.gittowork.domain.fortune.model.SajuResult;
 import com.gittowork.domain.fortune.model.SolarTerm;
 import com.gittowork.domain.fortune.repository.FortuneInfoRepository;
-import com.gittowork.domain.user.dto.response.MessageOnlyResponse;
+
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.FortuneInfoNotFoundException;
 import com.gittowork.global.exception.UserNotFoundException;
+import com.gittowork.global.response.MessageOnlyResponse;
 import com.gittowork.global.service.GptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -220,7 +221,7 @@ public class FortuneService {
             adjustedMinutes += 1440;
         }
 
-        double branchIndexDecimal = (double) adjustedMinutes / 120.0;
+        double branchIndexDecimal = adjustedMinutes / 120.0;
         int hourBranchIndex = (int) Math.floor(branchIndexDecimal) % 12;
         String hourBranch = EARTHLY_BRANCHES[hourBranchIndex];
 

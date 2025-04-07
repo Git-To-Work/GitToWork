@@ -44,6 +44,8 @@ public class CompanyInteractionService {
     private final JobNoticeRepository jobNoticeRepository;
     private final NoticeTechStackRepository noticeTechStackRepository;
 
+    private static final String ALREADY_EXISTS = "Already exists";
+
     /**
      * 1. 메서드 설명: 현재 인증된 사용자의 정보를 조회한다.
      * 2. 로직:
@@ -87,12 +89,12 @@ public class CompanyInteractionService {
                 .map(interaction -> {
                     Company company;
                     // 각 상호작용 타입에 따라 Company 객체 추출
-                    if (interaction instanceof UserScraps) {
-                        company = ((UserScraps) interaction).getCompany();
-                    } else if (interaction instanceof UserLikes) {
-                        company = ((UserLikes) interaction).getCompany();
-                    } else if (interaction instanceof UserBlacklist) {
-                        company = ((UserBlacklist) interaction).getCompany();
+                    if (interaction instanceof UserScraps userScraps) {
+                        company = userScraps.getCompany();
+                    } else if (interaction instanceof UserLikes userLikes) {
+                        company = userLikes.getCompany();
+                    } else if (interaction instanceof UserBlacklist userBlacklist) {
+                        company = userBlacklist.getCompany();
                     } else {
                         throw new IllegalArgumentException("Unsupported interaction type");
                     }
@@ -180,7 +182,7 @@ public class CompanyInteractionService {
         UserScrapsId userScrapsId = new UserScrapsId(user.getId(), company.getId());
 
         if(userScrapsRepository.findById(userScrapsId).isPresent()){
-            throw new InteractionDuplicateException("Already Exists");
+            throw new InteractionDuplicateException(ALREADY_EXISTS);
         }
 
         UserScraps userScraps = UserScraps.builder()
@@ -249,7 +251,7 @@ public class CompanyInteractionService {
         UserLikesId userLikesId = new UserLikesId(user.getId(), company.getId());
 
         if (userLikesRepository.findById(userLikesId).isPresent()) {
-            throw new InteractionDuplicateException("Already Exists");
+            throw new InteractionDuplicateException(ALREADY_EXISTS);
         }
 
         UserLikes userLikes = UserLikes.builder()
@@ -318,7 +320,7 @@ public class CompanyInteractionService {
         UserBlacklistId userBlacklistId = new UserBlacklistId(user.getId(), company.getId());
 
         if (userBlacklistRepository.findById(userBlacklistId).isPresent()) {
-            throw new InteractionDuplicateException("Already Exists");
+            throw new InteractionDuplicateException(ALREADY_EXISTS);
         }
 
         UserBlacklist userBlacklist = UserBlacklist.builder()

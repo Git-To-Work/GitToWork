@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ApiController {
 
     @GetMapping("/select/version")
-    public ApiResponse<?> apiVersion() {
+    public ApiResponse<ApiVersionResponse> apiVersion() {
         ApiVersionResponse apiVersionResponse = ApiVersionResponse.builder()
                 .version("0.0")
                 .releaseDate("2025-03-19")

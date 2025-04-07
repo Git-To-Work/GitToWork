@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface CoverLetterAnalysisRepository extends JpaRepository<CoverLetterAnalysis, Integer> {
-    Optional<CoverLetterAnalysis> findByFile_Id(Integer file_id);
+    Optional<CoverLetterAnalysis> findByFile_Id(int fileId);
 }

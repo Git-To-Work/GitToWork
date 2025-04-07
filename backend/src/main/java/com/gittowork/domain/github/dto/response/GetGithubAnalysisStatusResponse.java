@@ -9,7 +9,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GetGithubAnalysisStatusResponse {
+public class GetGithubAnalysisStatusResponse implements GithubAnalysisResponse {
     private String status;
     private String selectedRepositoryId;
     private List<String> selectedRepositories;

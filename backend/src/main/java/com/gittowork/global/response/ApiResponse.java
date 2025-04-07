@@ -9,6 +9,9 @@ import org.springframework.http.HttpStatus;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class ApiResponse<T> {
+
+    private static final String DEFAULT_SUCCESS_MESSAGE = "Success";
+
     private int status;
     private String code;
     private String message;
@@ -18,16 +21,8 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder()
                 .status(HttpStatus.OK.value())
                 .code(String.valueOf(HttpStatus.OK.value()))
-                .message("Success")
+                .message(DEFAULT_SUCCESS_MESSAGE)
                 .results(results)
-                .build();
-    }
-
-    public static <T> ApiResponse<T> success(HttpStatus status) {
-        return ApiResponse.<T>builder()
-                .status(status.value())
-                .code(String.valueOf(status.value()))
-                .message("Success")
                 .build();
     }
 
@@ -35,7 +30,7 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder()
                 .status(status.value())
                 .code(String.valueOf(status.value()))
-                .message("Success")
+                .message(DEFAULT_SUCCESS_MESSAGE)
                 .results(results)
                 .build();
     }
