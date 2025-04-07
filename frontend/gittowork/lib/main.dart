@@ -1,122 +1,255 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-void main() {
-  runApp(const MyApp());
+// Provider
+import 'package:provider/provider.dart';
+import 'package:gittowork/providers/auth_provider.dart';
+import 'package:gittowork/providers/github_analysis_provider.dart';
+import 'package:gittowork/providers/quiz_provider.dart';
+import 'package:gittowork/providers/company_provider.dart';
+import 'package:gittowork/providers/company_detail_provider.dart';
+import 'package:gittowork/providers/search_provider.dart';
+import 'package:gittowork/providers/lucky_provider.dart';
+
+// 레이아웃 파일 (스플래시로 쓸 화면)
+import 'layouts/no_appbar_no_bottom_nav_layout.dart';
+// 온보딩 화면 (3초 후 이동)
+import 'screens/onboarding/onboarding.dart';
+// 홈 화면 (자동 로그인 후 이동할 화면)
+import 'layouts/appbar_bottom_nav_layout.dart';
+
+import 'package:gittowork/services/company_api.dart';
+
+// GlobalKey for ScaffoldMessenger
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+GlobalKey<ScaffoldMessengerState>();
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint('백그라운드 메시지 수신: ${message.messageId}');
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+// 포그라운드 메시지 핸들러
+Future<void> _showForegroundNotification(RemoteMessage message) async {
+  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    'analysis_complete_channel',
+    '분석 완료 알림',
+    channelDescription: 'Github 및 자기소개서 분석 완료 알림',
+    importance: Importance.max,
+    priority: Priority.high,
+    icon: '@drawable/ic_stat_gittowork_default', // 앱 아이콘 사용
+  );
 
-  // This widget is the root of your application.
+  const NotificationDetails notificationDetails = NotificationDetails(
+    android: androidDetails,
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    message.hashCode,
+    message.notification?.title ?? '알림',
+    message.notification?.body ?? '알림 내용을 확인하세요.',
+    notificationDetails,
+    payload: message.data['alertType'], // alertType으로 구분 가능
+  );
+}
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  final storage = FlutterSecureStorage();
+  final token = await storage.read(key: 'jwt_token'); // 저장된 JWT 토큰 읽어오기
+
+  // Firebase 초기화
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // FCM 권한 요청 (안드로이드 13 이상)
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  // flutter_local_notifications 초기화 (안드로이드 설정)
+  const AndroidInitializationSettings androidInitSettings =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initSettings =
+  InitializationSettings(android: androidInitSettings);
+
+  await flutterLocalNotificationsPlugin.initialize(
+    initSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      // 로컬 알림 클릭 시 처리 (선택사항)
+      final alertType = response.payload;
+      if (alertType != null) {
+        debugPrint('알림 클릭됨, alertType: $alertType');
+        // 여기서 화면 이동 처리 가능
+      }
+    },
+  );
+
+  // FCM 포그라운드 메시지 수신 리스너 설정
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    debugPrint('포그라운드 메시지 수신: ${message.messageId}');
+    _showForegroundNotification(message);
+  });
+
+  debugPrint('JWT 토큰: $token');
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => GitHubAnalysisProvider()),
+        ChangeNotifierProvider(create: (_) => QuizProvider()),
+        ChangeNotifierProvider(create: (_) => CompanyProvider()),
+        ChangeNotifierProvider(create: (_) => CompanyDetailProvider()),
+        ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
+        ChangeNotifierProvider(create: (_) => LuckyProvider()),
+      ],
+      child: MyApp(initialToken: token),
+    ),
+  );
+}
+
+class MyApp extends StatefulWidget {
+  final String? initialToken;
+  const MyApp({super.key, this.initialToken});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    if (widget.initialToken != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Provider.of<AuthProvider>(context, listen: false)
+            .setAccessToken(widget.initialToken!);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  DateTime? _lastRequestTime;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.detached || state == AppLifecycleState.inactive) {
+      // 3분 제한 체크
+      final now = DateTime.now();
+      if (_lastRequestTime == null || now.difference(_lastRequestTime!).inMinutes >= 3) {
+        _lastRequestTime = now;
+        try {
+          debugPrint("🛑 앱 종료되어도 requestAction 실행됨.");
+          await CompanyApi.requestAction();
+        } catch (e) {
+          debugPrint("❌ requestAction 에러: $e");
+        }
+      } else {
+        debugPrint("⏱ 3분 내 요청 제한으로 requestAction 실행하지 않음.");
+      }
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Git To Work',
+      scaffoldMessengerKey: scaffoldMessengerKey,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        primaryColor: Colors.white,
+        scaffoldBackgroundColor: Colors.white,
+        fontFamily: 'Pretendard',
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(fontWeight: FontWeight.w500),
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const SplashScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _SplashScreenState extends State<SplashScreen> {
+  late final AuthProvider _authProvider;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _authProvider = Provider.of<AuthProvider>(context, listen: false);
+    _navigateAfterDelay();
+  }
+
+  Future<void> _navigateAfterDelay() async {
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
+    if (_authProvider.accessToken != null) {
+      final success = await _authProvider.autoLoginWithToken();
+      if (!mounted) return;
+
+      if (success) {
+        try {
+          await _authProvider.fetchUserProfile();
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
+          );
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("로그인에 실패했습니다.")),
+            );
+          }
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          );
+        }
+      } else {
+        _authProvider.logout();
+        final storage = FlutterSecureStorage();
+        await storage.delete(key: 'jwt_token');
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+      }
+    } else {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
+    return const NoAppBarNoBottomNavLayout();
   }
 }

@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    container_name: backend
+    hostname: backend
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      s12p21c103_app-network:
+
+  fastapi:
+    container_name: fastapi
+    hostname: fastapi
+    build:
+      context: ../bigdata
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: "gittowork"
+      DEBUG: "true"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      s12p21c103_app-network:
+
+networks:
+  s12p21c103_app-network:
+    external: true
