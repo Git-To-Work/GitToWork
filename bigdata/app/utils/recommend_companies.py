@@ -1,5 +1,3 @@
-# app/utils/recommend_companies.py
-
 import json
 import os
 import logging
@@ -18,6 +16,7 @@ from app.models import JobNotice, Company
 # 현재 시각 (UTC 및 KST)
 now_utc = datetime.now(tz=ZoneInfo("UTC"))
 now_kst = now_utc.astimezone(ZoneInfo("Asia/Seoul")).isoformat()
+
 
 def min_max_normalize(score_dict):
     values = list(score_dict.values())
@@ -39,38 +38,51 @@ def parse_analysis_result(analysis_result):
     return analysis_result
 
 
+# --- merge_repository_metrics 관련 헬퍼 함수 ---
+def _merge_language_commit_metrics(repositories):
+    merged = {}
+    for repo in repositories:
+        repo_lang = repo.get("language_commit_metrics", {})
+        for lang, metrics in repo_lang.items():
+            commit_count = metrics.get("commit_count", 0)
+            if lang in merged:
+                merged[lang]["commit_count"] += commit_count
+            else:
+                merged[lang] = {"commit_count": commit_count}
+    return merged
+
+
+def _merge_complexity_metrics(repositories):
+    merged = {}
+    for repo in repositories:
+        repo_comp = repo.get("complexity_metrics", {})
+        for lang, metrics in repo_comp.items():
+            # 복잡도 값이 0보다 큰 경우 우선 적용
+            if lang in merged:
+                if metrics.get("average_cyclomatic_complexity", 0) > 0:
+                    merged[lang] = metrics
+            else:
+                merged[lang] = metrics
+    return merged
+
+
+def _max_readme_flesch(repositories):
+    readme_scores = []
+    for repo in repositories:
+        readme = repo.get("readme_analysis", {})
+        if readme:
+            readme_scores.append(readme.get("flesch_reading_ease", 0))
+    return max(readme_scores) if readme_scores else 0
+
+
 def merge_repository_metrics(repositories):
     """
     각 저장소의 language_commit_metrics, complexity_metrics, readme_analysis 데이터를 병합합니다.
     반환: (merged_language_metrics, merged_complexity_metrics, max_flesch)
     """
-    merged_language_metrics = {}
-    merged_complexity_metrics = {}
-    readme_scores = []
-    for repo in repositories:
-        # language_commit_metrics 병합 (commit_count 누적)
-        repo_lang = repo.get("language_commit_metrics", {})
-        for lang, metrics in repo_lang.items():
-            commit_count = metrics.get("commit_count", 0)
-            if lang in merged_language_metrics:
-                merged_language_metrics[lang]["commit_count"] += commit_count
-            else:
-                merged_language_metrics[lang] = {"commit_count": commit_count}
-
-        # complexity_metrics 병합 (0보다 큰 값 우선 적용)
-        repo_comp = repo.get("complexity_metrics", {})
-        for lang, metrics in repo_comp.items():
-            if lang in merged_complexity_metrics:
-                if metrics.get("average_cyclomatic_complexity", 0) > 0:
-                    merged_complexity_metrics[lang] = metrics
-            else:
-                merged_complexity_metrics[lang] = metrics
-
-        # readme_analysis: Flesch Reading Ease 점수 수집
-        readme = repo.get("readme_analysis", {})
-        if readme:
-            readme_scores.append(readme.get("flesch_reading_ease", 0))
-    max_flesch = max(readme_scores) if readme_scores else 0
+    merged_language_metrics = _merge_language_commit_metrics(repositories)
+    merged_complexity_metrics = _merge_complexity_metrics(repositories)
+    max_flesch = _max_readme_flesch(repositories)
     return merged_language_metrics, merged_complexity_metrics, max_flesch
 
 
@@ -164,8 +176,8 @@ def compute_content_scores(company_profiles, user_profile_text, liked_set, black
     return content_scores, company_ids
 
 
-def compute_cf_scores(companies, jobs, user_profile_text, user_github_name, liked_set, blacklisted_set):
-    """협업 필터링(CF) 점수를 Surprise 라이브러리를 사용하여 계산합니다."""
+# --- compute_cf_scores 관련 헬퍼 함수 ---
+def _extract_job_texts_and_ids(jobs):
     job_texts, job_company_ids = [], []
     for job in jobs:
         if hasattr(job, "notice_tech_stacks"):
@@ -178,6 +190,12 @@ def compute_cf_scores(companies, jobs, user_profile_text, user_github_name, like
             continue
         job_texts.append(text)
         job_company_ids.append(job.company_id)
+    return job_texts, job_company_ids
+
+
+def compute_cf_scores(companies, jobs, user_profile_text, user_github_name, liked_set, blacklisted_set):
+    """협업 필터링(CF) 점수를 Surprise 라이브러리를 사용하여 계산합니다."""
+    job_texts, job_company_ids = _extract_job_texts_and_ids(jobs)
     if not job_texts:
         return {}
     vectorizer_cf = TfidfVectorizer()
@@ -214,8 +232,11 @@ def compute_cf_scores(companies, jobs, user_profile_text, user_github_name, like
     return cf_scores
 
 
-def combine_scores(companies, content_scores, cf_scores, liked_set, blacklisted_set, company_ids):
-    """정규화 후 콘텐츠 및 CF 점수를 하이브리드로 결합하고 추천 리스트를 생성합니다."""
+def combine_scores(companies, content_scores, cf_scores, blacklisted_set):
+    """
+    정규화 후 콘텐츠 및 CF 점수를 하이브리드로 결합하고 추천 리스트를 생성합니다.
+    사용하지 않는 매개변수(liked_set, company_ids)를 제거하였습니다.
+    """
     content_norm = min_max_normalize(content_scores)
     cf_norm = min_max_normalize(cf_scores)
     ALPHA, BETA = 0.9, 0.1
@@ -266,7 +287,6 @@ def save_to_mongo(user_id, selected_repositories_id, user_github_name, recommend
 
 
 # --- 메인 함수 ---
-
 def run_hybrid_recommendation(db: Session,
                               user_id,
                               selected_repositories_id,
@@ -289,7 +309,7 @@ def run_hybrid_recommendation(db: Session,
     company_profiles = generate_company_profiles(company_rows)
 
     # 3. 콘텐츠 기반 점수 계산
-    content_scores, company_ids = compute_content_scores(
+    content_scores, _ = compute_content_scores(
         company_profiles, user_profile_text, liked_companies_set,
         blacklisted_companies_set, scraped_companies_set, user_search_detail_history
     )
@@ -300,8 +320,7 @@ def run_hybrid_recommendation(db: Session,
 
     # 5. 하이브리드 점수 결합 및 추천 리스트 생성
     final_recommendations = combine_scores(companies, content_scores, cf_scores,
-                                           liked_companies_set, blacklisted_companies_set,
-                                           company_ids)
+                                           blacklisted_companies_set)
 
     # 6. 추천 결과를 MongoDB에 저장
     save_to_mongo(user_id, selected_repositories_id, user_github_name, final_recommendations, now_kst)
