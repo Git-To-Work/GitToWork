@@ -26,14 +26,6 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    public static <T> ApiResponse<T> success(HttpStatus status) {
-        return ApiResponse.<T>builder()
-                .status(status.value())
-                .code(String.valueOf(status.value()))
-                .message(DEFAULT_SUCCESS_MESSAGE)
-                .build();
-    }
-
     public static <T> ApiResponse<T> success(HttpStatus status, T results) {
         return ApiResponse.<T>builder()
                 .status(status.value())

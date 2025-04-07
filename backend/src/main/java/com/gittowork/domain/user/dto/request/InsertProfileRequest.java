@@ -3,8 +3,6 @@ package com.gittowork.domain.user.dto.request;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
-import javax.validation.constraints.Size;
-
 @Getter
 @Setter
 @NoArgsConstructor
