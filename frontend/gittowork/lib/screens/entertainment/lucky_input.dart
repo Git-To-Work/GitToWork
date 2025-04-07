@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/lucky_provider.dart';
 import '../../services/lucky_api.dart';
+import '../../widgets/alert_modal.dart';
 
 class LuckyInput extends StatefulWidget {
   final VoidCallback onSubmit;
@@ -51,7 +52,24 @@ class _LuckyInputState extends State<LuckyInput> {
               label: '생년월일',
               hint: '예: 1999-07-23',
               keyboardType: TextInputType.number,
-              onChanged: (val) => luckyProvider.setBirthDate(val),
+              onChanged: (val) {
+                final digits = val.replaceAll(RegExp(r'\D'), '');
+                if (digits.length >= 8) {
+                  final year = digits.substring(0, 4);
+                  final month = digits.substring(4, 6);
+                  final day = digits.substring(6, 8);
+                  final formatted = '$year-$month-$day';
+
+                  _birthDateController.value = TextEditingValue(
+                    text: formatted,
+                    selection: TextSelection.collapsed(offset: formatted.length),
+                  );
+
+                  luckyProvider.setBirthDate(formatted);
+                } else {
+                  luckyProvider.setBirthDate(val);
+                }
+              },
             ),
           ),
           const SizedBox(height: 12),
@@ -59,15 +77,9 @@ class _LuckyInputState extends State<LuckyInput> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                Expanded(
-                  flex: 3,
-                  child: _timeBottomPicker(context, luckyProvider),
-                ),
+                Expanded(flex: 3, child: _timeBottomPicker(context, luckyProvider)),
                 const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: _genderBottomPicker(context, luckyProvider),
-                ),
+                Expanded(flex: 2, child: _genderBottomPicker(context, luckyProvider)),
               ],
             ),
           ),
@@ -81,9 +93,7 @@ class _LuckyInputState extends State<LuckyInput> {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(16),
-                  ),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
                 ),
               ),
               onPressed: () async {
@@ -93,7 +103,24 @@ class _LuckyInputState extends State<LuckyInput> {
                   gender: luckyProvider.gender,
                   birthTime: luckyProvider.birthTime,
                 );
-                debugPrint("[값 확인]  --> ${luckyProvider.birthDate} ${luckyProvider.gender} ${luckyProvider.birthTime}");
+
+                if (luckyProvider.birthDate=='' || luckyProvider.gender=='' || luckyProvider.birthTime=='') {
+                  await showCustomAlertDialog(
+                    context: context,
+                    content: '생년월일, 성별, 태어난 시간을 모두 입력해주세요.',
+                  );
+                  return;
+                }
+
+                if (!isValidBirthDateFormat(luckyProvider.birthDate)) {
+                  await showCustomAlertDialog(
+                    context: context,
+                    content: '생년월일을 올바른 형식으로 입력해주세요.',
+                  );
+                  return;
+                }
+
+                luckyProvider.setLoading();
 
                 try {
                   await LuckyService.saveFortuneUserInfo(context);
@@ -106,15 +133,8 @@ class _LuckyInputState extends State<LuckyInput> {
                 } catch (e) {
                   debugPrint('❌ 운세 조회 실패: $e');
                 }
-
-                // 3. 결과 출력 UI 전환
-                widget.onSubmit();
               },
-
-              child: const Text(
-                '운세 보기',
-                style: TextStyle(fontSize: 16),
-              ),
+              child: const Text('운세 보기', style: TextStyle(fontSize: 16)),
             ),
           ),
         ],
@@ -177,9 +197,7 @@ class _LuckyInputState extends State<LuckyInput> {
                 ),
               ),
             );
-            if (result != null) {
-              luckyProvider.setGender(result);
-            }
+            if (result != null) luckyProvider.setGender(result);
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -212,9 +230,19 @@ class _LuckyInputState extends State<LuckyInput> {
         InkWell(
           onTap: () async {
             List<String> timeOptions = [];
+
             for (int hour = 0; hour < 24; hour++) {
-              timeOptions.add('${hour.toString().padLeft(2, '0')}:00');
-              timeOptions.add('${hour.toString().padLeft(2, '0')}:30');
+              for (int minute = 0; minute < 60; minute += 30) {
+                final start = '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+                int endHour = hour;
+                int endMinute = minute + 30;
+                if (endMinute >= 60) {
+                  endMinute = 0;
+                  endHour = (hour + 1) % 24;
+                }
+                final end = '${endHour.toString().padLeft(2, '0')}:${endMinute.toString().padLeft(2, '0')}';
+                timeOptions.add('$start ~ $end');
+              }
             }
 
             final result = await showModalBottomSheet<String>(
@@ -233,9 +261,7 @@ class _LuckyInputState extends State<LuckyInput> {
               ),
             );
 
-            if (result != null) {
-              luckyProvider.setBirthTime(result);
-            }
+            if (result != null) luckyProvider.setBirthTime(result);
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -259,15 +285,12 @@ class _LuckyInputState extends State<LuckyInput> {
     );
   }
 
-  /// 🔹 "11:00" -> "11:00 ~ 11:30"
   String formatTimeRange(String time) {
     if (time.isEmpty) return '눌러서 선택';
-
-    final parts = time.split(':');
+    final start = time.split(' ~ ')[0];
+    final parts = start.split(':');
     final hour = int.parse(parts[0]);
     final minute = int.parse(parts[1]);
-
-    final start = '$time';
 
     int nextHour = hour;
     int nextMinute = minute + 30;
@@ -276,9 +299,22 @@ class _LuckyInputState extends State<LuckyInput> {
       nextHour = (nextHour + 1) % 24;
     }
 
-    final end =
-        '${nextHour.toString().padLeft(2, '0')}:${nextMinute.toString().padLeft(2, '0')}';
-
+    final end = '${nextHour.toString().padLeft(2, '0')}:${nextMinute.toString().padLeft(2, '0')}';
     return '$start ~ $end';
   }
+}
+
+String formatBirthDate(String raw) {
+  if (raw.contains('-') && raw.length == 10) return raw;
+  final digits = raw.replaceAll(RegExp(r'\D'), '');
+  if (digits.length != 8) return raw;
+  final year = digits.substring(0, 4);
+  final month = digits.substring(4, 6);
+  final day = digits.substring(6, 8);
+  return '$year-$month-$day';
+}
+
+bool isValidBirthDateFormat(String input) {
+  final regex = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+  return regex.hasMatch(input);
 }

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// 🔸 운세 카테고리 타입 정의
+enum FortuneType { all, study, love, wealth }
+
+
 class LuckyProvider with ChangeNotifier {
   // 사용자 정보
   String _birthDate = '';
@@ -7,11 +11,15 @@ class LuckyProvider with ChangeNotifier {
   String _birthTime = '';
 
   // 운세 결과
-  String _overall = '정통운세 · 월간종합운세. 이달의 총론과 재물, 애정, 건강, 기일 등 7가지 테마를 설정하여 안내해드려요. · 평생운세. 나의 운명을 미리 알고 활용해보세요';
+  FortuneType _selected = FortuneType.all;
+  String _overall = '';
   String _wealth = '';
   String _love = '';
   String _study = '';
-  String _fortuneDate = '오늘'; // 운세 날짜
+  String _fortuneDate = '오늘';
+
+  // 상태
+  bool _loading = false;
 
   // Getters
   String get birthDate => _birthDate;
@@ -23,6 +31,8 @@ class LuckyProvider with ChangeNotifier {
   String get love => _love;
   String get study => _study;
   String get fortuneDate => _fortuneDate;
+  bool get loading => _loading;
+  FortuneType get selected => _selected;
 
   // Setters - 사용자 정보
   void setBirthDate(String value) {
@@ -51,6 +61,27 @@ class LuckyProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Setters - 상태
+  void setSelected(int value) {
+    if(value==0){
+      _selected = FortuneType.all;
+    }else if(value==1){
+      _selected = FortuneType.study;
+    }
+    else if(value==2){
+      _selected = FortuneType.love;
+    }
+    else{
+      _selected = FortuneType.wealth;
+    }
+    notifyListeners();
+  }
+
+  void setLoading() {
+    _loading = true;
+    notifyListeners();
+  }
+
   void clearFortune() {
     _overall = '';
     _wealth = '';
@@ -67,9 +98,10 @@ class LuckyProvider with ChangeNotifier {
     required String study,
   }) {
     _overall = overall;
-    _wealth = wealth;
-    _love = love;
     _study = study;
+    _love = love;
+    _wealth = wealth;
+    _loading = false;
     notifyListeners();
   }
 }
