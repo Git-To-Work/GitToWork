@@ -148,6 +148,7 @@ class UserApi {
     if (response.statusCode == 200) {
       final results = response.data['results'];
       final companiesJson = results['companies'] as List<dynamic>;
+      debugPrint(companiesJson.toString());
       return companiesJson.map((json) => Company.fromJson(json)).toList();
     } else {
       throw Exception('스크랩 기업 불러오기 실패: ${response.statusCode}');
