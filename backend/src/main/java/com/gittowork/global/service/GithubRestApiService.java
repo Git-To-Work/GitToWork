@@ -1006,12 +1006,9 @@ public class GithubRestApiService {
 
         if (!newEvents.isEmpty()) {
             githubEventRepository.saveAll(newEvents);
-            boolean hasAllowed = newEvents.stream()
+            return newEvents.stream()
                     .map(githubEvent -> githubEvent.getEvents().getEventType())
                     .anyMatch(allowedTypes::contains);
-            if (hasAllowed) {
-                return true;
-            }
         }
         return false;
     }
