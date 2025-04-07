@@ -28,9 +28,5 @@ public class UpdateProfileRequest {
     private String phone;
 
     @NotNull
-    @Size(max = 5)
-    private int[] interestsFields;
-
-    @NotNull
     private boolean notificationAgreed;
 }

@@ -9,13 +9,14 @@ import com.gittowork.domain.user.dto.request.UpdateProfileRequest;
 import com.gittowork.domain.user.dto.response.GetInterestFieldsResponse;
 import com.gittowork.domain.user.dto.response.GetMyInterestFieldResponse;
 import com.gittowork.domain.user.dto.response.GetMyProfileResponse;
-import com.gittowork.domain.user.dto.response.MessageOnlyResponse;
+
 import com.gittowork.domain.user.entity.User;
 import com.gittowork.domain.user.entity.UserGitInfo;
 import com.gittowork.domain.user.repository.UserGitInfoRepository;
 import com.gittowork.domain.user.repository.UserRepository;
 import com.gittowork.global.exception.DataNotFoundException;
 import com.gittowork.global.exception.UserNotFoundException;
+import com.gittowork.global.response.MessageOnlyResponse;
 import com.gittowork.global.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,8 @@ public class UserService {
     private final RedisService redisService;
     private final FieldRepository fieldRepository;
     private final GithubAnalysisService githubAnalysisService;
+
+    private static final String USER_NOT_FOUND = "User not found";
 
     /**
      * 1. 메서드 설명: 프로필 추가 정보를 저장하는 API.
@@ -129,9 +132,8 @@ public class UserService {
         String username = getUserName();
 
         User user = userRepository.findByGithubName(username)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
-        String[] fieldsNames = resolveInterestFieldNames(username);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
         return GetMyProfileResponse.builder()
@@ -143,7 +145,6 @@ public class UserService {
                 .birthDt(user.getBirthDt().format(formatter))
                 .experience(user.getExperience())
                 .avatarUrl(user.getUserGitInfo().getAvatarUrl())
-                .interestFields(fieldsNames)
                 .notificationAgreed(user.getNotificationAgreeDttm() != null)
                 .build();
     }
@@ -160,15 +161,12 @@ public class UserService {
     @Transactional
     public MessageOnlyResponse updateProfile(UpdateProfileRequest updateProfileRequest) {
         User user = userRepository.findById(updateProfileRequest.getUserId())
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
         user.setName(updateProfileRequest.getName());
         user.setBirthDt(LocalDate.parse(updateProfileRequest.getBirthDt()));
         user.setExperience(updateProfileRequest.getExperience());
         user.setPhone(updateProfileRequest.getPhone());
-        user.setInterestFields(
-                Arrays.toString(updateProfileRequest.getInterestsFields()).replaceAll(" ", "")
-        );
 
         if (user.getNotificationAgreeDttm() != null) {
             if (!updateProfileRequest.isNotificationAgreed()) {
@@ -218,7 +216,7 @@ public class UserService {
         String username = getUserName();
 
         User user = userRepository.findByGithubName(username)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
         String interestFields = Arrays.toString(updateInterestsFieldsRequest.getInterestsFields()).replaceAll(" ", "");
         user.setInterestFields(interestFields);
@@ -270,7 +268,7 @@ public class UserService {
         String username = authentication.getName();
 
         User user = userRepository.findByGithubName(username)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
         user.setDeleteDttm(LocalDateTime.now());
         userRepository.save(user);
@@ -278,9 +276,9 @@ public class UserService {
         redisService.deleteKey(username + "_refresh_token");
 
         String accessToken = null;
-        if (authentication.getCredentials() instanceof String) {
-            accessToken = (String) authentication.getCredentials();
-            if (accessToken != null && accessToken.startsWith("Bearer ")) {
+        if (authentication.getCredentials() instanceof String string) {
+            accessToken = string;
+            if (accessToken.startsWith("Bearer ")) {
                 accessToken = accessToken.substring(7);
             }
         }
@@ -315,7 +313,7 @@ public class UserService {
      */
     private String[] resolveInterestFieldNames(String username) {
         User user = userRepository.findByGithubName(username)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
         List<Integer> interestFieldsNumbers = Arrays.stream(
                         user.getInterestFields().replaceAll("[\\[\\]]", "").split(","))
@@ -332,7 +330,7 @@ public class UserService {
 
     private int[] resolveInterestFieldIds(String username) {
         User user = userRepository.findByGithubName(username)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
 
         return Arrays.stream(user.getInterestFields().replaceAll("[\\[\\]]", "").split(","))
                 .map(String::trim)

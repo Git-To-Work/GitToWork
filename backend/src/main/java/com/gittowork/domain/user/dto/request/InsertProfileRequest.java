@@ -16,10 +16,6 @@ public class InsertProfileRequest {
     private int experience;
 
     @NotNull
-    @Size(max = 5)
-    private int[] interestsFields;
-
-    @NotNull
     private String name;
 
     @NotNull

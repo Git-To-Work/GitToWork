@@ -12,7 +12,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GetGithubAnalysisByRepositoryResponse {
+public class GetGithubAnalysisByRepositoryResponse implements GithubAnalysisResponse {
     private String status;
     private String selectedRepositoryId;
     private String analysisDate;
