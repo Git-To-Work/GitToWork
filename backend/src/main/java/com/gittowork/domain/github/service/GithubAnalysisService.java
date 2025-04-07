@@ -349,8 +349,12 @@ public class GithubAnalysisService {
             totalPRs.addAndGet(prCount);
             totalIssues.addAndGet(issueCount);
             return result;
-        } catch (InterruptedException | IOException e) {
-            log.error("Exception while analyzing repository: {}", repositoryPathUrl, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Interrupted while analyzing repository: {}", repositoryPathUrl, e);
+            throw new SonarAnalysisException("SonarQube analysis failed due to interruption: " + e.getMessage());
+        } catch (IOException e) {
+            log.error("IOException while analyzing repository: {}", repositoryPathUrl, e);
             throw new SonarAnalysisException("SonarQube analysis failed: " + e.getMessage());
         }
     }
@@ -570,11 +574,11 @@ public class GithubAnalysisService {
         );
 
         double javaPenalty = 0.0;
-        javaPenalty += severityWeights.get(SEVERITY_BLOCKER) * Math.log(blockerCount + 1);
-        javaPenalty += severityWeights.get(SEVERITY_CRITICAL) * Math.log(criticalCount + 1);
-        javaPenalty += severityWeights.get(SEVERITY_MAJOR) * Math.log(majorCount + 1);
-        javaPenalty += severityWeights.get(SEVERITY_MINOR) * Math.log(minorCount + 1);
-        javaPenalty += severityWeights.get(SEVERITY_INFO) * Math.log(infoCount + 1);
+        javaPenalty += severityWeights.get(SEVERITY_BLOCKER) * Math.log((double) blockerCount + 1);
+        javaPenalty += severityWeights.get(SEVERITY_CRITICAL) * Math.log((double) criticalCount + 1);
+        javaPenalty += severityWeights.get(SEVERITY_MAJOR) * Math.log((double) majorCount + 1);
+        javaPenalty += severityWeights.get(SEVERITY_MINOR) * Math.log((double) minorCount + 1);
+        javaPenalty += severityWeights.get(SEVERITY_INFO) * Math.log((double) infoCount + 1);
 
         return JavaPenaltyResult.builder()
                 .penalty(javaPenalty)

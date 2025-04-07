@@ -23,6 +23,7 @@ import org.springframework.web.client.RestTemplate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -249,7 +250,7 @@ public class GithubRestApiService {
             List<Commit> fetchedCommits = (responseBody == null ? Collections.<Map<String, Object>>emptyList() : responseBody)
                     .stream()
                     .map(commitMap -> parseCommit(commitMap, githubName, repositoryName, detailRequest))
-                    .collect(Collectors.toList());
+                    .toList();
 
             Optional<GithubCommit> existingCommitOpt = githubCommitRepository.findByUserIdAndRepoId(userId, repoId);
             if (existingCommitOpt.isPresent()) {
@@ -353,7 +354,7 @@ public class GithubRestApiService {
                     return isCodeFile(fullFilename);
                 })
                 .map(fileMap -> (String) fileMap.get("filename"))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -471,7 +472,6 @@ public class GithubRestApiService {
 
         for (Repository repository : repositories) {
             String repositoryName = repository.getRepoName();
-            int repoId = repository.getRepoId();
 
             String url = "https://api.github.com/repos/{userName}/{repositoryName}/issues?state=all";
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
@@ -502,7 +502,7 @@ public class GithubRestApiService {
 
             List<GithubIssue> newIssues = parsedIssues.stream()
                     .filter(issue -> !githubIssueRepository.existsByIssueId(issue.getIssueId()))
-                    .collect(Collectors.toList());
+                    .toList();
 
             if (!newIssues.isEmpty()) {
                 githubIssueRepository.saveAll(newIssues);
@@ -525,11 +525,11 @@ public class GithubRestApiService {
         }
 
         int repoId = Optional.ofNullable(issueMap.get("repo_id"))
-                .filter(val -> val instanceof Number)
+                .filter(Number.class::isInstance)
                 .map(val -> ((Number) val).intValue())
                 .orElse(0);
         long issueId = Optional.ofNullable(issueMap.get("issue_id"))
-                .filter(val -> val instanceof Number)
+                .filter(Number.class::isInstance)
                 .map(val -> ((Number) val).longValue())
                 .orElse(0L);
         String url = Optional.ofNullable(issueMap.get("url"))
@@ -549,7 +549,7 @@ public class GithubRestApiService {
                 .map(String.class::cast)
                 .orElse("");
         int comments = Optional.ofNullable(issueMap.get("comments"))
-                .filter(val -> val instanceof Number)
+                .filter(Number.class::isInstance)
                 .map(val -> ((Number) val).intValue())
                 .orElse(0);
 
@@ -560,7 +560,8 @@ public class GithubRestApiService {
             Map<String, Object> userMap = (Map<String, Object>) userObj;
             try {
                 user = parseIssueUser(userMap);
-            } catch (Exception e) {
+            } catch (NullPointerException e) {
+                throw new NullPointerException("Failed to parse user: " + userMap);
             }
         }
 
@@ -579,7 +580,7 @@ public class GithubRestApiService {
                         }
                     })
                     .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         IssueUser assignee = null;
@@ -589,7 +590,8 @@ public class GithubRestApiService {
             Map<String, Object> assigneeMap = (Map<String, Object>) assigneeObj;
             try {
                 assignee = parseIssueUser(assigneeMap);
-            } catch (Exception e) {
+            } catch (NullPointerException e) {
+                throw new NullPointerException("Failed to parse assignee: " + assigneeMap);
             }
         }
 
@@ -608,7 +610,7 @@ public class GithubRestApiService {
                         }
                     })
                     .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         return GithubIssue.builder()
@@ -715,7 +717,7 @@ public class GithubRestApiService {
 
             List<GithubPullRequest> newPRs = parsedPRs.stream()
                     .filter(pr -> !githubPullRequestRepository.existsByPrId(pr.getPrId()))
-                    .collect(Collectors.toList());
+                    .toList();
 
             if (!newPRs.isEmpty()) {
                 githubPullRequestRepository.saveAll(newPRs);
@@ -724,109 +726,49 @@ public class GithubRestApiService {
     }
 
     /**
-     * 1. 메서드 설명: API 응답 데이터의 개별 Pull Request 정보를 파싱하여 GithubPullRequest 객체로 변환하는 헬퍼 메서드.
+     * 1. 메서드 설명: 주어진 Pull Request 정보를 담은 Map을 파싱하여 GithubPullRequest 객체로 변환한다.
      * 2. 로직:
-     *    - base.repo.full_name 값을 통해 저장소 식별자(repoId)를 추출하고,
-     *      "number", URL, title, body 등 기본 필드를 추출하며, comments, review_comments, commits 값은 없으면 0으로 기본 설정한다.
-     *    - user, head, base 객체는 각각의 헬퍼 메서드(parsePRUser, parsePRBranch)를 사용하여 파싱한다.
+     *    - prMap이 null이면 IllegalArgumentException을 발생시킨다.
+     *    - "base", "repo", "user", "head" 등의 Map 데이터를 추출하여 각각 적절한 값으로 파싱한다.
+     *    - 숫자 값은 parseIntValue()를 사용해 파싱하며, 문자열 값은 getStringValue()를 사용한다.
+     *    - PR 사용자와 브랜치는 tryParse() 메서드를 통해 안전하게 파싱한다.
      * 3. param:
-     *      prMap - GitHub Pull Request API 응답 데이터의 Map.
-     * 4. return: 파싱된 정보를 기반으로 생성된 GithubPullRequest 객체.
+     *      Map<String, Object> prMap - Pull Request 데이터를 포함한 Map.
+     * 4. return: GithubPullRequest 객체.
      */
     private GithubPullRequest parsePullRequest(Map<String, Object> prMap) {
         if (prMap == null) {
             throw new IllegalArgumentException("prMap cannot be null");
         }
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> baseMap = prMap.get("base") instanceof Map ? (Map<String, Object>) prMap.get("base") : Collections.emptyMap();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> baseRepo = baseMap.get("repo") instanceof Map ? (Map<String, Object>) baseMap.get("repo") : Collections.emptyMap();
+        // "base"와 "repo" Map 추출
+        Map<String, Object> baseMap = getMap(prMap.get("base"));
+        Map<String, Object> baseRepo = getMap(baseMap.get("repo"));
 
-        int repoId = 0;
-        Object repoObj = baseRepo.get("full_name");
-        if (repoObj instanceof Number) {
-            repoId = ((Number) repoObj).intValue();
-        } else if (repoObj instanceof String) {
-            try {
-                repoId = Integer.parseInt((String) repoObj);
-            } catch (NumberFormatException ignored) {
-            }
-        }
+        int repoId = parseIntValue(baseRepo.get("full_name"));
+        int prId = parseIntValue(prMap.get("number"));
 
-        int prId = 0;
-        Object prIdObj = prMap.get("number");
-        if (prIdObj instanceof Number) {
-            prId = ((Number) prIdObj).intValue();
-        } else if (prIdObj instanceof String) {
-            try {
-                prId = Integer.parseInt((String) prIdObj);
-            } catch (NumberFormatException ignored) {
-            }
-        }
+        // URL, title, body 등 문자열 필드 파싱
+        String url = getStringValue(prMap.get("url"));
+        String htmlUrl = getStringValue(prMap.get("html_url"));
+        String diffUrl = getStringValue(prMap.get("diff_url"));
+        String patchUrl = getStringValue(prMap.get("patch_url"));
+        String title = getStringValue(prMap.get("title"));
+        String body = getStringValue(prMap.get("body"));
 
-        String url = prMap.get("url") instanceof String ? (String) prMap.get("url") : "";
-        String htmlUrl = prMap.get("html_url") instanceof String ? (String) prMap.get("html_url") : "";
-        String diffUrl = prMap.get("diff_url") instanceof String ? (String) prMap.get("diff_url") : "";
-        String patchUrl = prMap.get("patch_url") instanceof String ? (String) prMap.get("patch_url") : "";
-        String title = prMap.get("title") instanceof String ? (String) prMap.get("title") : "";
-        String body = prMap.get("body") instanceof String ? (String) prMap.get("body") : "";
+        // 댓글 및 커밋 등 카운트 값 파싱
+        int commentsCount = parseIntValue(prMap.get("comments"));
+        int reviewCommentsCount = parseIntValue(prMap.get("review_comments"));
+        int commitsCount = parseIntValue(prMap.get("commits"));
 
-        int commentsCount = 0;
-        Object commentsObj = prMap.get("comments");
-        if (commentsObj instanceof Number) {
-            commentsCount = ((Number) commentsObj).intValue();
-        } else if (commentsObj instanceof String) {
-            try {
-                commentsCount = Integer.parseInt((String) commentsObj);
-            } catch (NumberFormatException ignored) {
-            }
-        }
+        // 사용자, head, base 브랜치 파싱 (에러 발생 시 로그 기록 후 null 반환)
+        Map<String, Object> userMap = getMap(prMap.get("user"));
+        PullRequestUser user = tryParse(() -> parsePRUser(userMap), "Error parsing user in pull request");
 
-        int reviewCommentsCount = 0;
-        Object reviewCommentsObj = prMap.get("review_comments");
-        if (reviewCommentsObj instanceof Number) {
-            reviewCommentsCount = ((Number) reviewCommentsObj).intValue();
-        } else if (reviewCommentsObj instanceof String) {
-            try {
-                reviewCommentsCount = Integer.parseInt((String) reviewCommentsObj);
-            } catch (NumberFormatException ignored) {
-            }
-        }
+        Map<String, Object> headMap = getMap(prMap.get("head"));
+        PullRequestBranch head = tryParse(() -> parsePRBranch(headMap), "Error parsing head branch in pull request");
 
-        int commitsCount = 0;
-        Object commitsObj = prMap.get("commits");
-        if (commitsObj instanceof Number) {
-            commitsCount = ((Number) commitsObj).intValue();
-        } else if (commitsObj instanceof String) {
-            try {
-                commitsCount = Integer.parseInt((String) commitsObj);
-            } catch (NumberFormatException ignored) {
-            }
-        }
-
-        Map<String, Object> userMap = prMap.get("user") instanceof Map ? (Map<String, Object>) prMap.get("user") : Collections.emptyMap();
-        PullRequestUser user = null;
-        try {
-            user = parsePRUser(userMap);
-        } catch (Exception e) {
-            log.error("Error parsing user in pull request: {}", e.getMessage());
-        }
-
-        Map<String, Object> headMap = prMap.get("head") instanceof Map ? (Map<String, Object>) prMap.get("head") : Collections.emptyMap();
-        PullRequestBranch head = null;
-        try {
-            head = parsePRBranch(headMap);
-        } catch (Exception e) {
-            log.error("Error parsing head branch in pull request: {}", e.getMessage());
-        }
-
-        PullRequestBranch base = null;
-        try {
-            base = parsePRBranch(baseMap);
-        } catch (Exception e) {
-            log.error("Error parsing base branch in pull request: {}", e.getMessage());
-        }
+        PullRequestBranch base = tryParse(() -> parsePRBranch(baseMap), "Error parsing base branch in pull request");
 
         return GithubPullRequest.builder()
                 .repoId(repoId)
@@ -844,6 +786,73 @@ public class GithubRestApiService {
                 .head(head)
                 .base(base)
                 .build();
+    }
+
+    /**
+     * 1. 메서드 설명: 주어진 객체를 Map<String, Object>로 안전하게 캐스팅하여 반환한다.
+     *    만약 캐스팅할 수 없으면 빈 Map을 반환한다.
+     * 2. 로직:
+     *    - 객체가 Map 타입이면 해당 Map으로 캐스팅하고, 그렇지 않으면 Collections.emptyMap()을 반환한다.
+     * 3. param:
+     *      Object obj - 캐스팅할 대상 객체.
+     * 4. return: Map<String, Object> 객체 또는 빈 Map.
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> getMap(Object obj) {
+        return (obj instanceof Map) ? (Map<String, Object>) obj : Collections.emptyMap();
+    }
+
+    /**
+     * 1. 메서드 설명: 주어진 객체를 정수 값으로 파싱한다.
+     *    객체가 Number이면 intValue()를 사용하고, String이면 Integer.parseInt()를 사용한다.
+     *    파싱에 실패하면 0을 반환한다.
+     * 2. 로직:
+     *    - 객체 타입에 따라 적절한 파싱 로직을 적용한다.
+     * 3. param:
+     *      Object value - 파싱할 객체.
+     * 4. return: 파싱된 정수 값 또는 실패 시 0.
+     */
+    private int parseIntValue(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        } else if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * 1. 메서드 설명: 주어진 객체가 String이면 해당 문자열을 반환하고, 그렇지 않으면 빈 문자열을 반환한다.
+     * 2. 로직:
+     *    - 객체가 String 타입인지 확인 후 반환한다.
+     * 3. param:
+     *      Object value - 문자열로 변환할 객체.
+     * 4. return: 문자열 또는 빈 문자열.
+     */
+    private String getStringValue(Object value) {
+        return value instanceof String ? (String) value : "";
+    }
+
+    /**
+     * 1. 메서드 설명: Supplier를 사용하여 파싱 작업을 수행하며, 예외 발생 시 로그를 기록하고 null을 반환한다.
+     * 2. 로직:
+     *    - Supplier의 get() 메서드를 호출하여 값을 파싱한다.
+     *    - 예외가 발생하면 지정된 에러 메시지와 함께 로그를 남기고 null을 반환한다.
+     * 3. param:
+     *      Supplier<T> parser - 파싱 작업을 수행하는 람다 함수.
+     *      String errorMessage - 에러 발생 시 출력할 메시지.
+     * 4. return: 파싱된 값 T 또는 예외 발생 시 null.
+     */
+    private <T> T tryParse(Supplier<T> parser, String errorMessage) {
+        try {
+            return parser.get();
+        } catch (Exception e) {
+            log.error("{}: {}", errorMessage, e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -894,24 +903,21 @@ public class GithubRestApiService {
     // ============================================================
 
     /**
-     * 1. 메서드 설명: GitHub API를 호출하여 사용자의 이벤트 정보를 조회하고,
-     *    DB에 저장된 최신 이벤트와 비교하여 새로운 이벤트가 추가되었는지 여부를 판단하며,
-     *    새로운 이벤트가 있을 경우 DB에 저장하는 메서드.
+     * 1. 메서드 설명: 주어진 GitHub 이벤트를 확인하여 새로운 이벤트가 있는지 또는 최신 이벤트가 90일 이상 오래되었는지 확인한다.
      * 2. 로직:
-     *    - accessToken과 userName을 사용하여 HTTP 헤더를 생성한 후, "https://api.github.com/users/{userName}/events" 엔드포인트에 GET 요청을 보낸다.
-     *    - 응답 상태가 2xx가 아니면 예외를 발생시키며, 응답 본문이 null이면 빈 리스트로 처리한다.
-     *    - (A) API 응답 이벤트가 없을 경우:
-     *         - DB에서 해당 사용자의 최신 이벤트를 조회한다.
-     *         - 최신 이벤트의 생성일이 현재 시간 기준 90일 이전이면 true, 90일 이내이면 false를 반환한다.
-     *         - DB에 이벤트가 하나도 없으면 새로운 이벤트가 있다고 판단하여 true를 반환한다.
-     *    - (B) API 응답 이벤트가 있을 경우:
-     *         - DB에 저장된 이벤트 ID들을 조회한 후, API 응답 이벤트 중 새로운 이벤트만 필터링하여 GithubEvent Document 객체로 변환한다.
-     *         - 새로운 이벤트가 있으면 DB에 저장하고, 그 중 event type이 "PushEvent", "IssuesEvent", "PullRequestEvent" 중 하나라도 존재하면 true, 그렇지 않으면 false를 반환한다.
+     *    - GitHub API를 호출하여 사용자의 이벤트 리스트를 가져온다.
+     *    - API 응답이 성공적이지 않으면 예외를 발생시킨다.
+     *    - 응답에서 가져온 이벤트 중, 주어진 repoNames에 포함된 이벤트만 필터링한다.
+     *    - 필터링된 이벤트가 없으면 각 repository에 대해 최신 이벤트가 90일 이전인지 확인한다.
+     *    - 필터링된 이벤트가 있으면, 저장된 이벤트와 비교하여 새로운 이벤트를 추출하고,
+     *      새로운 이벤트 중 허용된 이벤트 타입(PushEvent, IssuesEvent, PullRequestEvent)이 있는지 검사한다.
+     *    - 새로운 이벤트가 없으면 전체 최신 이벤트가 90일 이상 오래되었는지 확인한다.
      * 3. param:
-     *      accessToken - GitHub API 접근에 사용되는 access token.
-     *      userName    - GitHub 사용자 이름.
-     *      userId      - 현재 애플리케이션 사용자 ID.
-     * 4. return: 새로운 이벤트가 존재하면 true, 그렇지 않으면 false.
+     *      String accessToken - GitHub API 접근 토큰.
+     *      String userName - GitHub 사용자 이름.
+     *      int userId - 내부 사용자 ID.
+     *      List<String> repoNames - 확인할 repository 이름 리스트.
+     * 4. return: 새로운 이벤트가 있거나 최신 이벤트가 90일 이상 오래되었으면 true, 그렇지 않으면 false.
      */
     public boolean checkNewGithubEvents(String accessToken, String userName, int userId, List<String> repoNames) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.APPLICATION_JSON));
@@ -933,78 +939,129 @@ public class GithubRestApiService {
 
         List<Map<String, Object>> filteredApiEvents = apiEvents.stream()
                 .filter(event -> {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> repoMap = (Map<String, Object>) event.get("repo");
-                    if (repoMap != null) {
-                        String repoName = (String) repoMap.get("name");
-                        return repoNames.contains(repoName);
-                    }
-                    return false;
+                    Map<String, Object> repoMap = getMap(event.get("repo"));
+                    String repoName = (String) repoMap.get("name");
+                    return repoNames.contains(repoName);
                 })
                 .toList();
 
         if (filteredApiEvents.isEmpty()) {
-            for (String repoName : repoNames) {
-                Optional<GithubEvent> latestEventOpt = githubEventRepository
-                        .findTopByUserIdAndEvents_RepoOrderByEventsCreatedAtDesc(userId, repoName);
-                if (latestEventOpt.isPresent()) {
-                    LocalDateTime lastEventTime = latestEventOpt.get().getEvents().getCreatedAt();
-                    if (lastEventTime.isBefore(LocalDateTime.now().minusDays(90))) {
-                        return true;
-                    }
-                } else {
-                    return true;
-                }
-            }
-            return false;
+            return shouldNotifyForMissingOrOldEvent(userId, repoNames);
         } else {
-            Set<String> existingEventIds = githubEventRepository.findAllByUserId(userId)
-                    .stream()
-                    .map(GithubEvent::getGithubEventId)
-                    .collect(Collectors.toSet());
-
-            List<GithubEvent> newEvents = filteredApiEvents.stream()
-                    .filter(eventMap -> {
-                        String eventId = (String) eventMap.get("id");
-                        return !existingEventIds.contains(eventId);
-                    })
-                    .map(eventMap -> convertToGithubEvent(eventMap, userId))
-                    .collect(Collectors.toList());
-
-            if (!newEvents.isEmpty()) {
-                githubEventRepository.saveAll(newEvents);
-                boolean hasAllowed = newEvents.stream()
-                        .map(githubEvent -> githubEvent.getEvents().getEventType())
-                        .anyMatch(allowedTypes::contains);
-                if (hasAllowed) {
-                    return true;
-                }
+            if (processNewEvents(userId, filteredApiEvents, allowedTypes)) {
+                return true;
             }
-
             return isLatestEventOlderThan90Days(userId);
         }
     }
 
     /**
-     * 1. 메서드 설명: GitHub Events API를 호출하여 사용자의 새 repository 생성(CreateEvent) 이벤트가 발생했는지 확인하고,
-     *    신규 이벤트가 있을 경우 DB에 저장한 후, 신규 repository 생성 이벤트가 감지되면 true를 반환하는 메서드.
+     * 1. 메서드 설명: 각 repository에 대해 최신 GitHub 이벤트의 생성일이 90일 이전인지 확인한다.
      * 2. 로직:
-     *    - API 응답 이벤트가 없는 경우:
-     *         * DB에서 해당 사용자의 최신 이벤트를 조회한다.
-     *         * 최신 이벤트의 생성일이 현재 시간 기준 90일 이전이면 true, 90일 이내이면 false를 반환한다.
-     *         * DB에 이벤트가 하나도 없으면 새로운 이벤트가 있다고 판단하여 true를 반환한다.
-     *    - API 응답 이벤트가 있는 경우:
-     *         * API 응답에서 "CreateEvent" 이벤트 중 payload.ref_type이 "repository"인 이벤트만 필터링한다.
-     *         * DB에 저장된 repository 이름들을 조회한 후, DB에 저장되어 있지 않은 repository가 create되었다면 신규 이벤트로 판단하여
-     *           해당 이벤트를 GithubEvent Document 객체로 변환하고 DB에 저장한 후 true를 반환한다.
-     *         * 신규 이벤트가 없으면 DB의 최신 이벤트 생성 시간을 기준으로 90일 이전이면 true, 그렇지 않으면 false를 반환한다.
+     *    - 주어진 repository 이름 리스트(repoNames)에 대해, 최신 이벤트를 조회한다.
+     *    - 최신 이벤트가 없거나, 최신 이벤트의 생성일이 현재 시간 기준 90일 이전이면 true를 반환한다.
+     * 3. param:
+     *      int userId - 내부 사용자 ID.
+     *      List<String> repoNames - repository 이름 리스트.
+     * 4. return: 하나라도 조건을 만족하면 true, 그렇지 않으면 false.
+     */
+    private boolean shouldNotifyForMissingOrOldEvent(int userId, List<String> repoNames) {
+        for (String repoName : repoNames) {
+            Optional<GithubEvent> latestEventOpt = githubEventRepository
+                    .findTopByUserIdAndEvents_RepoOrderByEventsCreatedAtDesc(userId, repoName);
+            if (latestEventOpt.isEmpty() ||
+                    latestEventOpt.get().getEvents().getCreatedAt().isBefore(LocalDateTime.now().minusDays(90))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 1. 메서드 설명: 필터링된 API 이벤트 리스트에서 기존에 저장된 이벤트와 비교하여 새로운 이벤트를 추출하고,
+     *    새로운 이벤트 중 허용된 이벤트 타입(PushEvent, IssuesEvent, PullRequestEvent)이 존재하는지 검사한다.
+     * 2. 로직:
+     *    - 사용자(userId)에 대해 저장된 모든 이벤트 ID를 조회한다.
+     *    - 필터링된 API 이벤트 중, 저장되지 않은 이벤트만 추출하여 GithubEvent 객체로 변환한다.
+     *    - 새로운 이벤트가 존재하면 저장한 후, 허용된 이벤트 타입이 포함되어 있는지 확인하여 결과를 반환한다.
+     * 3. param:
+     *      int userId - 내부 사용자 ID.
+     *      List<Map<String, Object>> filteredApiEvents - 필터링된 API 이벤트 리스트.
+     *      Set<String> allowedTypes - 허용된 이벤트 타입 집합.
+     * 4. return: 허용된 이벤트 타입을 가진 새로운 이벤트가 있으면 true, 그렇지 않으면 false.
+     */
+    private boolean processNewEvents(int userId, List<Map<String, Object>> filteredApiEvents, Set<String> allowedTypes) {
+        Set<String> existingEventIds = githubEventRepository.findAllByUserId(userId)
+                .stream()
+                .map(GithubEvent::getGithubEventId)
+                .collect(Collectors.toSet());
+
+        List<GithubEvent> newEvents = filteredApiEvents.stream()
+                .filter(eventMap -> {
+                    String eventId = (String) eventMap.get("id");
+                    return !existingEventIds.contains(eventId);
+                })
+                .map(eventMap -> convertToGithubEvent(eventMap, userId))
+                .toList();
+
+        if (!newEvents.isEmpty()) {
+            githubEventRepository.saveAll(newEvents);
+            boolean hasAllowed = newEvents.stream()
+                    .map(githubEvent -> githubEvent.getEvents().getEventType())
+                    .anyMatch(allowedTypes::contains);
+            if (hasAllowed) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 1. 메서드 설명: GitHub Events API를 호출하여 사용자의 새 repository 생성(CreateEvent) 이벤트가 발생했는지 확인한다.
+     *    신규 이벤트가 있을 경우 DB에 저장한 후, 새 repository 생성 이벤트가 감지되면 true를 반환하고,
+     *    이벤트가 없거나 최신 이벤트가 90일 이상 오래된 경우에도 true를 반환한다.
+     * 2. 로직:
+     *    - GitHub API를 호출하여 이벤트 리스트를 가져온다.
+     *    - 이벤트 리스트에서 "CreateEvent" 타입 중 payload.ref_type이 "repository"인 이벤트만 필터링한다.
+     *    - 필터링된 이벤트가 없으면 최신 이벤트 생성 시간이 90일 이상 오래되었는지 확인하여 결과를 반환한다.
+     *    - 필터링된 이벤트가 있으면 DB에 저장된 repository 이름과 비교하여, DB에 없는 새 이벤트가 있으면 저장 후 true를 반환한다.
+     *    - 새 이벤트가 없으면 최신 이벤트 생성 시간이 90일 이상 오래되었는지 확인하여 결과를 반환한다.
      * 3. param:
      *      String accessToken - GitHub API 접근에 사용되는 access token.
      *      String userName - GitHub 사용자 이름.
      *      int userId - 로컬 사용자 식별자.
-     * 4. return: boolean - 새 repository 생성(CreateEvent) 이벤트가 감지되면 true, 그렇지 않으면 false.
+     * 4. return: boolean - 새 repository 생성 이벤트가 감지되었거나 최신 이벤트가 90일 이상 오래되었으면 true, 그렇지 않으면 false.
      */
     public boolean checkNewRepositoryCreationEvents(String accessToken, String userName, int userId) {
+        List<Map<String, Object>> apiEvents = fetchApiEvents(accessToken, userName);
+        List<Map<String, Object>> createEvents = filterCreateEvents(apiEvents);
+
+        if (createEvents.isEmpty()) {
+            return isLatestEventOlderThan90Days(userId);
+        }
+
+        Set<String> storedRepoNames = getStoredRepositoryNames(userId);
+        List<GithubEvent> newEvents = extractNewEvents(createEvents, userId, storedRepoNames);
+
+        if (!newEvents.isEmpty()) {
+            githubEventRepository.saveAll(newEvents);
+            return true;
+        }
+
+        return isLatestEventOlderThan90Days(userId);
+    }
+
+    /**
+     * 1. 메서드 설명: GitHub API를 호출하여 사용자의 이벤트 리스트를 가져온다.
+     * 2. 로직:
+     *    - accessToken과 userName을 이용하여 API 요청을 보내고, 응답 코드가 200번대가 아니면 예외를 발생시킨다.
+     *    - 응답 본문이 null이면 빈 리스트를 반환한다.
+     * 3. param:
+     *      String accessToken - GitHub API 접근 토큰.
+     *      String userName - GitHub 사용자 이름.
+     * 4. return: List<Map<String, Object>> - GitHub Events API에서 반환된 이벤트 리스트.
+     */
+    private List<Map<String, Object>> fetchApiEvents(String accessToken, String userName) {
         HttpEntity<String> request = new HttpEntity<>(createHeaders(accessToken, MediaType.APPLICATION_JSON));
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 "https://api.github.com/users/{userName}/events",
@@ -1018,10 +1075,19 @@ public class GithubRestApiService {
             throw new GithubRepositoryNotFoundException("Failed to fetch events - HTTP " + response.getStatusCode());
         }
 
-        List<Map<String, Object>> apiEvents = Optional.ofNullable(response.getBody())
-                .orElse(Collections.emptyList());
+        return Optional.ofNullable(response.getBody()).orElse(Collections.emptyList());
+    }
 
-        List<Map<String, Object>> createEvents = apiEvents.stream()
+    /**
+     * 1. 메서드 설명: API에서 가져온 이벤트 리스트 중 "CreateEvent" 타입이며, payload.ref_type이 "repository"인 이벤트만 필터링한다.
+     * 2. 로직:
+     *    - 이벤트의 type이 "CreateEvent"인지 확인하고, payload가 존재하며 ref_type이 "repository"인지 검사한다.
+     * 3. param:
+     *      List<Map<String, Object>> apiEvents - API에서 받아온 전체 이벤트 리스트.
+     * 4. return: List<Map<String, Object>> - 필터링된 repository 생성 이벤트 리스트.
+     */
+    private List<Map<String, Object>> filterCreateEvents(List<Map<String, Object>> apiEvents) {
+        return apiEvents.stream()
                 .filter(event -> "CreateEvent".equals(event.get("type")))
                 .filter(event -> {
                     @SuppressWarnings("unchecked")
@@ -1029,18 +1095,37 @@ public class GithubRestApiService {
                     return payload != null && "repository".equals(payload.get("ref_type"));
                 })
                 .toList();
+    }
 
-        if (createEvents.isEmpty()) {
-            return isLatestEventOlderThan90Days(userId);
-        }
-
+    /**
+     * 1. 메서드 설명: 사용자 ID를 기반으로 DB에서 해당 사용자의 저장된 repository 이름 목록을 조회한다.
+     * 2. 로직:
+     *    - GithubRepository를 조회하여, 그 안에 포함된 각 Repository의 이름을 Set으로 반환한다.
+     * 3. param:
+     *      int userId - 로컬 사용자 식별자.
+     * 4. return: Set<String> - DB에 저장된 repository 이름 집합.
+     */
+    private Set<String> getStoredRepositoryNames(int userId) {
         GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Failed to fetch repository for userId: " + userId));
-        Set<String> storedRepoNames = githubRepository.getRepositories().stream()
+        return githubRepository.getRepositories().stream()
                 .map(Repository::getRepoName)
                 .collect(Collectors.toSet());
+    }
 
-        List<GithubEvent> newEvents = createEvents.stream()
+    /**
+     * 1. 메서드 설명: 필터링된 CreateEvent 리스트에서 DB에 저장되지 않은 새 repository 생성 이벤트를 추출한다.
+     * 2. 로직:
+     *    - 각 이벤트에서 repository 이름을 추출하고, DB에 저장된 이름과 비교하여 새 이벤트만 선택한다.
+     *    - 선택된 이벤트를 GithubEvent 객체로 변환하여 리스트로 반환한다.
+     * 3. param:
+     *      List<Map<String, Object>> createEvents - 필터링된 CreateEvent 이벤트 리스트.
+     *      int userId - 로컬 사용자 식별자.
+     *      Set<String> storedRepoNames - DB에 저장된 repository 이름 집합.
+     * 4. return: List<GithubEvent> - 새로 감지된 GithubEvent 객체 리스트.
+     */
+    private List<GithubEvent> extractNewEvents(List<Map<String, Object>> createEvents, int userId, Set<String> storedRepoNames) {
+        return createEvents.stream()
                 .map(event -> {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> repoMap = (Map<String, Object>) event.get("repo");
@@ -1050,14 +1135,7 @@ public class GithubRestApiService {
                 .filter(Objects::nonNull)
                 .filter(entry -> !storedRepoNames.contains(entry.getKey()))
                 .map(entry -> convertToGithubEvent(entry.getValue(), userId))
-                .collect(Collectors.toList());
-
-        if (!newEvents.isEmpty()) {
-            githubEventRepository.saveAll(newEvents);
-            return true;
-        }
-
-        return isLatestEventOlderThan90Days(userId);
+                .toList();
     }
 
     /**
