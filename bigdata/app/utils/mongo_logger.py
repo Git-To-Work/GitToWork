@@ -1,7 +1,11 @@
 # app/utils/mongo_logger.py
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from app.core.mongo import get_mongo_db
+
+now_utc = datetime.now(tz=ZoneInfo("UTC"))
+now_kst = now_utc.astimezone(ZoneInfo("Asia/Seoul")).isoformat()
 
 # 검색 로그 저장 컬렉션 이름
 SEARCH_HISTORY_COLLECTION = "user_search_history"
@@ -13,7 +17,7 @@ def log_user_search(user_id: int, filters: dict) -> None:
 
     log_doc = {
         "user_id": user_id,
-        "timestamp": datetime.utcnow(),
+        "timestamp": now_kst,
         "filters": filters
     }
 
@@ -28,7 +32,7 @@ def log_user_search_detail(user_id: int, searched_company_id: int):
 
     doc = {
         "user_id": user_id,
-        "timestamp": datetime.utcnow(),
+        "timestamp": now_kst,
         "searched_company_id": searched_company_id
     }
 
