@@ -20,10 +20,12 @@ class Repository {
 class RepositoryCombination {
   final String selectedRepositoryId;
   final List<String> repositoryNames;
+  final List<int> repositoryIds;
 
   RepositoryCombination({
     required this.selectedRepositoryId,
     required this.repositoryNames,
+    required this.repositoryIds,
   });
 
   factory RepositoryCombination.fromJson(Map<String, dynamic> json) {
@@ -32,11 +34,14 @@ class RepositoryCombination {
       repositoryNames: (json['repositoryNames'] as List<dynamic>)
           .map((e) => e as String)
           .toList(),
+      repositoryIds: (json['repositoryIds'] as List<dynamic>)
+          .map((e) => e as int)
+          .toList(),
     );
   }
 }
 
-/// 분석 레포지토리
+/// 분석 레포지토리 응답
 class RepositoryAnalysisResponse {
   final bool analysisStarted;
   final String message;

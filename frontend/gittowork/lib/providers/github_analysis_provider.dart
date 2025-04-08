@@ -33,6 +33,10 @@ class GitHubAnalysisProvider extends ChangeNotifier {
   }
 
   // ✅ 분석 결과 저장
+  void setAnalyze(){
+    _status = 'ANALYZING';
+  }
+
   void updateFromAnalysisResult(Map<String, dynamic> result) {
     _repoName = (result['selectedRepositories'] as List?)?.join(', ') ?? '';
     _lastAnalysis = result['analysisDate'] ?? '';
@@ -40,7 +44,7 @@ class GitHubAnalysisProvider extends ChangeNotifier {
     _activityMetrics = result['activityMetrics'] ?? {};
     _aiAnalysis = result['aiAnalysis'] ?? {};
     _languageRatios = result['languageRatios'] ?? {};
-    _status = result['status'] ?? 'fail';
+    _status = result['status'] ?? 'FAIL';
     notifyListeners();
   }
 
@@ -55,7 +59,7 @@ class GitHubAnalysisProvider extends ChangeNotifier {
   }
 
   void setFail() {
-    _status='fail';
+    _status='FAIL';
     _lastAnalysis = '';
     _overallScore = '';
     _activityMetrics = {};
@@ -65,14 +69,13 @@ class GitHubAnalysisProvider extends ChangeNotifier {
   }
 
   void setAnalyzing(Map<String, dynamic> result) {
-    debugPrint("1232131312312321213312");
     _repoName = (result['selectedRepositories'] as List?)?.join(', ') ?? '';
     _lastAnalysis = '';
     _overallScore = '';
     _activityMetrics = {};
     _aiAnalysis = {};
     _languageRatios = {};
-    _status = 'analyzing';
+    _status = 'ANALYZING';
     notifyListeners();
   }
 }
