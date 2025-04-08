@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:gittowork/widgets/bottom_nav_bar.dart';
@@ -8,16 +10,29 @@ import 'package:gittowork/screens/entertainment/entertainment.dart';
 import '../screens/my_page/my_page_screen.dart';
 import '../services/github_api.dart';
 
+//AppBarBottomNavLayout으로 이동하는 함수
+class AppBarBottomNavLayoutWithIndex extends StatelessWidget {
+  final int initialIndex;
+  const AppBarBottomNavLayoutWithIndex({super.key, required this.initialIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBarBottomNavLayout(initialIndex: initialIndex);
+  }
+}
+
 class AppBarBottomNavLayout extends StatefulWidget {
-  const AppBarBottomNavLayout({super.key});
+  final int initialIndex;
+  const AppBarBottomNavLayout({super.key, this.initialIndex = 0});
 
   @override
   State<AppBarBottomNavLayout> createState() => _AppBarBottomNavLayoutState();
 }
 
+
 class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(); // ✅ 추가
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   late final PageController _pageController;
 
   final List<Widget> _screens = const [
@@ -31,12 +46,17 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
     _pageController = PageController(initialPage: _selectedIndex);
     _loadGitHubData(); // ✅ 초기화 시 실행
   }
 
   Future<void> _loadGitHubData() async {
     final selectedRepoId = await _secureStorage.read(key: 'selected_repo_id');
+    final storedIds = await _secureStorage.read(key: 'repositoryIds');
+    final List<int> repositoryIds = storedIds != null
+        ? List<int>.from(jsonDecode(storedIds))
+        : <int>[];
 
     if (selectedRepoId == null || selectedRepoId.isEmpty) {
       debugPrint("⚠ 저장된 selected_repo_id가 없습니다.");
@@ -50,6 +70,7 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
       final result = await GitHubApi.fetchGithubAnalysis(
         context: context,
         selectedRepositoryId: selectedRepoId,
+        repositoryIds: repositoryIds,
       );
       if (result['analyzing'] == true) {
         debugPrint("⌛ 아직 분석 중입니다.");

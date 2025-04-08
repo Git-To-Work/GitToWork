@@ -179,11 +179,14 @@ class _MyRepoState extends State<MyRepo> {
                       _selectedIndex < _combinations.length) {
                     final selectedRepoId =
                         _combinations[_selectedIndex].selectedRepositoryId;
+                    final repositoryIds =
+                        _combinations[_selectedIndex].repositoryIds;
                     try {
                       debugPrint("분석 데이터 실행");
                       await GitHubApi.fetchGithubAnalysis(
                         context: context,
                         selectedRepositoryId: selectedRepoId,
+                          repositoryIds: repositoryIds,
                       );
                     } catch (e) {
                       debugPrint("❌ 분석 데이터 불러오기 실패: $e");

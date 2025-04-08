@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gittowork/services/github_api.dart';
 import 'package:provider/provider.dart';
 import '../../providers/github_analysis_provider.dart';
 import '../../widgets/my_repo.dart';
@@ -34,39 +35,54 @@ class RepoScreen extends StatelessWidget {
             ),
           ],
         ),
-        child: Stack(
-          alignment: Alignment.topLeft,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 20.0),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Repo : ${githubProvider.repoName}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Repo : ${githubProvider.repoName}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () async {
+                          try {
+                            await GitHubApi.refreshGithubAnalysis(context);
+                          } catch (e) {
+                            debugPrint("오류 발생: $e");
+                          }
+                        },
+                        child: Image.asset(
+                          'assets/icons/Reload.png',
+                          width: 20,
+                          height: 20,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     'Last Analysis : ${githubProvider.lastAnalysis}',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ),
-            ),
-            Align(
-              alignment: Alignment.topRight,
-              child: Image.asset(
-                'assets/icons/Reload.png',
-                width: 20,
-                height: 20,
               ),
             ),
           ],

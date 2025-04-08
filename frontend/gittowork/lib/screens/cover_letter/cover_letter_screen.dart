@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../entertainment/quiz_screen.dart';
 import 'cover_letter_create_screen.dart';
 import 'package:gittowork/widgets/app_bar.dart';
 import 'components/cover_letter_list.dart';
@@ -26,6 +27,10 @@ class CoverLetterScreen extends StatelessWidget {
             InkWell(
               onTap: () {
                 // TODO: 개발자 퀴즈 페이지 이동 로직 추가
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const QuizScreen()),
+                );
               },
               child:  Container(
                 width: double.infinity,
