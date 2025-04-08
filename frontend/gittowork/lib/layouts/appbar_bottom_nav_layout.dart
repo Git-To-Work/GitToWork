@@ -8,7 +8,7 @@ import 'package:gittowork/screens/entertainment/entertainment.dart';
 import '../screens/my_page/my_page_screen.dart';
 import '../services/github_api.dart';
 
-
+//AppBarBottomNavLayout으로 이동하는 함수
 class AppBarBottomNavLayoutWithIndex extends StatelessWidget {
   final int initialIndex;
   const AppBarBottomNavLayoutWithIndex({super.key, required this.initialIndex});
