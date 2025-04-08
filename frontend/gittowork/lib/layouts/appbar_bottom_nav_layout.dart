@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:gittowork/widgets/bottom_nav_bar.dart';
@@ -37,6 +39,10 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
 
   Future<void> _loadGitHubData() async {
     final selectedRepoId = await _secureStorage.read(key: 'selected_repo_id');
+    final storedIds = await _secureStorage.read(key: 'repositoryIds');
+    final List<int> repositoryIds = storedIds != null
+        ? List<int>.from(jsonDecode(storedIds))
+        : <int>[];
 
     if (selectedRepoId == null || selectedRepoId.isEmpty) {
       debugPrint("⚠ 저장된 selected_repo_id가 없습니다.");
@@ -50,6 +56,7 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
       final result = await GitHubApi.fetchGithubAnalysis(
         context: context,
         selectedRepositoryId: selectedRepoId,
+        repositoryIds: repositoryIds,
       );
       if (result['analyzing'] == true) {
         debugPrint("⌛ 아직 분석 중입니다.");

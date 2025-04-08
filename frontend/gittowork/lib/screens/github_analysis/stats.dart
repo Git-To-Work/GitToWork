@@ -12,10 +12,10 @@ class StatsScreen extends StatelessWidget {
     debugPrint('화면 너비: $screenWidth');
     return Consumer<GitHubAnalysisProvider>(
       builder: (context, provider, child) {
-        final totalStars = provider.activityMetrics['totalStars'] ?? 342;
-        final totalCommits = provider.activityMetrics['totalCommits'] ?? 1247;
-        final totalPRs = provider.activityMetrics['totalPRs'] ?? 86;
-        final totalIssues = provider.activityMetrics['totalIssues'] ?? 124;
+        final totalStars = provider.activityMetrics['totalStars'] ?? 0;
+        final totalCommits = provider.activityMetrics['totalCommits'] ?? 0;
+        final totalPRs = provider.activityMetrics['totalPRs'] ?? 0;
+        final totalIssues = provider.activityMetrics['totalIssues'] ?? 0;
         final grade = provider.overallScore;
         final gradePercent = provider.getGradePercent();
 

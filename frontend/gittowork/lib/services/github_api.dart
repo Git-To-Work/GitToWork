@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -96,7 +98,7 @@ class GitHubApi {
     if (response.statusCode == 200) {
       final results = response.data['results'];
 
-      final selectedRepositoryId = results['selectedRepositoryId']; // ← 필드명 맞게 확인
+      final selectedRepositoryId = results['selectedRepositoryId'];
 
       if (selectedRepositoryId != null) {
         const storage = FlutterSecureStorage();
@@ -142,6 +144,7 @@ class GitHubApi {
   static Future<Map<String, dynamic>> fetchGithubAnalysis({
     required BuildContext context,
     required String selectedRepositoryId,
+    required List<int> repositoryIds,
   }) async {
     debugPrint("[요청 시작] selectedRepositoryId: $selectedRepositoryId");
 
@@ -150,6 +153,10 @@ class GitHubApi {
     await secureStorage.write(
       key: 'selected_repo_id',
       value: selectedRepositoryId,
+    );
+    await secureStorage.write(
+      key: 'repositoryIds',
+      value: jsonEncode(repositoryIds),
     );
 
     try {
@@ -170,6 +177,13 @@ class GitHubApi {
         if(results['status']=='COMPLETE'){
           debugPrint("✅분석 성공✅");
           provider.updateFromAnalysisResult(results);
+          await secureStorage.write(
+            key: 'repositoryIds',
+            value: jsonEncode(results['selectedRepositoryIds']),
+          );
+          debugPrint("📦 저장할 repositoryIds: ${results['selectedRepositoryIds']}");
+          final savedValue = await secureStorage.read(key: 'repositoryIds');
+          debugPrint("📥 저장된 repositoryIds: $savedValue");
         }
         else if(results['status']=='ANALYZING'){
           debugPrint("🕒분석 진행중🕒");
@@ -178,6 +192,7 @@ class GitHubApi {
         }
         else if(results['status']=='FAIL'){
           debugPrint("❌분석  실패❌");
+          provider.updateFromAnalysisResult(results);
           provider.setFail();
         }
         return results;
@@ -188,6 +203,49 @@ class GitHubApi {
     } catch (e) {
       provider.setFail();
       debugPrint("❌ [분석 데이터 조회 실패] $e");
+      rethrow;
+    }
+  }
+
+  static Future<void> refreshGithubAnalysis(BuildContext context) async {
+    final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+    final storedIds = await _secureStorage.read(key: 'repositoryIds');
+    final List<int> repositoryIds = storedIds != null
+        ? List<int>.from(jsonDecode(storedIds))
+        : <int>[];
+    debugPrint("[가나다라마바사아잧타카파ㅠㅏ] : $repositoryIds");
+    final provider = Provider.of<GitHubAnalysisProvider>(context, listen: false);
+    try {
+      final response = await ApiService.dio.post(
+        '/api/github/create/analysis-by-repository',
+        data: {'repositories': repositoryIds},
+      );
+      if (response.statusCode == 200) {
+        debugPrint("Results  -----> : $response.data");
+        provider.setAnalyze();
+        provider.setStatus();
+        return ;
+      }
+    }
+    catch (e) {
+      provider.setFail();
+      debugPrint("❌ [repop 재분석 실패] $e");
+      rethrow;
+    }
+  }
+
+  static Future<void> updateGithub(BuildContext context) async {
+    try {
+      final response = await ApiService.dio.put(
+        '/api/github/update/github-data',
+      );
+      if (response.statusCode == 200) {
+        debugPrint("Results  -----> : $response.data");
+        return ;
+      }
+    }
+    catch (e) {
+      debugPrint("❌ [github 업데이트 실패] $e");
       rethrow;
     }
   }

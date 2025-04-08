@@ -74,6 +74,7 @@ class _SelectRepoDialogState extends State<SelectRepoDialog> {
     }
 
     if (!isDuplicate) {
+
       try {
         await GitHubApi.requestRepositoryAnalysis(context, selectedRepoIds);
         if (!mounted) return;
@@ -81,16 +82,13 @@ class _SelectRepoDialogState extends State<SelectRepoDialog> {
         if (!mounted) return;
       }
       if (!mounted) return;
+
       await showCustomAlertDialog(
         context: context,
         content: "분석을 시작했어요!",
         subText: "분석이 완료되면 알림으로 알려드릴게요 📩",
       );
       Navigator.of(context).pop();
-      showDialog(
-        context: context,
-        builder: (context) => const MyRepo(),
-      );
     }
   }
 
