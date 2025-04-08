@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/github_api.dart';
 import '../../models/repository.dart';
+import '../services/company_api.dart';
 import '../widgets/alert_modal.dart';
 import '../widgets/my_repo.dart';
 
@@ -81,14 +82,17 @@ class _SelectRepoDialogState extends State<SelectRepoDialog> {
       } catch (e) {
         if (!mounted) return;
       }
-      if (!mounted) return;
-
       await showCustomAlertDialog(
         context: context,
         content: "분석을 시작했어요!",
         subText: "분석이 완료되면 알림으로 알려드릴게요 📩",
       );
       Navigator.of(context).pop();
+      try{
+        await CompanyApi.requestCompanyAnalysis();
+      } catch (e){
+        debugPrint("❌company 분석 요청 실패 : $e");
+      }
     }
   }
 

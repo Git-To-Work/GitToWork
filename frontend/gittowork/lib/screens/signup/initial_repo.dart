@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../layouts/appbar_bottom_nav_layout.dart';
+import '../../services/company_api.dart';
 import '../../widgets/app_bar.dart';
 import '../../services/github_api.dart';
 import '../../models/repository.dart';
@@ -59,6 +60,12 @@ class _InitialRepoScreenState extends State<InitialRepoScreen> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
     );
+
+    try{
+      await CompanyApi.requestCompanyAnalysis();
+    } catch (e){
+      debugPrint("❌company 분석 요청 실패 : $e");
+    }
 
   }
 

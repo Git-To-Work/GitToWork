@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import '../providers/github_analysis_provider.dart';
 import 'api_service.dart';
 import '../models/repository.dart';
-import 'company_api.dart';
 
 class GitHubApi {
   /// 내 레포지토리 조회 API 호출
@@ -111,7 +110,7 @@ class GitHubApi {
 
       provider.setAnalyzing(results);
 
-      await CompanyApi.requestCompanyAnalysis();
+
 
       return RepositoryAnalysisResponse.fromJson(response.data);
     } else {
