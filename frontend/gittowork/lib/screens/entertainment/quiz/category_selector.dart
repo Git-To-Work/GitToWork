@@ -107,7 +107,7 @@ class _CategorySelectorState extends State<CategorySelector> {
                     Text(
                       categories['CL']!,
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 15,
                         fontWeight: _selectedCategory == 'CL'
                             ? FontWeight.bold
                             : FontWeight.normal,
@@ -140,7 +140,7 @@ class _CategorySelectorState extends State<CategorySelector> {
                     Text(
                       categories['CS']!,
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 15,
                         fontWeight: _selectedCategory == 'CS'
                             ? FontWeight.bold
                             : FontWeight.normal,
@@ -173,7 +173,7 @@ class _CategorySelectorState extends State<CategorySelector> {
                     Text(
                       categories['FI']!,
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 15,
                         fontWeight:
                         _selectedCategory == 'FI' ? FontWeight.bold : FontWeight.normal,
                         color: _selectedCategory == 'FI' ? Colors.blue : Colors.black,
@@ -203,7 +203,7 @@ class _CategorySelectorState extends State<CategorySelector> {
                     Text(
                       categories['SS']!,
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 15,
                         fontWeight:
                         _selectedCategory == 'SS' ? FontWeight.bold : FontWeight.normal,
                         color: _selectedCategory == 'SS' ? Colors.blue : Colors.black,
