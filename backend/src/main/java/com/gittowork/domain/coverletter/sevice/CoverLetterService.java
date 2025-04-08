@@ -176,9 +176,14 @@ public class CoverLetterService {
      */
     @Transactional
     public MessageOnlyResponse deleteCoverLetter(int coverLetterId) {
+        Optional<CoverLetterAnalysis> coverLetterAnalysis = coverLetterAnalysisRepository.findByFile_Id(coverLetterId);
+
+        coverLetterAnalysis.ifPresent(coverLetterAnalysisRepository::delete);
+
         CoverLetter coverLetter = coverLetterRepository.findById(coverLetterId)
                 .orElseThrow(() -> new CoverLetterNotFoundException("CoverLetter not found"));
         coverLetterRepository.delete(coverLetter);
+
         deleteCoverLetterFromS3(coverLetter.getFileUrl());
         return MessageOnlyResponse.builder()
                 .message("파일 삭제 요청 처리 완료")
