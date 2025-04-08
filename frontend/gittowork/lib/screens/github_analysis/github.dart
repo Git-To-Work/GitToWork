@@ -26,13 +26,13 @@ class GitHubScreen extends StatelessWidget {
           Expanded(
             child: Consumer<GitHubAnalysisProvider>(
               builder: (context, provider, _) {
-                if (provider.status=='analyzing') {
+                if (provider.status=='ANALYZING') {
                   return const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 15.0),
                     child: AnalysingScreen(),
                   );
                 }
-                else if (provider.status=='fail') {
+                else if (provider.status=='FAIL') {
                   return const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 15.0),
                     child: FailScreen(),

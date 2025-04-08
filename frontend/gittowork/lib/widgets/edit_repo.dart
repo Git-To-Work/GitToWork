@@ -63,12 +63,14 @@ class _EditRepoDialogState extends State<EditRepoDialog> {
         // 삭제 대상이 첫 번째 조합인 경우 → 두 번째 조합을 분석, 아니면 첫 번째 조합 선택
         final nextIndex = index == 0 ? 1 : 0;
         final newTargetRepoId = _combinations[nextIndex].selectedRepositoryId;
+        final repositoryIds = _combinations[nextIndex].repositoryIds;
 
         // 분석 API 호출
         try {
           final result = await GitHubApi.fetchGithubAnalysis(
             context: context,
             selectedRepositoryId: newTargetRepoId,
+              repositoryIds: repositoryIds,
           );
           if (result['analyzing'] == true) {
             debugPrint("⌛ 아직 분석 중입니다.");
