@@ -13,5 +13,6 @@ public class GetGithubAnalysisStatusResponse implements GithubAnalysisResponse {
     private String status;
     private String selectedRepositoryId;
     private List<String> selectedRepositories;
+    private List<Integer> selectedRepositoryIds;
     private String message;
 }
