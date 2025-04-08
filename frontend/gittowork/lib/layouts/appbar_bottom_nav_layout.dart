@@ -8,16 +8,29 @@ import 'package:gittowork/screens/entertainment/entertainment.dart';
 import '../screens/my_page/my_page_screen.dart';
 import '../services/github_api.dart';
 
+
+class AppBarBottomNavLayoutWithIndex extends StatelessWidget {
+  final int initialIndex;
+  const AppBarBottomNavLayoutWithIndex({super.key, required this.initialIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBarBottomNavLayout(initialIndex: initialIndex);
+  }
+}
+
 class AppBarBottomNavLayout extends StatefulWidget {
-  const AppBarBottomNavLayout({super.key});
+  final int initialIndex;
+  const AppBarBottomNavLayout({super.key, this.initialIndex = 0});
 
   @override
   State<AppBarBottomNavLayout> createState() => _AppBarBottomNavLayoutState();
 }
 
+
 class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(); // ✅ 추가
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   late final PageController _pageController;
 
   final List<Widget> _screens = const [
@@ -31,6 +44,7 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
     _pageController = PageController(initialPage: _selectedIndex);
     _loadGitHubData(); // ✅ 초기화 시 실행
   }
