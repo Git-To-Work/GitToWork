@@ -113,3 +113,7 @@ venv.bak/
 Thumbs.db           # Windows
 ehthumbs.db         # Windows
 Desktop.ini         # Windows
+
+
+/.scannerwork
+./sonar-project.properties
