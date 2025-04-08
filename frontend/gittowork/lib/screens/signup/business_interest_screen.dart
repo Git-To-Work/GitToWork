@@ -183,12 +183,24 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
 
             // 남은 1개
             if (hasOdd) ...[
-              const SizedBox(height: 20),
-              Center(
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width/2,
-                  child: _buildFieldItem(lastIndex!),
-                ),
+              // 셀 폭 계산
+              Builder(
+                builder: (context) {
+                  const double horizontalPadding = 16;  // Column padding
+                  const double crossSpacing      = 20;  // Grid crossAxisSpacing
+
+                  final double screenWidth = MediaQuery.of(context).size.width;
+                  final double cellWidth =
+                      (screenWidth - horizontalPadding * 2 - crossSpacing) / 2;
+
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: SizedBox(
+                      width: cellWidth,              // 그리드 한칸과 동일 폭
+                      child: _buildFieldItem(lastIndex!),
+                    ),
+                  );
+                },
               ),
             ],
             const SizedBox(height: 16),
