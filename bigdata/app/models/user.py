@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, Date, TIMESTAMP
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
+CASCADE_ALL_DELETE_ORPHAN = "all, delete-orphan"
+
 class User(Base):
     __tablename__ = "user"
 
@@ -22,10 +24,10 @@ class User(Base):
     delete_dttm = Column(TIMESTAMP, nullable=True)
     notification_agree_dttm = Column(TIMESTAMP, nullable=True)
 
-    # 관계 설정
-    user_alert_logs = relationship("UserAlertLog", back_populates="user", cascade="all, delete-orphan")
-    user_blacklists = relationship("UserBlacklist", back_populates="user", cascade="all, delete-orphan")
-    user_git_info = relationship("UserGitInfo", uselist=False, back_populates="user", cascade="all, delete-orphan")
-    user_likes = relationship("UserLikes", back_populates="user", cascade="all, delete-orphan")
-    user_scraps = relationship("UserScraps", back_populates="user", cascade="all, delete-orphan")
-    cover_letters = relationship("CoverLetter", back_populates="user", cascade="all, delete-orphan")
+    # 관계 설정에 상수 사용
+    user_alert_logs = relationship("UserAlertLog", back_populates="user", cascade=CASCADE_ALL_DELETE_ORPHAN)
+    user_blacklists = relationship("UserBlacklist", back_populates="user", cascade=CASCADE_ALL_DELETE_ORPHAN)
+    user_git_info = relationship("UserGitInfo", uselist=False, back_populates="user", cascade=CASCADE_ALL_DELETE_ORPHAN)
+    user_likes = relationship("UserLikes", back_populates="user", cascade=CASCADE_ALL_DELETE_ORPHAN)
+    user_scraps = relationship("UserScraps", back_populates="user", cascade=CASCADE_ALL_DELETE_ORPHAN)
+    cover_letters = relationship("CoverLetter", back_populates="user", cascade=CASCADE_ALL_DELETE_ORPHAN)

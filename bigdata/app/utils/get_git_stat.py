@@ -63,7 +63,7 @@ def get_repo_stats(user_id: int, repo_id: str) -> Dict[str, Any]:
         {"repositories.$": 1}
     )
     if not repo_doc or "repositories" not in repo_doc or not repo_doc["repositories"]:
-        raise Exception("Repository not found in github_repository collection")
+        raise ValueError("Repository not found in github_repository collection")
 
     repo_info = repo_doc["repositories"][0]
     repository_name = repo_info.get("full_name", "")
@@ -121,7 +121,7 @@ def get_selected_repo_stats(selected_repositories_id: str, user_id: int) -> List
 
     selected_repo_doc = db.selected_repository.find_one({"selected_repositories_id": selected_repositories_id})
     if not selected_repo_doc or "repositories" not in selected_repo_doc:
-        raise Exception("Selected repositories document not found.")
+        raise ValueError("Selected repositories document not found.")
 
     stats_list = []
     for repo_obj in selected_repo_doc["repositories"]:
@@ -142,7 +142,7 @@ def get_selected_repo_stats(selected_repositories_id: str, user_id: int) -> List
 def aggregate_selected_repo_stats(selected_repositories_id: str, user_id: int) -> Dict[str, Any]:
     stats_list = get_selected_repo_stats(selected_repositories_id, user_id)
     if not stats_list:
-        raise Exception("No repository stats available to aggregate.")
+        raise ValueError("No repository stats available to aggregate.")
 
     count = len(stats_list)
     total_stars = sum(stats.get("stars", 0) for stats in stats_list)
