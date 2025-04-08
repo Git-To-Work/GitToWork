@@ -78,7 +78,7 @@ public class FirebaseService {
      *      - FirebaseMessagingException : 메시지 전송에 실패할 경우 발생.
      */
     @Transactional
-    public void sendMessage(User user, String title, String message, String alertType) throws FirebaseMessagingException {
+    public void sendCoverLetterMessage(User user, String title, String message, String alertType) throws FirebaseMessagingException {
         String firebaseMessage = FirebaseMessaging.getInstance().send(
                 Message.builder()
                         .setNotification(
@@ -86,6 +86,32 @@ public class FirebaseService {
                                         .setTitle(title)
                                         .setBody(message)
                                         .build())
+                        .setToken(user.getFcmToken())
+                        .build());
+
+        userAlertLogRepository.save(
+                UserAlertLog.builder()
+                        .alertType(alertType)
+                        .user(user)
+                        .title(title)
+                        .message(message)
+                        .createDttm(LocalDateTime.now())
+                        .build()
+        );
+
+        log.info("Firebase send message: {}", firebaseMessage);
+    }
+
+    @Transactional
+    public void sendGithubAnalysisMessage(User user, String title, String message, String alertType, String selectedRepositoryId) throws FirebaseMessagingException {
+        String firebaseMessage = FirebaseMessaging.getInstance().send(
+                Message.builder()
+                        .setNotification(
+                                Notification.builder()
+                                        .setTitle(title)
+                                        .setBody(message)
+                                        .build())
+                        .putData("selectedRepositoryId", selectedRepositoryId)
                         .setToken(user.getFcmToken())
                         .build());
 

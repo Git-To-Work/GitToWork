@@ -76,7 +76,7 @@ public class CoverLetterAnalysisService {
             analysisResult.setUser(user);
             coverLetterAnalysisRepository.save(analysisResult);
 
-            firebaseService.sendMessage(user, "자기소개서 분석 완료",
+            firebaseService.sendCoverLetterMessage(user, "자기소개서 분석 완료",
                     user.getGithubName() + "님, 자기소개서 분석이 완료되었습니다. \n 지금 바로 확인하세요!",
                     "CoverLetterAnalysis");
         } catch (IOException e) {

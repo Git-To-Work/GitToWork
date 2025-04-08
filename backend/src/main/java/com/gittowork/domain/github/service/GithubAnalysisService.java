@@ -97,10 +97,15 @@ public class GithubAnalysisService {
     public void githubAnalysisByRepository(int[] selectedRepositories, String userName) {
         User user = userRepository.findByGithubName(userName)
                 .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND));
-        analysisSelectedRepositories(user.getId(), selectedRepositories);
+        String selectedRepositoryId = analysisSelectedRepositories(user.getId(), selectedRepositories);
 
         try {
-            firebaseService.sendMessage(user, "Github 분석 완료", user.getGithubName() + "님, Github 분석이 완료되었습니다. \n 지금 바로 확인하세요!", "GithubAnalysis");
+            firebaseService.sendGithubAnalysisMessage(
+                    user,
+                    "Github 분석 완료",
+                    user.getGithubName() + "님, Github 분석이 완료되었습니다. \n 지금 바로 확인하세요!",
+                    "GithubAnalysis",
+                    selectedRepositoryId);
         } catch (FirebaseMessagingException e) {
             throw new FirebaseMessageException("Firebase message send failed");
         }
@@ -147,7 +152,7 @@ public class GithubAnalysisService {
      *      int[] selectedRepositoryIds - 분석 대상 repository들의 repoId 배열.
      * 4. return: 없음.
      */
-    private void analysisSelectedRepositories(int userId, int[] selectedRepositoryIds) {
+    private String analysisSelectedRepositories(int userId, int[] selectedRepositoryIds) {
         GithubRepository githubRepository = githubRepoRepository.findByUserId(userId)
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Github repository not found"));
 
@@ -217,6 +222,8 @@ public class GithubAnalysisService {
 
             analysisStatus.setStatus(AnalysisStatus.Status.COMPLETE);
             analysisStatusRepository.save(analysisStatus);
+
+            return analysisStatus.getSelectedRepositoriesId();
 
         } catch (Exception e) {
             User user = userRepository.findById(userId)

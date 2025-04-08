@@ -21,4 +21,5 @@ public class GetGithubAnalysisByRepositoryResponse implements GithubAnalysisResp
     private String overallScore;
     private ActivityMetrics activityMetrics;
     private AIAnalysis aiAnalysis;
+    private List<Integer> selectedRepositoryIds;
 }
