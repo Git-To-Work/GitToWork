@@ -32,6 +32,8 @@ GlobalKey<ScaffoldMessengerState>();
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint('백그라운드 메시지 수신: ${message.messageId}');
@@ -57,9 +59,22 @@ Future<void> _showForegroundNotification(RemoteMessage message) async {
     message.notification?.title ?? '알림',
     message.notification?.body ?? '알림 내용을 확인하세요.',
     notificationDetails,
-    payload: message.data['alertType'], // alertType으로 구분 가능
+    payload: message.data.containsKey('selectedRepositoryId')
+        ? 'GithubAnalysis:${message.data['selectedRepositoryId']}'
+        : 'CoverLetterAnalysis',
   );
 }
+
+//AppBarBottomNavLayout으로 이동하는 함수
+void _navigateToLayout({required int index}) {
+  navigatorKey.currentState?.pushAndRemoveUntil(
+    MaterialPageRoute(
+      builder: (_) => AppBarBottomNavLayoutWithIndex(initialIndex: index),
+    ),
+        (route) => false,
+  );
+}
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -86,23 +101,56 @@ Future<void> main() async {
 
   await flutterLocalNotificationsPlugin.initialize(
     initSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) {
-      // 로컬 알림 클릭 시 처리 (선택사항)
-      final alertType = response.payload;
-      if (alertType != null) {
-        debugPrint('알림 클릭됨, alertType: $alertType');
-        // 여기서 화면 이동 처리 가능
+    onDidReceiveNotificationResponse: (NotificationResponse response) async {
+      final payload = response.payload;
+      debugPrint("🔔 [로컬 알림 클릭] payload: $payload");
+
+      if (payload == null) return;
+
+      if (payload.startsWith("GithubAnalysis:")) {
+        final repoId = payload.split(":")[1];
+        debugPrint("📦 저장할 repoId: $repoId");
+
+        const storage = FlutterSecureStorage();
+        await storage.write(key: 'selected_repo_id', value: repoId);
+
+        _navigateToLayout(index: 0); // GitHubScreen
+      } else if (payload == "CoverLetterAnalysis") {
+        _navigateToLayout(index: 2); // CoverLetterScreen
       }
     },
   );
 
   // FCM 포그라운드 메시지 수신 리스너 설정
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    debugPrint('포그라운드 메시지 수신: ${message.messageId}');
+    debugPrint('📬 [Foreground] FCM 메시지 수신');
+    debugPrint('▶ Title: ${message.notification?.title}');
+    debugPrint('▶ Body: ${message.notification?.body}');
+    debugPrint('▶ selectedRepositoryId: ${message.data['selectedRepositoryId']}');
     _showForegroundNotification(message);
   });
 
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
+    debugPrint("📬 [백그라운드 알림 클릭]");
+    debugPrint("▶ data: ${message.data}");
+
+    final repoId = message.data['selectedRepositoryId'];
+    if (repoId != null) {
+      debugPrint("📥 Github 분석 repoId: $repoId");
+      const storage = FlutterSecureStorage();
+      await storage.write(key: 'selected_repo_id', value: repoId);
+      _navigateToLayout(index: 0);
+    } else {
+      debugPrint("📝 CoverLetter 분석 알림으로 인식");
+      _navigateToLayout(index: 2);
+    }
+  });
+
+
   debugPrint('JWT 토큰: $token');
+
+  RemoteMessage? initialFcmMessage = await FirebaseMessaging.instance.getInitialMessage();
+
   runApp(
     MultiProvider(
       providers: [
@@ -114,14 +162,19 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
         ChangeNotifierProvider(create: (_) => LuckyProvider()),
       ],
-      child: MyApp(initialToken: token),
+      child: MyApp(
+          initialToken: token,
+          initialFcmMessage: initialFcmMessage,
+      ),
     ),
   );
 }
 
 class MyApp extends StatefulWidget {
   final String? initialToken;
-  const MyApp({super.key, this.initialToken});
+  final RemoteMessage? initialFcmMessage;
+
+  const MyApp({super.key, this.initialToken, this.initialFcmMessage});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -173,6 +226,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Git To Work',
       scaffoldMessengerKey: scaffoldMessengerKey,
       theme: ThemeData(
@@ -216,6 +270,27 @@ class _SplashScreenState extends State<SplashScreen> {
       if (success) {
         try {
           await _authProvider.fetchUserProfile();
+
+          final message = (context.findAncestorWidgetOfExactType<MyApp>() as MyApp).initialFcmMessage;
+
+          if (message != null) {
+            debugPrint("🚀 [getInitialMessage] 수신");
+            final repoId = message.data['selectedRepositoryId'];
+            debugPrint("▶ repoId: $repoId");
+
+            if (repoId != null) {
+              const storage = FlutterSecureStorage();
+              await storage.write(key: 'selected_repo_id', value: repoId);
+              navigatorKey.currentState?.pushReplacement(
+                MaterialPageRoute(builder: (_) => AppBarBottomNavLayoutWithIndex(initialIndex: 0)),
+              );
+            } else {
+              navigatorKey.currentState?.pushReplacement(
+                MaterialPageRoute(builder: (_) => AppBarBottomNavLayoutWithIndex(initialIndex: 2)),
+              );
+            }
+          }
+
           if (!mounted) return;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
