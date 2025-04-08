@@ -73,9 +73,15 @@ public class GithubService {
                 .orElseThrow(() -> new GithubAnalysisNotFoundException("Github Analysis Result not found"));
 
         String overallScore = calculateOverallScore(githubAnalysisResult.getOverallScore());
+
         List<String> repoNames = githubAnalysisResult.getSelectedRepositories().stream()
                 .map(Repository::getRepoName)
-                .collect(Collectors.toList());
+                .toList();
+
+        List<Integer> repoIds = githubAnalysisResult.getSelectedRepositories().stream()
+                .map(Repository::getRepoId)
+                .toList();
+
         String analysisDate = githubAnalysisResult.getAnalysisDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
         return GetGithubAnalysisByRepositoryResponse.builder()
@@ -84,6 +90,7 @@ public class GithubService {
                 .analysisDate(analysisDate)
                 .languageRatios(githubAnalysisResult.getLanguageRatios())
                 .selectedRepositories(repoNames)
+                .selectedRepositoryIds(repoIds)
                 .overallScore(overallScore)
                 .activityMetrics(githubAnalysisResult.getActivityMetrics())
                 .aiAnalysis(githubAnalysisResult.getAiAnalysis())
@@ -105,12 +112,17 @@ public class GithubService {
                 .orElseThrow(() -> new GithubRepositoryNotFoundException("Selected repository not found"));
         List<String> repoNames = selectedRepository.getRepositories().stream()
                 .map(Repository::getRepoName)
-                .collect(Collectors.toList());
+                .toList();
+
+        List<Integer> repoIds = selectedRepository.getRepositories().stream()
+                .map(Repository::getRepoId)
+                .toList();
 
         return GetGithubAnalysisStatusResponse.builder()
                 .status(analysisStatus.getStatus().name())
                 .selectedRepositoryId(selectedRepositoryId)
                 .selectedRepositories(repoNames)
+                .selectedRepositoryIds(repoIds)
                 .message(message)
                 .build();
     }
