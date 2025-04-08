@@ -67,8 +67,8 @@ class MyPageScreenState extends State<MyPageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final UserProfile? userProfile = authProvider.userProfile;
+    final authProvider = context.read<AuthProvider>();
+    final UserProfile? userProfile = _userProfile;
 
     return Scaffold(
       body: _isLoading
