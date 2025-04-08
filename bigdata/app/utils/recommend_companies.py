@@ -71,8 +71,11 @@ def _max_readme_flesch(repositories):
     for repo in repositories:
         readme = repo.get("readme_analysis", {})
         if readme:
-            readme_scores.append(readme.get("flesch_reading_ease", 0))
+            score = readme.get("flesch_reading_ease", 0)
+            if score is not None:
+                readme_scores.append(score)
     return max(readme_scores) if readme_scores else 0
+
 
 
 def merge_repository_metrics(repositories):
@@ -324,3 +327,4 @@ def run_hybrid_recommendation(db: Session,
 
     # 6. 추천 결과를 MongoDB에 저장
     save_to_mongo(user_id, selected_repositories_id, user_github_name, final_recommendations, now_kst)
+    print( f"{user_id} : {selected_repositories_id} completed successfully.")
