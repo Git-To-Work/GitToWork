@@ -184,21 +184,26 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 10),
-                    const TabBar(
-                      isScrollable: true,
-                      labelColor: Colors.black,
-                      unselectedLabelColor: Colors.grey,
-                      labelStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      indicatorColor: Colors.black,
-                      labelPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 10),
-                      tabs: [
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Tab(text: 'My Repo')),
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Tab(text: '기술스택')),
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Tab(text: '직무')),
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Tab(text: '경력')),
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Tab(text: '지역')),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 30),
+                      child: const TabBar(
+                        isScrollable: false,
+                        labelColor: Colors.black,
+                        unselectedLabelColor: Colors.grey,
+                        labelStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        indicatorColor: Colors.black,
+                        labelPadding: EdgeInsets.zero,
+                        tabs: [
+                          Tab(child: Center(child: Text('Repo'))),
+                          Tab(child: Center(child: Text('기술스택'))),
+                          Tab(child: Center(child: Text('직무'))),
+                          Tab(child: Center(child: Text('경력'))),
+                          Tab(child: Center(child: Text('지역'))),
+                        ],
+                      ),
                     ),
+
+
                     const SizedBox(height: 10),
                     Expanded(
                       child: TabBarView(
