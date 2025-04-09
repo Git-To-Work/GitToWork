@@ -17,6 +17,8 @@ class CompanyProvider extends ChangeNotifier {
       final result = await CompanyApi.fetchRecommendedCompanies(
         context: context,
         keyword: filterProvider.keyword,
+        page: int.parse(page),
+        size: int.parse(size),
       );
 
       final newCompanies = (result['companies'] as List<dynamic>)

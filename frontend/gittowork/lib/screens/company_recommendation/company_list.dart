@@ -155,17 +155,31 @@ class _CompanyListState extends State<CompanyList> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: BorderRadius.circular(10),
                         child: Container(
                           width: 75,
                           height: 60,
                           color: Colors.white,
-                          child: Image.asset(
-                            'assets/images/samsung.png',
+                          child: (company["logo"] != null &&
+                              !company["logo"].toString().contains("로고없음"))
+                              ? Image.network(
+                            company["logo"],
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset(
+                                'assets/images/No_Image.png',
+                                fit: BoxFit.contain,
+                              );
+                            },
+                          )
+                              : Image.asset(
+                            'assets/images/No_Image.png',
                             fit: BoxFit.contain,
                           ),
                         ),
                       ),
+
+
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -257,7 +271,7 @@ class _CompanyListState extends State<CompanyList> {
                     const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     child:
                     Text(
-                      (company["techStacks"] as List<dynamic>?)
+                      (company["tech_stacks"] as List<dynamic>?)
                           ?.join(", ") ??
                           "",
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
