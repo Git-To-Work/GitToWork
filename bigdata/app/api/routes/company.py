@@ -46,13 +46,8 @@ def build_company_query(
     if field:
         query = query.join(Task, JobNotice.task).filter(Task.task_name == field)
 
-    if career is not None:
-        query = query.filter(
-            and_(
-                JobNotice.min_career <= career,
-                JobNotice.max_career >= career
-            )
-        )
+    if career is not None and career < 10:
+        query = query.filter(JobNotice.min_career < career)
 
     if keyword:
         like_pattern = f"%{keyword}%"
