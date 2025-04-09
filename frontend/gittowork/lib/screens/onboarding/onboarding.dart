@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../layouts/appbar_bottom_nav_layout.dart';
 import '../../providers/auth_provider.dart';
 import '../signup/signup_detail_screen.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -14,75 +14,121 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _storage = FlutterSecureStorage();
+  bool _isLoading = false;
 
   Future<void> _handleGitHubSignup() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    // GitHub 로그인 및 백엔드 API 호출
     final signInResponse = await authProvider.loginWithGitHub(context);
     debugPrint('signInResponse: $signInResponse');
 
-    // async gap 이후 위젯이 여전히 마운트되어 있는지 확인
     if (!mounted) return;
 
     if (signInResponse != null) {
-      // 이미 회원인 경우
+      await _storage.write(
+        key: 'jwt_token',
+        value: signInResponse.accessToken,
+      );
+
+      if (!mounted) return;
+
       if (signInResponse.privacyPolicyAgreed) {
-        await _storage.write(
-          key: 'jwt_token',
-          value: signInResponse.accessToken,
-        );
-        if (!mounted) return;
-        Navigator.of(context).pushReplacement(
+        // 기존 회원: 홈 화면으로 이동 (기존 스택 제거)
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
+              (route) => false,
         );
       } else {
-        // 신규 회원인 경우 → 가입 상세 정보 입력 화면으로 이동
-        Navigator.push(
-          context,
+        // 신규 회원: 가입 상세 화면으로 이동 (기존 스택 제거)
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (_) => SignupDetailScreen(
               nickname: signInResponse.nickname,
               avatarUrl: signInResponse.avatarUrl,
             ),
           ),
+              (route) => false,
         );
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("로그인에 실패했습니다.")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("로그인에 실패했습니다.")),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Onboarding')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: _handleGitHubSignup,
-              child: const Text("GitHub으로 회원가입"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                // 테스트용 버튼 (임의)
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SignupDetailScreen(
-                      nickname: 'hansnam1105',
-                      avatarUrl: '',
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Image.asset(
+                  // 'assets/images/Duck.gif',
+                  'assets/images/Duck.gif',
+                  height: 240,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 40),
+                const Text(
+                  "GitHub 연동",
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "GitHub 정보를 바탕으로 당신의 활동을 분석해요.",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 60),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _handleGitHubSignup,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                );
-              },
-              child: const Text("Go to Signup Detail"),
+                  child: _isLoading
+                      ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                      : const Text(
+                    '로그인',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
