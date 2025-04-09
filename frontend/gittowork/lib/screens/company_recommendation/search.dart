@@ -213,7 +213,7 @@ class _SearchBarWithFiltersState extends State<SearchBarWithFilters> {
                             '개발 PM', '웹 풀스택 개발자', 'SW/솔루션', '인공지능/머신러닝'],
                               localTags, modalSetState: modalSetState),
                           _buildWrapChips([
-                            '신입', '1년', '2년', '3년', '4년', '5년',
+                            '전체', '신입', '1년', '2년', '3년', '4년', '5년',
                             '6년', '7년', '8년', '9년', '10년 이상'
                           ], localCareer, isSingle: true, onSingleSelected: (val) {
                             modalSetState(() {

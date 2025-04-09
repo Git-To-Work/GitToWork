@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:gittowork/widgets/app_bar.dart';
 import 'package:gittowork/screens/company_recommendation/search.dart';
 import 'package:gittowork/screens/company_recommendation/company_list.dart';
+import 'package:gittowork/providers/search_provider.dart';
+
+import '../../providers/company_provider.dart';
 
 class CompanyScreen extends StatefulWidget {
   const CompanyScreen({super.key});
@@ -11,10 +15,10 @@ class CompanyScreen extends StatefulWidget {
 }
 
 class _CompanyScreenState extends State<CompanyScreen> {
-  bool _isHiring = false; // 체크박스 상태 관리!
-
   @override
   Widget build(BuildContext context) {
+    final isHiring = Provider.of<SearchFilterProvider>(context).isHiring;
+
     return Scaffold(
       appBar: CustomAppBar(),
       body: Padding(
@@ -22,16 +26,14 @@ class _CompanyScreenState extends State<CompanyScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SearchBarWithFilters(),
+            const SearchBarWithFilters(),
             const SizedBox(height: 8),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 10),
-                  child: const Text(
+                const Padding(
+                  padding: EdgeInsets.only(left: 10),
+                  child: Text(
                     "AI 기업 추천",
                     style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
                   ),
@@ -41,29 +43,32 @@ class _CompanyScreenState extends State<CompanyScreen> {
                   child: Row(
                     children: [
                       Checkbox(
-                        value: _isHiring,
-                        checkColor: const Color(0xFFFFFFFF),
+                        value: isHiring,
+                        checkColor: Colors.white,
                         activeColor: const Color(0xFF2C2C2C),
-                        visualDensity: VisualDensity(horizontal: -4.0, vertical: -2),
-                        onChanged: (bool? value) {
-                          setState(() {
-                            _isHiring = value ?? false;
-                          });
+                        visualDensity: const VisualDensity(horizontal: -4.0, vertical: -2),
+                        onChanged: (bool? value) async {
+                          // ✅ 1. 상태 업데이트
+                          Provider.of<SearchFilterProvider>(context, listen: false)
+                              .updateIsHiring(value ?? false);
+
+                          // ✅ 2. API 호출
+                          await Provider.of<CompanyProvider>(context, listen: false)
+                              .loadCompaniesFromApi(
+                            context: context,
+                            page: '1',
+                            size: '20',
+                            reset: true,
+                          );
                         },
                       ),
-                      const Text(
-                        "채용중인 기업",
-                        style: TextStyle(fontSize: 16),
-                      ),
+                      const Text("채용중인 기업", style: TextStyle(fontSize: 16)),
                     ],
                   ),
                 ),
               ],
             ),
-
-            Expanded(
-              child: CompanyList(),
-            ),
+            const Expanded(child: CompanyList()),
           ],
         ),
       ),

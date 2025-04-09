@@ -11,6 +11,12 @@ class DuckScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    final spacingAboveDuck = screenHeight * (10 / 780); // 하단 여백
+    final spacingBetweenCircleAndDuck = screenHeight * (8 / 780);
+    final spacingBetweenButtonsAndCircle = screenHeight * (8 / 780);
+
     return Container(
       color: const Color(0xFF6D6D6D),
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -25,87 +31,93 @@ class DuckScreen extends StatelessWidget {
             ),
           ),
 
-          // 운세, 퀴즈 / Circle / Duck을 하나로 묶어서 이동 가능
           Positioned(
-            top: 300, // 이 값을 조정하면 세 개가 동시에 이동
+            bottom: spacingAboveDuck,
             left: 0,
             right: 0,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // (운세, 퀴즈 버튼)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              CircularRevealRoute(page: const LuckyScreen()),
-                            );
-                          },
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                '운세',
-                                style: TextStyle(
-                                  fontSize: 50,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
+                // 운세 / 퀴즈 버튼
+                Padding(
+                  padding: EdgeInsets.only(
+                    bottom: spacingBetweenButtonsAndCircle + spacingBetweenCircleAndDuck,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: AspectRatio(
+                          aspectRatio: 1,
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                CircularRevealRoute(page: const LuckyScreen()),
+                              );
+                            },
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  '운세',
+                                  style: TextStyle(
+                                    fontSize: 50,
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 30),
-                    Expanded(
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              CircularRevealRoute(page: const QuizScreen()),
-                            );
-                          },
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                '퀴즈',
-                                style: TextStyle(
-                                  fontSize: 50,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
+                      const SizedBox(width: 30),
+                      Expanded(
+                        child: AspectRatio(
+                          aspectRatio: 1,
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                CircularRevealRoute(page: const QuizScreen()),
+                              );
+                            },
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  '퀴즈',
+                                  style: TextStyle(
+                                    fontSize: 50,
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 20), // 간격 추가 가능
 
                 // Circle 이미지
-                const Image(
-                  image: AssetImage('assets/images/Circle.png'),
+                Padding(
+                  padding: EdgeInsets.only(bottom: spacingBetweenCircleAndDuck),
+                  child: const Image(
+                    image: AssetImage('assets/images/Circle.png'),
+                  ),
                 ),
-                const SizedBox(height: 20), // 간격 추가 가능
 
-                // Duck 애니메이션
+                // Duck 이미지
                 Transform.scale(
-                  scale: 1.05,
+                  scale: 1,
                   child: const Image(
                     image: AssetImage('assets/images/Duck.gif'),
                   ),
@@ -119,7 +131,7 @@ class DuckScreen extends StatelessWidget {
   }
 }
 
-/// 커스텀 동그라미 전환 애니메이션 라우트
+// 커스텀 동그라미 전환 애니메이션 라우트
 class CircularRevealRoute extends PageRouteBuilder {
   final Widget page;
 
@@ -134,7 +146,8 @@ class CircularRevealRoute extends PageRouteBuilder {
         animation: animation,
         builder: (context, child) {
           final size = MediaQuery.of(context).size;
-          final finalRadius = sqrt(pow(size.width, 2) + pow(size.height, 2));
+          final finalRadius =
+          sqrt(pow(size.width, 2) + pow(size.height, 2));
 
           double t = animation.value;
           Offset animatedCenter;
@@ -142,14 +155,19 @@ class CircularRevealRoute extends PageRouteBuilder {
 
           if (t < 0.5) {
             double tPos = t / 0.5;
-            final Offset startCenter = Offset(size.width / 2, size.height + 40);
-            final Offset endCenter = Offset(size.width / 2, size.height / 2);
-            animatedCenter = Offset.lerp(startCenter, endCenter, Curves.easeOut.transform(tPos))!;
+            final Offset startCenter =
+            Offset(size.width / 2, size.height + 40);
+            final Offset endCenter =
+            Offset(size.width / 2, size.height / 2);
+            animatedCenter = Offset.lerp(
+                startCenter, endCenter, Curves.easeOut.transform(tPos))!;
             animatedRadius = 40;
           } else {
             double tReveal = (t - 0.5) / 0.5;
-            animatedCenter = Offset(size.width / 2, size.height / 2);
-            animatedRadius = lerpDouble(40, finalRadius, Curves.easeOut.transform(tReveal))!;
+            animatedCenter =
+                Offset(size.width / 2, size.height / 2);
+            animatedRadius = lerpDouble(
+                40, finalRadius, Curves.easeOut.transform(tReveal))!;
           }
 
           return ClipPath(
@@ -166,7 +184,7 @@ class CircularRevealRoute extends PageRouteBuilder {
   );
 }
 
-/// 지정된 center와 radius를 가진 원형 영역을 반환하는 커스텀 클리퍼
+// 지정된 center와 radius를 가진 원형 영역을 반환하는 클리퍼
 class CircleRevealClipper extends CustomClipper<Path> {
   final Offset center;
   final double radius;
