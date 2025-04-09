@@ -29,11 +29,12 @@ class CompanyApi {
       if (filterProvider.selectedTags.isNotEmpty)
         'field': filterProvider.selectedTags.toList(),
       if (filterProvider.selectedCareer.isNotEmpty)
-        'career': int.tryParse(filterProvider.selectedCareer.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
+        'career': _mapCareerStringToInt(filterProvider.selectedCareer),
       if (filterProvider.selectedRegions.isNotEmpty)
         'location': filterProvider.selectedRegions.toList(),
       if (keyword != null && keyword.isNotEmpty)
         'keyword': keyword,
+      'has_job_notice': filterProvider.isHiring,
       'page': page,
       'size': size,
     };
@@ -50,17 +51,26 @@ class CompanyApi {
       if (response.statusCode == 200) {
         if (results == null) {
           debugPrint("⚠️ 응답 데이터가 null입니다.");
-          return {'companies': []}; // ✅ 빈 리스트 반환
+          return {
+            'companies': [],
+            'analyzing': false,
+          };
         }
         debugPrint("[ 회사 데이터 ]: $results");
         return results as Map<String, dynamic>;
       } else {
         debugPrint("❌ 실패 상태 코드: ${response.statusCode}");
-        return {'companies': []}; // ✅ 실패해도 빈 리스트 반환
+        return {
+          'companies': [],
+          'analyzing': true,
+        };
       }
     } catch (e) {
       debugPrint("🚨 API Error: $e");
-      return {'companies': []}; // ✅ 예외 발생 시에도 빈 리스트 반환
+      return {
+        'companies': [],
+        'analyzing': true,
+      };
     }
   }
 
@@ -221,5 +231,17 @@ class CompanyApi {
     } else {
       throw Exception('FastApi Action 요청 실패: ${response.statusCode}');
     }
+  }
+}
+
+int _mapCareerStringToInt(String career) {
+  switch (career) {
+    case '전체':
+    case '10년 이상':
+      return 10;
+    case '신입':
+      return 0;
+    default:
+      return int.tryParse(career.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
   }
 }

@@ -22,12 +22,14 @@ class SearchFilterProvider extends ChangeNotifier {
   Set<String> selectedTechs;
   Set<String> selectedTags;
   Set<String> selectedRegions;
+  bool isHiring;
 
   SearchFilterProvider({
     this.selectedCareer = '전체',
     Set<String>? selectedTechs,
     Set<String>? selectedTags,
     Set<String>? selectedRegions,
+    this.isHiring = false,
   })  : selectedTechs = selectedTechs ?? {},
         selectedTags = selectedTags ?? {},
         selectedRegions = selectedRegions ?? {};
@@ -57,6 +59,11 @@ class SearchFilterProvider extends ChangeNotifier {
 
   void updateRegions(Set<String> regions) {
     selectedRegions = regions;
+    notifyListeners();
+  }
+
+  void updateIsHiring(bool value) {
+    isHiring = value;
     notifyListeners();
   }
 }

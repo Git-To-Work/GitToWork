@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 class CompanyProvider extends ChangeNotifier {
   List<Map<String, dynamic>> companies = [];
+  bool analyzing = false;
 
   Future<void> loadCompaniesFromApi({
     required BuildContext context,
@@ -17,7 +18,11 @@ class CompanyProvider extends ChangeNotifier {
       final result = await CompanyApi.fetchRecommendedCompanies(
         context: context,
         keyword: filterProvider.keyword,
+        page: int.parse(page),
+        size: int.parse(size),
       );
+
+      analyzing = result['analyzing'] ?? false;
 
       final newCompanies = (result['companies'] as List<dynamic>)
           .map((e) => e as Map<String, dynamic>)

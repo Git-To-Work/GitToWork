@@ -116,71 +116,83 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
   Widget _buildCompanyInfo(Map<String, dynamic> company) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Image.asset(
-          // 'assets/images/${company["logo"] ?? "default_logo.png"}',
-          'assets/images/samsung.png',
-          width: 60,
-          height: 60,
-          fit: BoxFit.contain,
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                company["company_name"] ?? '',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                company["field_name"] ?? '',
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            ],
+        children: [
+          (company["logo"] != null &&
+              company["logo"].toString().isNotEmpty &&
+              !company["logo"].toString().contains("로고없음"))
+              ? Image.network(
+            company["logo"],
+            width: 75,
+            height: 60,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return Image.asset(
+                'assets/images/No_Image.png',
+                width: 75,
+                height: 60,
+                fit: BoxFit.contain,
+              );
+            },
+          )
+              : Image.asset(
+            'assets/images/No_Image.png',
+            width: 75,
+            height: 60,
+            fit: BoxFit.contain,
           ),
-        ),
-        GestureDetector(
-          onTap: () async {
-            final companyId = company['company_id'];
-            try {
-              if (company['scraped'] == true) {
-                await CompanyApi.unscrapCompany(companyId);
-                setState(() {
-                  company['scraped'] = false;
-                });
-                Provider.of<CompanyProvider>(context, listen: false)
-                    .updateScrapStatus(companyId, false); // ✅ Provider 업데이트
-
-                // 최근 본 기업 SharedPreferences에서도 scrap 정보 갱신
-                await _updateRecentCompanyScrapState(companyId, false);
-              } else {
-                await CompanyApi.scrapCompany(companyId);
-                setState(() {
-                  company['scraped'] = true;
-                });
-                Provider.of<CompanyProvider>(context, listen: false)
-                    .updateScrapStatus(companyId, true); // ✅ Provider 업데이트
-
-                // 최근 본 기업 SharedPreferences에서도 scrap 정보 갱신
-                await _updateRecentCompanyScrapState(companyId, true);
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  company["company_name"] ?? '',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  company["field_name"] ?? '',
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          // 스크랩 버튼 그대로 유지
+          GestureDetector(
+            onTap: () async {
+              final companyId = company['company_id'];
+              try {
+                if (company['scraped'] == true) {
+                  await CompanyApi.unscrapCompany(companyId);
+                  setState(() {
+                    company['scraped'] = false;
+                  });
+                  Provider.of<CompanyProvider>(context, listen: false)
+                      .updateScrapStatus(companyId, false);
+                  await _updateRecentCompanyScrapState(companyId, false);
+                } else {
+                  await CompanyApi.scrapCompany(companyId);
+                  setState(() {
+                    company['scraped'] = true;
+                  });
+                  Provider.of<CompanyProvider>(context, listen: false)
+                      .updateScrapStatus(companyId, true);
+                  await _updateRecentCompanyScrapState(companyId, true);
+                }
+              } catch (e) {
+                debugPrint('❌ 스크랩 요청 실패: $e');
               }
-            } catch (e) {
-              debugPrint('❌ 스크랩 요청 실패: $e');
-            }
-          },
-          child: Image.asset(
-            (company['scraped'] ?? false)
-                ? 'assets/icons/Saved.png'
-                : 'assets/icons/Un_Saved.png',
-            width: 28,
-            height: 28,
+            },
+            child: Image.asset(
+              (company['scraped'] ?? false)
+                  ? 'assets/icons/Saved.png'
+                  : 'assets/icons/Un_Saved.png',
+              width: 28,
+              height: 28,
+            ),
           ),
-        ),
+        ]
 
-
-      ],
     );
   }
 
