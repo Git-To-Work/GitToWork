@@ -38,7 +38,9 @@ def build_company_query(
         career: Optional[int],
         keyword: Optional[str],
         location: Optional[List[str]],
-        tech_stacks: Optional[List[str]]
+        tech_stacks: Optional[List[str]],
+        now: datetime,  # 수정됨: now 파라미터 추가
+        has_job_notice: Optional[bool] = None  # 수정됨: has_job_notice 파라미터 기본값 None
 ):
     query = db.query(Company).join(JobNotice, JobNotice.company_id == Company.company_id, isouter=True)
     query = query.filter(Company.company_id.in_(recommended_ids)).filter(Company.company_id >= 1)
@@ -64,6 +66,11 @@ def build_company_query(
         ).filter(
             TechStack.tech_stack_name.in_(tech_stacks)
         )
+
+    # 수정됨: has_job_notice가 True인 경우, 현재 시각 이후 마감 기한을 가진 채용 공고가 있는 회사만 필터링
+    if has_job_notice:
+        query = query.filter(JobNotice.deadline_dttm > now)
+
     return query
 
 
@@ -122,7 +129,8 @@ def get_companies(
         page: int = 1,
         size: int = 20,
         db: Session = Depends(get_db),
-        current_user=Depends(get_current_user)
+        current_user=Depends(get_current_user),
+        has_job_notice: Optional[bool] = Query(None)  # 수정됨: 엔드포인트에 has_job_notice 파라미터 추가
 ):
     user_id = current_user.user_id
 
@@ -137,8 +145,12 @@ def get_companies(
             "total_page": 0
         }, status_code=200, message="No recommended companies", code="SU")
 
+    # 수정됨: 현재 시각을 미리 계산하여 쿼리와 이후 포맷팅에 일관성 유지
+    now = datetime.now()
+
     # 2. SQLAlchemy 쿼리 구성
-    query = build_company_query(db, recommended_ids, field, career, keyword, location, tech_stacks)
+    query = build_company_query(db, recommended_ids, field, career, keyword, location, tech_stacks, now,
+                                has_job_notice)  # 수정됨: now와 has_job_notice 파라미터 전달
     filtered_companies = query.with_entities(Company).distinct(Company.company_id).all()
 
     # 3. 추천 순서 유지하여 정렬
@@ -149,7 +161,6 @@ def get_companies(
     page_companies, total_page = paginate_companies(ordered_companies, page, size)
 
     # 5. 응답 데이터 구성
-    now = datetime.now()
     result = [format_company(company, user_id, now) for company in page_companies]
 
     return success_response(
