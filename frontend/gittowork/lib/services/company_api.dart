@@ -29,7 +29,7 @@ class CompanyApi {
       if (filterProvider.selectedTags.isNotEmpty)
         'field': filterProvider.selectedTags.toList(),
       if (filterProvider.selectedCareer.isNotEmpty)
-        'career': int.tryParse(filterProvider.selectedCareer.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
+        'career': _mapCareerStringToInt(filterProvider.selectedCareer),
       if (filterProvider.selectedRegions.isNotEmpty)
         'location': filterProvider.selectedRegions.toList(),
       if (keyword != null && keyword.isNotEmpty)
@@ -230,5 +230,17 @@ class CompanyApi {
     } else {
       throw Exception('FastApi Action 요청 실패: ${response.statusCode}');
     }
+  }
+}
+
+int _mapCareerStringToInt(String career) {
+  switch (career) {
+    case '전체':
+    case '10년 이상':
+      return 10;
+    case '신입':
+      return 0;
+    default:
+      return int.tryParse(career.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
   }
 }
