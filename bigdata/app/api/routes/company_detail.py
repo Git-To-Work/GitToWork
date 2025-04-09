@@ -46,20 +46,31 @@ def extract_job_notices(company: Company) -> list:
         })
     return job_notices
 
+
 def extract_benefits(company: Company) -> dict:
-    """회사 복리후생 정보를 benefit_category별로 그룹핑하여 구성."""
+    """회사 복리후생 정보를 benefit_category별로 그룹핑하여 구성.
+
+    company_benefits 테이블의 데이터를 기반으로,
+    각 benefit 항목의 benefit_category.benefit_category_name을 키로 사용하여 그룹화합니다.
+    """
     benefits_dict = {}
+    # company.company_benefits는 이미 회사와 연결된 복리후생 항목(benefit)들을 포함하고 있다고 가정합니다.
     for cb in getattr(company, "company_benefits", []):
+        # 각 연관 정보에서 benefit이 존재하는지 체크
         if hasattr(cb, "benefit") and cb.benefit:
             benefit = cb.benefit
-            category_name = (
-                benefit.benefit_category.benefit_category_name
-                if hasattr(benefit, "benefit_category") and benefit.benefit_category
-                else "기타"
-            )
+            # benefit_category가 연결되어 있다면 해당 카테고리명, 아니면 "기타"로 지정
+            if hasattr(benefit, "benefit_category") and benefit.benefit_category:
+                category_name = benefit.benefit_category.benefit_category_name
+            else:
+                category_name = "기타"
+            # 해당 카테고리 이름을 키로 하여 benefit_name을 리스트에 추가
             benefits_dict.setdefault(category_name, []).append(benefit.benefit_name)
+
+    # 딕셔너리를 JSON의 sections 형식("head", "body")으로 변환
     benefits_sections = [{"head": cat, "body": names} for cat, names in benefits_dict.items()]
     return {"title": "복리후생", "sections": benefits_sections}
+
 
 def format_company_data(company: Company, user_id: str) -> dict:
     """회사 상세 정보를 최종 응답 데이터 형식으로 구성."""
