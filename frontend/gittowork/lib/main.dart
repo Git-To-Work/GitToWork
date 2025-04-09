@@ -127,6 +127,12 @@ Future<void> main() async {
     debugPrint('▶ Title: ${message.notification?.title}');
     debugPrint('▶ Body: ${message.notification?.body}');
     debugPrint('▶ selectedRepositoryId: ${message.data['selectedRepositoryId']}');
+
+    // 🔄 Github 분석일 경우 자동 새로고침
+    if (message.data.containsKey('selectedRepositoryId')) {
+      _navigateToLayout(index: 0);
+    }
+
     _showForegroundNotification(message);
   });
 
@@ -139,7 +145,8 @@ Future<void> main() async {
       debugPrint("📥 Github 분석 repoId: $repoId");
       const storage = FlutterSecureStorage();
       await storage.write(key: 'selected_repo_id', value: repoId);
-      _navigateToLayout(index: 0);
+      debugPrint("➡ GitHubScreen으로 이동 및 새로고침");
+      _navigateToLayout(index: 0); // 화면 전환 후 initState에서 자동 갱신
     } else {
       debugPrint("📝 CoverLetter 분석 알림으로 인식");
       _navigateToLayout(index: 2);
@@ -281,12 +288,18 @@ class _SplashScreenState extends State<SplashScreen> {
             if (repoId != null) {
               const storage = FlutterSecureStorage();
               await storage.write(key: 'selected_repo_id', value: repoId);
-              navigatorKey.currentState?.pushReplacement(
-                MaterialPageRoute(builder: (_) => AppBarBottomNavLayoutWithIndex(initialIndex: 0)),
+              navigatorKey.currentState?.pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => AppBarBottomNavLayoutWithIndex(initialIndex: 0),
+                ),
+                    (route) => false,
               );
             } else {
-              navigatorKey.currentState?.pushReplacement(
-                MaterialPageRoute(builder: (_) => AppBarBottomNavLayoutWithIndex(initialIndex: 2)),
+              navigatorKey.currentState?.pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => AppBarBottomNavLayoutWithIndex(initialIndex: 2),
+                ),
+                    (route) => false,
               );
             }
           }
