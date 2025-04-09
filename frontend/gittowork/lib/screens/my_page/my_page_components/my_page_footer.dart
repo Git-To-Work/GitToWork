@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../main.dart';
 import '../../../services/auth_api.dart';
+import '../../../widgets/alert_modal.dart';
+import '../../../widgets/confirm_modal.dart';
 
 class MyPageFooter extends StatefulWidget {
   const MyPageFooter({super.key});
@@ -13,37 +15,19 @@ class MyPageFooter extends StatefulWidget {
 class _MyPageFooterState extends State<MyPageFooter> {
 
   Future<void> _confirmLogout() async {
-    final bool? confirmResult = await showDialog<bool>(
+    final bool? confirmResult = await showCustomConfirmDialog(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('로그아웃'),
-          content: const Text('정말 로그아웃하시겠습니까?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('확인'),
-            ),
-          ],
-        );
-      },
+      content: '로그아웃하시겠습니까?',
+      subText: '지금 로그아웃하면 앱에서 자동 로그인이 해제됩니다.',
     );
 
     if (confirmResult == true) {
       // 로그아웃 API 호출
       final success = await AuthApi.logout();
 
-      // 위젯이 여전히 마운트되어 있는지 체크
       if (!mounted) return;
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그아웃 되었습니다.')),
-        );
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const SplashScreen()),
@@ -57,25 +41,12 @@ class _MyPageFooterState extends State<MyPageFooter> {
     }
   }
 
+
   Future<void> _confirmWithdraw() async {
-    final bool? confirmResult = await showDialog<bool>(
+    final bool? confirmResult = await showCustomConfirmDialog(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('회원 탈퇴'),
-          content: const Text('정말 회원탈퇴 하시겠습니까?\n이 작업은 되돌릴 수 없습니다.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('탈퇴'),
-            ),
-          ],
-        );
-      },
+      content: '회원 탈퇴하시겠습니까?',
+      subText: '이 작업은 되돌릴 수 없습니다.',
     );
 
     if (confirmResult == true) {
@@ -85,8 +56,9 @@ class _MyPageFooterState extends State<MyPageFooter> {
       if (!mounted) return;
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('회원탈퇴가 완료되었습니다.')),
+        await showCustomAlertDialog(
+          context: context,
+          content: '회원 탈퇴가 완료되었습니다.',
         );
         Navigator.pushAndRemoveUntil(
           context,
@@ -100,6 +72,7 @@ class _MyPageFooterState extends State<MyPageFooter> {
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

@@ -56,9 +56,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("로그인에 실패했습니다.")),
-        );
         setState(() {
           _isLoading = false;
         });
