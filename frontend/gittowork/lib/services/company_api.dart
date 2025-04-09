@@ -34,6 +34,7 @@ class CompanyApi {
         'location': filterProvider.selectedRegions.toList(),
       if (keyword != null && keyword.isNotEmpty)
         'keyword': keyword,
+      'has_job_notice': filterProvider.isHiring,
       'page': page,
       'size': size,
     };
