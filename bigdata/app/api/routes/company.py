@@ -38,7 +38,9 @@ def build_company_query(
         career: Optional[int],
         keyword: Optional[str],
         location: Optional[List[str]],
-        tech_stacks: Optional[List[str]]
+        tech_stacks: Optional[List[str]],
+        now: datetime,
+        has_job_notice: Optional[bool] = None
 ):
     query = db.query(Company).join(JobNotice, JobNotice.company_id == Company.company_id, isouter=True)
     query = query.filter(Company.company_id.in_(recommended_ids)).filter(Company.company_id >= 1)
@@ -64,6 +66,10 @@ def build_company_query(
         ).filter(
             TechStack.tech_stack_name.in_(tech_stacks)
         )
+
+    if has_job_notice:
+        query = query.filter(JobNotice.deadline_dttm > now)
+
     return query
 
 
@@ -122,7 +128,8 @@ def get_companies(
         page: int = 1,
         size: int = 20,
         db: Session = Depends(get_db),
-        current_user=Depends(get_current_user)
+        current_user=Depends(get_current_user),
+        has_job_notice: Optional[bool] = Query(None)
 ):
     user_id = current_user.user_id
 
@@ -137,8 +144,11 @@ def get_companies(
             "total_page": 0
         }, status_code=200, message="No recommended companies", code="SU")
 
+    now = datetime.now()
+
     # 2. SQLAlchemy 쿼리 구성
-    query = build_company_query(db, recommended_ids, field, career, keyword, location, tech_stacks)
+    query = build_company_query(db, recommended_ids, field, career, keyword, location, tech_stacks, now,
+                                has_job_notice)
     filtered_companies = query.with_entities(Company).distinct(Company.company_id).all()
 
     # 3. 추천 순서 유지하여 정렬
@@ -149,7 +159,6 @@ def get_companies(
     page_companies, total_page = paginate_companies(ordered_companies, page, size)
 
     # 5. 응답 데이터 구성
-    now = datetime.now()
     result = [format_company(company, user_id, now) for company in page_companies]
 
     return success_response(
