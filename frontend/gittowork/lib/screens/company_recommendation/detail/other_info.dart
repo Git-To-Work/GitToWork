@@ -11,11 +11,14 @@ class WelfareSection extends StatelessWidget {
     final benefits = company?['benefits'];
     final sections = benefits?['sections'] as List<dynamic>?;
 
-    // 분류 초기화
+    // 분류 기준 키
+    const List<String> predefinedCategories = ['연금·보험', '휴무·휴가·행사'];
+
+    // 분류 맵 초기화
     final Map<String, List<String>> grouped = {
-      '복리후생': [],
       '연금·보험': [],
       '휴무·휴가·행사': [],
+      '복리후생': [],
     };
 
     if (sections != null) {
@@ -23,16 +26,11 @@ class WelfareSection extends StatelessWidget {
         final head = section['head'] ?? '';
         final List<dynamic> body = section['body'] ?? [];
 
-        final target = (head == '연금·보험')
-            ? '연금·보험'
-            : (head == '휴무·휴가·행사')
-            ? '휴무·휴가·행사'
-            : '복리후생';
-
-        if (grouped[target] != null) {
-          grouped[target]!.addAll(body.map((e) => e.toString()));
+        if (predefinedCategories.contains(head)) {
+          grouped[head]!.addAll(body.map((e) => e.toString()));
+        } else {
+          grouped['복리후생']!.addAll(body.map((e) => e.toString()));
         }
-
       }
     }
 
@@ -62,7 +60,7 @@ class WelfareSection extends StatelessWidget {
                 child: Text(
                   "- $item",
                   style: const TextStyle(fontSize: 14),
-                  textAlign: TextAlign.center, // 👉 가운데 정렬
+                  textAlign: TextAlign.center,
                 ),
               );
             }).toList()
@@ -72,7 +70,7 @@ class WelfareSection extends StatelessWidget {
                 child: Text(
                   "정보가 없습니다.",
                   style: TextStyle(color: Colors.black54),
-                  textAlign: TextAlign.center, // 👉 가운데 정렬
+                  textAlign: TextAlign.center,
                 ),
               )
             ],
