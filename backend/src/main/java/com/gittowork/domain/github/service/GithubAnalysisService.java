@@ -455,11 +455,11 @@ public class GithubAnalysisService {
      */
     private RepositoryResult pollAndParseAnalysisResult(String projectKey, int repoId) {
         Map<String, Double> weights = Map.of(
-                "coverage", 4.0,
-                "bugs", 8.0,
-                "code_smells", 6.0,
-                "vulnerabilities", 10.0,
-                "duplicated_lines_density", 2.0
+                "coverage", 8.0,
+                "bugs", 16.0,
+                "code_smells", 12.0,
+                "vulnerabilities", 20.0,
+                "duplicated_lines_density", 4.0
         );
         final int BASE_SCORE = 100;
         double sonarTotalPenalty = 0.0;
@@ -573,11 +573,11 @@ public class GithubAnalysisService {
         }
 
         Map<String, Double> severityWeights = Map.of(
-                SEVERITY_BLOCKER, 3.0,
-                SEVERITY_CRITICAL, 2.0,
-                SEVERITY_MAJOR, 1.2,
-                SEVERITY_MINOR, 0.5,
-                SEVERITY_INFO, 0.2
+                SEVERITY_BLOCKER, 6.0,
+                SEVERITY_CRITICAL, 4.0,
+                SEVERITY_MAJOR, 2.4,
+                SEVERITY_MINOR, 1.0,
+                SEVERITY_INFO, 0.4
         );
 
         double javaPenalty = 0.0;
