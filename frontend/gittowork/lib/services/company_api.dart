@@ -50,17 +50,26 @@ class CompanyApi {
       if (response.statusCode == 200) {
         if (results == null) {
           debugPrint("⚠️ 응답 데이터가 null입니다.");
-          return {'companies': []}; // ✅ 빈 리스트 반환
+          return {
+            'companies': [],
+            'analyzing': false,
+          };
         }
         debugPrint("[ 회사 데이터 ]: $results");
         return results as Map<String, dynamic>;
       } else {
         debugPrint("❌ 실패 상태 코드: ${response.statusCode}");
-        return {'companies': []}; // ✅ 실패해도 빈 리스트 반환
+        return {
+          'companies': [],
+          'analyzing': true,
+        };
       }
     } catch (e) {
       debugPrint("🚨 API Error: $e");
-      return {'companies': []}; // ✅ 예외 발생 시에도 빈 리스트 반환
+      return {
+        'companies': [],
+        'analyzing': true,
+      };
     }
   }
 

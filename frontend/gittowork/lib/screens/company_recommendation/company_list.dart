@@ -69,15 +69,27 @@ class _CompanyListState extends State<CompanyList> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final companies = Provider.of<CompanyProvider>(context).companies;
+    final provider = Provider.of<CompanyProvider>(context);
+    final companies = provider.companies;
+    final isAnalyzing = provider.analyzing;
 
     if (companies.isEmpty && !_isLoading) {
-      return const Center(child: Text('추천 기업 데이터가 없습니다.'));
+      return Center(
+        child: Text(
+          isAnalyzing ? '해당 Repo는 아직 분석중입니다.' : '추천 기업 데이터가 없습니다.',
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      );
     }
 
+    // ✅ 정상 리스트 렌더링
     return SizedBox(
       child: ListView.builder(
         controller: _scrollController,
@@ -96,6 +108,7 @@ class _CompanyListState extends State<CompanyList> {
       ),
     );
   }
+
 
   Widget _buildCompanyCard(
       Map<String, dynamic> company, BuildContext context, int index) {
@@ -178,8 +191,6 @@ class _CompanyListState extends State<CompanyList> {
                           ),
                         ),
                       ),
-
-
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -187,11 +198,10 @@ class _CompanyListState extends State<CompanyList> {
                           children: [
                             Row(
                               children: [
-                                Expanded(
+                                Flexible(
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(
+                                      Flexible(
                                         child: Text(
                                           company["company_name"] ?? "",
                                           style: const TextStyle(
@@ -202,21 +212,19 @@ class _CompanyListState extends State<CompanyList> {
                                           maxLines: 1,
                                         ),
                                       ),
-                                      if ((company["has_job_notice"] ?? false) && company["status"] != null)
+                                      SizedBox(width: 5),
+                                      if (company["hasJobNotice"] ?? false)
                                         Padding(
-                                          padding: const EdgeInsets.only(left: 8),
+                                          padding: const EdgeInsets.only(left: 6),
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                             decoration: BoxDecoration(
                                               color: company["statusColor"] ?? Colors.blue,
                                               borderRadius: BorderRadius.circular(12),
                                             ),
-                                            child: Text(
-                                              company["status"] ?? "",
-                                              style: const TextStyle(
+                                            child: const Text(
+                                              '채용중',
+                                              style: TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 14,
                                               ),
@@ -263,16 +271,13 @@ class _CompanyListState extends State<CompanyList> {
                       ),
                     ],
                   ),
-
                   Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(top: 4),
                     padding:
                     const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    child:
-                    Text(
-                      (company["tech_stacks"] as List<dynamic>?)
-                          ?.join(", ") ??
+                    child: Text(
+                      (company["tech_stacks"] as List<dynamic>?)?.join(", ") ??
                           "",
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
                       maxLines: 1,
