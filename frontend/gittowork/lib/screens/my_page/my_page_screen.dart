@@ -110,7 +110,7 @@ class MyPageScreenState extends State<MyPageScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 90),
+                  const SizedBox(height: 50),
                   MyPageHeader(userProfile: userProfile),
                   const SizedBox(height: 30),
                   const MyPageButtonRow(),
