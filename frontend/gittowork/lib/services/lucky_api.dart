@@ -43,11 +43,14 @@ class LuckyService {
         final sex = results['sex'] ?? '';
         final birthTm = results['birthTm'] ?? '';
 
+        // ✅ birthTm: "11:00" → "11:00 ~ 11:30"
+        final birthTmRange = _toTimeRange(birthTm);
+
         // Provider에 저장
         Provider.of<LuckyProvider>(context, listen: false).setAll(
           birthDate: birthDt,
           gender: sex,
-          birthTime: birthTm,
+          birthTime: birthTmRange, // ✅ 범위 문자열 저장
         );
       } else {
         debugPrint('❌ 사용자 정보 없음: ${response.statusCode}');
@@ -56,6 +59,7 @@ class LuckyService {
       debugPrint('❌ 사용자 정보 조회 중 예외 발생: $e');
     }
   }
+
 
   /// 오늘의 운세 조회
   static Future<void> getTodayFortune(
@@ -98,4 +102,23 @@ class LuckyService {
       Provider.of<LuckyProvider>(context, listen: false).clearFortune();
     }
   }
+
+  static String _toTimeRange(String startTime) {
+    if (!startTime.contains(':')) return startTime;
+
+    final parts = startTime.split(':');
+    final hour = int.parse(parts[0]);
+    final minute = int.parse(parts[1]);
+
+    int endHour = hour;
+    int endMinute = minute + 30;
+    if (endMinute >= 60) {
+      endMinute -= 60;
+      endHour = (hour + 1) % 24;
+    }
+
+    final end = '${endHour.toString().padLeft(2, '0')}:${endMinute.toString().padLeft(2, '0')}';
+    return '$startTime ~ $end';
+  }
+
 }

@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:gittowork/providers/navigation_provider.dart';
 
 // Provider
 import 'package:provider/provider.dart';
@@ -122,17 +123,29 @@ Future<void> main() async {
   );
 
   // FCM 포그라운드 메시지 수신 리스너 설정
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
     debugPrint('📬 [Foreground] FCM 메시지 수신');
     debugPrint('▶ Title: ${message.notification?.title}');
     debugPrint('▶ Body: ${message.notification?.body}');
     debugPrint('▶ selectedRepositoryId: ${message.data['selectedRepositoryId']}');
 
-    // 🔄 Github 분석일 경우 자동 새로고침
-    if (message.data.containsKey('selectedRepositoryId')) {
-      _navigateToLayout(index: 0);
-    }
+    final selectedRepoId = message.data['selectedRepositoryId'];
+    if (selectedRepoId != null) {
+      const storage = FlutterSecureStorage();
+      await storage.write(key: 'selected_repo_id', value: selectedRepoId);
 
+      final currentIndex = Provider.of<NavigationProvider>(
+        navigatorKey.currentContext!,
+        listen: false,
+      ).currentIndex;
+
+      if (currentIndex == 0) {
+        debugPrint("🔄 현재 GitHubScreen → 화면 새로고침");
+        _navigateToLayout(index: 0);
+      } else {
+        debugPrint("📥 다른 화면이므로 데이터만 저장하고 전환은 X");
+      }
+    }
     _showForegroundNotification(message);
   });
 
@@ -168,6 +181,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => CompanyDetailProvider()),
         ChangeNotifierProvider(create: (_) => SearchFilterProvider()),
         ChangeNotifierProvider(create: (_) => LuckyProvider()),
+        ChangeNotifierProvider(create: (_) => NavigationProvider()),
       ],
       child: MyApp(
           initialToken: token,
