@@ -1,10 +1,10 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../layouts/appbar_bottom_nav_layout.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/user_api.dart';
 import '../../widgets/app_bar.dart';
+import 'initial_repo.dart';
 
 // ────────────────────────────────────────────────────────────
 // 모델
@@ -120,7 +120,7 @@ class _BusinessInterestScreenState extends State<BusinessInterestScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
+        MaterialPageRoute(builder: (_) => const InitialRepoScreen()),
             (_) => false,
       );
     } else {
