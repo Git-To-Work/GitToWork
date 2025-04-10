@@ -23,7 +23,10 @@ class _InitialRepoScreenState extends State<InitialRepoScreen> {
   @override
   void initState() {
     super.initState();
-    _loadRepositories();
+    // 2초 뒤에 레포지토리 불러오기
+    Future.delayed(const Duration(seconds: 2), () {
+      _loadRepositories();
+    });
   }
 
   Future<void> _loadRepositories() async {
@@ -61,14 +64,12 @@ class _InitialRepoScreenState extends State<InitialRepoScreen> {
       MaterialPageRoute(builder: (_) => const AppBarBottomNavLayout()),
     );
 
-    try{
+    try {
       await CompanyApi.requestCompanyAnalysis();
-    } catch (e){
+    } catch (e) {
       debugPrint("❌company 분석 요청 실패 : $e");
     }
-
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +92,6 @@ class _InitialRepoScreenState extends State<InitialRepoScreen> {
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 24),
-
             Expanded(
               child: ListView.builder(
                 itemCount: _repos.length,
@@ -116,9 +116,7 @@ class _InitialRepoScreenState extends State<InitialRepoScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             Padding(
               padding: const EdgeInsets.only(right: 10),
               child: SizedBox(
@@ -147,7 +145,6 @@ class _InitialRepoScreenState extends State<InitialRepoScreen> {
                     debugPrint("✅ 선택된 저장소 ID: $selectedRepoIds");
                     await _storeSelectedRepoIds(selectedRepoIds);
                   },
-
                   child: const Text(
                     '분석 시작',
                     style: TextStyle(color: Colors.white, fontSize: 16),
@@ -155,7 +152,6 @@ class _InitialRepoScreenState extends State<InitialRepoScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 30),
           ],
         ),
