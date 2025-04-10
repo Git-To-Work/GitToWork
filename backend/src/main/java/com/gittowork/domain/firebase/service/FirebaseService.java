@@ -81,13 +81,11 @@ public class FirebaseService {
     public void sendCoverLetterMessage(User user, String title, String message, String alertType) throws FirebaseMessagingException {
         String firebaseMessage = FirebaseMessaging.getInstance().send(
                 Message.builder()
-                        .setNotification(
-                                Notification.builder()
-                                        .setTitle(title)
-                                        .setBody(message)
-                                        .build())
+                        .putData("title", title)
+                        .putData("body", message)
                         .setToken(user.getFcmToken())
-                        .build());
+                        .build()
+        );
 
         userAlertLogRepository.save(
                 UserAlertLog.builder()
@@ -106,14 +104,12 @@ public class FirebaseService {
     public void sendGithubAnalysisMessage(User user, String title, String message, String alertType, String selectedRepositoryId) throws FirebaseMessagingException {
         String firebaseMessage = FirebaseMessaging.getInstance().send(
                 Message.builder()
-                        .setNotification(
-                                Notification.builder()
-                                        .setTitle(title)
-                                        .setBody(message)
-                                        .build())
+                        .putData("title", title)
+                        .putData("body", message)
                         .putData("selectedRepositoryId", selectedRepositoryId)
                         .setToken(user.getFcmToken())
-                        .build());
+                        .build()
+        );
 
         userAlertLogRepository.save(
                 UserAlertLog.builder()
