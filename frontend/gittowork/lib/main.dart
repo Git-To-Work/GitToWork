@@ -55,10 +55,14 @@ Future<void> _showForegroundNotification(RemoteMessage message) async {
     android: androidDetails,
   );
 
+  // 데이터 전용 메시지인 경우, notification 필드는 null이므로 데이터에서 제목과 본문을 추출
+  final title = message.data['title'] ?? '알림';
+  final body = message.data['body'] ?? '알림 내용을 확인하세요.';
+
   await flutterLocalNotificationsPlugin.show(
     message.hashCode,
-    message.notification?.title ?? '알림',
-    message.notification?.body ?? '알림 내용을 확인하세요.',
+    title,
+    body,
     notificationDetails,
     payload: message.data.containsKey('selectedRepositoryId')
         ? 'GithubAnalysis:${message.data['selectedRepositoryId']}'
