@@ -10,7 +10,6 @@ import com.gittowork.global.response.MessageOnlyResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
-import com.google.firebase.messaging.Notification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -81,13 +80,11 @@ public class FirebaseService {
     public void sendCoverLetterMessage(User user, String title, String message, String alertType) throws FirebaseMessagingException {
         String firebaseMessage = FirebaseMessaging.getInstance().send(
                 Message.builder()
-                        .setNotification(
-                                Notification.builder()
-                                        .setTitle(title)
-                                        .setBody(message)
-                                        .build())
+                        .putData("title", title)
+                        .putData("body", message)
                         .setToken(user.getFcmToken())
-                        .build());
+                        .build()
+        );
 
         userAlertLogRepository.save(
                 UserAlertLog.builder()
@@ -106,14 +103,12 @@ public class FirebaseService {
     public void sendGithubAnalysisMessage(User user, String title, String message, String alertType, String selectedRepositoryId) throws FirebaseMessagingException {
         String firebaseMessage = FirebaseMessaging.getInstance().send(
                 Message.builder()
-                        .setNotification(
-                                Notification.builder()
-                                        .setTitle(title)
-                                        .setBody(message)
-                                        .build())
+                        .putData("title", title)
+                        .putData("body", message)
                         .putData("selectedRepositoryId", selectedRepositoryId)
                         .setToken(user.getFcmToken())
-                        .build());
+                        .build()
+        );
 
         userAlertLogRepository.save(
                 UserAlertLog.builder()

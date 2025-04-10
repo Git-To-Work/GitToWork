@@ -7,6 +7,8 @@ import 'package:gittowork/screens/github_analysis/github.dart';
 import 'package:gittowork/screens/company_recommendation/company.dart';
 import 'package:gittowork/screens/cover_letter/cover_letter_screen.dart';
 import 'package:gittowork/screens/entertainment/entertainment.dart';
+import 'package:provider/provider.dart';
+import '../providers/navigation_provider.dart';
 import '../screens/my_page/my_page_screen.dart';
 import '../services/github_api.dart';
 
@@ -93,6 +95,7 @@ class _AppBarBottomNavLayoutState extends State<AppBarBottomNavLayout> {
     setState(() {
       _selectedIndex = index;
     });
+    Provider.of<NavigationProvider>(context, listen: false).setIndex(index); // 추가
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 300),
