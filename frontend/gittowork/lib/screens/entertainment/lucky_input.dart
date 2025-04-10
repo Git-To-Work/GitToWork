@@ -19,7 +19,7 @@ class _LuckyInputState extends State<LuckyInput> {
   @override
   void initState() {
     super.initState();
-    debugPrint("열림");
+    Provider.of<LuckyProvider>(context, listen: false).setSelected(0);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final luckyProvider = Provider.of<LuckyProvider>(context, listen: false);
       _birthDateController.text = luckyProvider.birthDate;
@@ -261,7 +261,10 @@ class _LuckyInputState extends State<LuckyInput> {
               ),
             );
 
-            if (result != null) luckyProvider.setBirthTime(result);
+            if (result != null) {
+              final startTime = result.split(' ~ ')[0];
+              luckyProvider.setBirthTime(startTime);
+            }
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -284,6 +287,7 @@ class _LuckyInputState extends State<LuckyInput> {
       ],
     );
   }
+
 
   String formatTimeRange(String time) {
     if (time.isEmpty) return '눌러서 선택';
